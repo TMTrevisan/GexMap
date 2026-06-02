@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Exposure Heatmap</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, sans-serif; }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 border-b border-gray-800 pb-6 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <span class="text-emerald-400">⚡</span> Options Exposure Heat Map
+                </h1>
+                <p class="text-gray-400 text-sm mt-1">Real-time dealer positioning GEX / DEX visualization powered by Convex Value</p>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex flex-col">
+                    <label class="text-xs text-gray-500 font-bold mb-1">View Mode</label>
+                    <select id="viewModeSelect" class="bg-gray-900 border border-gray-700 text-emerald-400 px-3 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500 font-bold">
+                        <option value="bobby" selected>Bobby Style (Consolidated)</option>
+                        <option value="grid">Grid (Strikes vs Expiration)</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-xs text-gray-500 font-bold mb-1">Symbol</label>
+                    <input type="text" id="symbolInput" value="SPY" class="bg-gray-900 border border-gray-700 text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500 w-24 text-center font-semibold">
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-xs text-gray-500 font-bold mb-1">Metric</label>
+                    <select id="metricSelect" class="bg-gray-900 border border-gray-700 text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500 font-semibold">
+                        <option value="dollar_gex">Dollar GEX ($)</option>
+                        <option value="dollar_dex">Dollar DEX ($)</option>
+                        <option value="gex">Share GEX</option>
+                        <option value="dex">Share DEX</option>
+                        <option value="open_interest">Open Interest</option>
+                        <option value="volume">Volume</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-xs text-gray-500 font-bold mb-1">Strike Zoom</label>
+                    <select id="strikeZoomSelect" class="bg-gray-900 border border-gray-700 text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500 font-semibold">
+                        <option value="0.015">+/- 1.5% (Very Tight)</option>
+                        <option value="0.03" selected>+/- 3% (Standard)</option>
+                        <option value="0.06">+/- 6% (Wide)</option>
+                        <option value="0.12">+/- 12% (Full)</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-xs text-gray-500 font-bold mb-1">Expirations</label>
+                    <select id="expFilterSelect" class="bg-gray-900 border border-gray-700 text-white px-3 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500 font-semibold">
+                        <option value="6">Next 6 Expirations</option>
+                        <option value="12">Next 12 Expirations</option>
+                        <option value="all" selected>All Expirations</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center self-end h-[38px] px-3 bg-gray-900 border border-gray-700 rounded-lg">
+                    <input type="checkbox" id="clipOutliersCheckbox" checked class="accent-emerald-500 w-4 h-4 mr-2">
+                    <label for="clipOutliersCheckbox" class="text-xs text-gray-300 font-semibold select-none cursor-pointer">Clip Outliers</label>
+                </div>
+
+                <button id="loadBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold px-5 h-[38px] rounded-lg transition-colors self-end">
+                    Load
+                </button>
+            </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div id="statsRow" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 hidden">
+            <div class="bg-gray-900/60 border border-gray-800 p-4 rounded-xl">
+                <div class="text-xs text-gray-500 font-bold uppercase tracking-wider">Spot Price</div>
+                <div id="spotPriceVal" class="text-2xl font-semibold mt-1">--</div>
+            </div>
+            <div class="bg-gray-900/60 border border-gray-800 p-4 rounded-xl">
+                <div class="text-xs text-gray-500 font-bold uppercase tracking-wider">Net GEX</div>
+                <div id="netGexVal" class="text-2xl font-semibold mt-1">--</div>
+            </div>
+            <div class="bg-gray-900/60 border border-gray-800 p-4 rounded-xl">
+                <div class="text-xs text-gray-500 font-bold uppercase tracking-wider">Net DEX</div>
+                <div id="netDexVal" class="text-2xl font-semibold mt-1">--</div>
+            </div>
+        </div>
+
+        <!-- Heatmap Container -->
+        <div class="bg-gray-900/30 border border-gray-800 rounded-xl p-6 relative min-h-[500px]">
+            <div id="loader" class="absolute inset-0 bg-gray-900/90 flex items-center justify-center rounded-xl z-10 hidden">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-400 mx-auto mb-4"></div>
+                    <p class="text-gray-400">Fetching option chain...</p>
+                </div>
+            </div>
+            
+            <!-- Custom Heatmap Table Grid -->
+            <div class="w-full overflow-x-auto rounded-lg border border-gray-800" id="tableContainer">
+                <!-- Javascript will insert the custom grid here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = [];
+
+        async function loadHeatmap() {
+            const symbol = document.getElementById('symbolInput').value.trim();
+            const loader = document.getElementById('loader');
+            
+            loader.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`/api/data?symbol=${symbol}`);
+                const data = await response.json();
+                currentData = data;
+                renderOutput();
+            } catch (error) {
+                console.error("Failed to load options data:", error);
+                alert("Error loading data from server. Make sure Vercel environment variables are set.");
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function getPercentileValue(arr, percentile) {
+            if (arr.length === 0) return 0;
+            const sorted = [...arr].sort((a, b) => a - b);
+            const index = Math.floor((sorted.length - 1) * percentile);
+            return sorted[index];
+        }
+
+        function formatNumber(val) {
+            if (val === 0 || val === null || val === undefined) return '';
+            const abs = Math.abs(val);
+            let sign = val < 0 ? '-' : '';
+            if (abs >= 1e9) return sign + '$' + (abs / 1e9).toFixed(1) + ' B';
+            if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(1) + ' M';
+            if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + ' K';
+            return sign + '$' + abs.toFixed(0);
+        }
+
+        function formatDate(dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const date = new Date(parts[0], parts[1] - 1, parts[2]);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function renderOutput() {
+            const viewMode = document.getElementById('viewModeSelect').value;
+            if (viewMode === 'bobby') {
+                renderBobbyStyle();
+            } else {
+                renderGrid();
+            }
+        }
+
+        function renderBobbyStyle() {
+            if (!currentData || currentData.length === 0) return;
+
+            const metric = document.getElementById('metricSelect').value;
+            const strikeZoom = parseFloat(document.getElementById('strikeZoomSelect').value);
+            const expFilter = document.getElementById('expFilterSelect').value;
+            const clipOutliers = document.getElementById('clipOutliersCheckbox').checked;
+
+            // Filter expirations
+            let expirations = [...new Set(currentData.map(d => d.expiration))].sort();
+            if (expFilter !== 'all') {
+                expirations = expirations.slice(0, parseInt(expFilter));
+            }
+
+            const spot = currentData[0].underlying_price;
+            const expSet = new Set(expirations);
+            const filteredData = currentData.filter(d => expSet.has(d.expiration));
+
+            // Aggregate metrics by Strike Price
+            const strikeTotals = {};
+            filteredData.forEach(item => {
+                strikeTotals[item.strike] = (strikeTotals[item.strike] || 0) + item[metric];
+            });
+
+            // Get unique strikes descending
+            const strikes = Object.keys(strikeTotals).map(Number).sort((a, b) => b - a);
+            const minStrike = spot * (1 - strikeZoom);
+            const maxStrike = spot * (1 + strikeZoom);
+            const filteredStrikes = strikes.filter(s => s >= minStrike && s <= maxStrike);
+
+            // Find global stats
+            document.getElementById('statsRow').classList.remove('hidden');
+            document.getElementById('spotPriceVal').innerText = `$${spot.toFixed(2)}`;
+            const totalGex = filteredData.reduce((acc, d) => acc + d.dollar_gex, 0);
+            const totalDex = filteredData.reduce((acc, d) => acc + d.dollar_dex, 0);
+            document.getElementById('netGexVal').innerText = `$${(totalGex / 1e6).toFixed(1)}M`;
+            document.getElementById('netGexVal').className = `text-2xl font-semibold mt-1 ${totalGex >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            document.getElementById('netDexVal').innerText = `$${(totalDex / 1e6).toFixed(1)}M`;
+            document.getElementById('netDexVal').className = `text-2xl font-semibold mt-1 ${totalDex >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            // Calculate min/max boundaries for coloring
+            const values = filteredStrikes.map(s => strikeTotals[s]);
+            const posValues = values.filter(v => v > 0);
+            const negValues = values.filter(v => v < 0);
+
+            // Peaks (Max call/put walls)
+            const maxPosVal = posValues.length > 0 ? Math.max(...posValues) : 0;
+            const minNegVal = negValues.length > 0 ? Math.min(...negValues) : 0;
+
+            const absValues = values.map(Math.abs);
+            const maxBound = clipOutliers ? getPercentileValue(absValues, 0.95) : Math.max(...absValues);
+
+            const closestStrike = filteredStrikes.reduce((prev, curr) => {
+                return (Math.abs(curr - spot) < Math.abs(prev - spot) ? curr : prev);
+            });
+
+            // Build single profile table
+            let html = `<div class="max-w-3xl mx-auto py-4 bg-slate-950/80 rounded-xl p-4 border border-gray-800">`;
+            html += `<div class="text-center font-bold text-sm text-gray-400 mb-4 tracking-wider uppercase">${metric.replace('_', ' ')} Profile - ${document.getElementById('symbolInput').value.toUpperCase()}</div>`;
+            html += `<table class="w-full border-collapse text-sm font-semibold select-none">`;
+            html += `<tbody>`;
+
+            filteredStrikes.forEach(strike => {
+                const val = strikeTotals[strike] || 0;
+                const isClosest = strike === closestStrike;
+                const isMaxPos = val > 0 && val === maxPosVal;
+                const isMaxNeg = val < 0 && val === minNegVal;
+
+                // Value formatting
+                let displayVal = formatNumber(val);
+                if (isMaxPos || isMaxNeg) {
+                    displayVal += " *";
+                }
+
+                let bgStyle = "";
+                let textClass = "text-white font-extrabold pr-4 text-right block w-full";
+
+                if (isMaxPos) {
+                    bgStyle = `background-color: #facc15`; // Yellow
+                    textClass = "text-slate-950 font-black pr-4 text-right block w-full";
+                } else if (isMaxNeg) {
+                    bgStyle = `background-color: #7c3aed`; // Purple
+                    textClass = "text-white font-black pr-4 text-right block w-full";
+                } else if (val > 0) {
+                    const intensity = Math.min(1.0, Math.max(0.15, val / maxBound));
+                    bgStyle = `background-color: rgba(34, 197, 94, ${intensity.toFixed(2)})`;
+                } else if (val < 0) {
+                    const intensity = Math.min(1.0, Math.max(0.15, Math.abs(val) / maxBound));
+                    bgStyle = `background-color: rgba(109, 40, 217, ${intensity.toFixed(2)})`;
+                } else {
+                    bgStyle = `background-color: #0f172a`;
+                    textClass = "text-gray-600 font-normal pr-4 text-right block w-full";
+                }
+
+                // Left Strike Label
+                const strikeClass = isClosest
+                    ? "py-1 px-4 bg-indigo-600/90 text-white font-bold text-center rounded border border-indigo-500 w-24"
+                    : "py-1 px-4 text-gray-400 font-bold text-center w-24";
+
+                html += `<tr class="border-b border-slate-900 hover:opacity-90">`;
+                html += `<td class="py-1"><div class="${strikeClass}">$${strike.toFixed(0)}</div></td>`;
+                html += `<td class="py-1 px-2">`;
+                html += `<div class="w-full h-8 rounded flex items-center" style="${bgStyle}">`;
+                html += `<span class="${textClass}">${displayVal}</span>`;
+                html += `</div>`;
+                html += `</td>`;
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        function renderGrid() {
+            if (!currentData || currentData.length === 0) return;
+
+            const metric = document.getElementById('metricSelect').value;
+            const strikeZoom = parseFloat(document.getElementById('strikeZoomSelect').value);
+            const expFilter = document.getElementById('expFilterSelect').value;
+            const clipOutliers = document.getElementById('clipOutliersCheckbox').checked;
+
+            // Extract unique sorted expirations and filter
+            let expirations = [...new Set(currentData.map(d => d.expiration))].sort();
+            if (expFilter !== 'all') {
+                const limit = parseInt(expFilter);
+                expirations = expirations.slice(0, limit);
+            }
+
+            const spot = currentData[0].underlying_price;
+            const expSet = new Set(expirations);
+            const dataFilteredByExp = currentData.filter(d => expSet.has(d.expiration));
+
+            // Extract unique sorted strikes descending (high to low)
+            const strikes = [...new Set(dataFilteredByExp.map(d => d.strike))].sort((a, b) => b - a);
+
+            // Filter strikes around the spot price
+            const minStrike = spot * (1 - strikeZoom);
+            const maxStrike = spot * (1 + strikeZoom);
+            const filteredStrikes = strikes.filter(s => s >= minStrike && s <= maxStrike);
+
+            // Show stats header
+            document.getElementById('statsRow').classList.remove('hidden');
+            document.getElementById('spotPriceVal').innerText = `$${spot.toFixed(2)}`;
+            
+            const totalGex = dataFilteredByExp.reduce((acc, d) => acc + d.dollar_gex, 0);
+            const totalDex = dataFilteredByExp.reduce((acc, d) => acc + d.dollar_dex, 0);
+            
+            document.getElementById('netGexVal').innerText = `$${(totalGex / 1e6).toFixed(1)}M`;
+            document.getElementById('netGexVal').className = `text-2xl font-semibold mt-1 ${totalGex >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            document.getElementById('netDexVal').innerText = `$${(totalDex / 1e6).toFixed(1)}M`;
+            document.getElementById('netDexVal').className = `text-2xl font-semibold mt-1 ${totalDex >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+            // Create strike value mapping for rendering
+            const gridMap = {};
+            const cellValues = [];
+
+            dataFilteredByExp.forEach(item => {
+                if (!gridMap[item.strike]) {
+                    gridMap[item.strike] = {};
+                }
+                const val = item[metric];
+                gridMap[item.strike][item.expiration] = val;
+                cellValues.push(val);
+            });
+
+            // Find max bounds for heat intensity
+            const absValues = cellValues.map(Math.abs);
+            let maxBound;
+            if (clipOutliers) {
+                maxBound = getPercentileValue(absValues, 0.95) || 1;
+            } else {
+                maxBound = Math.max(...absValues) || 1;
+            }
+
+            // Find the strike closest to the spot price to highlight it
+            const closestStrike = filteredStrikes.reduce((prev, curr) => {
+                return (Math.abs(curr - spot) < Math.abs(prev - spot) ? curr : prev);
+            });
+
+            // Generate HTML table structure
+            let html = `<table class="w-max border-collapse text-[10px] font-bold select-none text-center">`;
+            
+            // Header row
+            html += `<thead><tr class="bg-slate-900 border-b border-gray-800 text-gray-400">`;
+            html += `<th class="py-3 px-4 border-r border-gray-800 sticky left-0 bg-slate-950 text-left w-24">Strike Price</th>`;
+            expirations.forEach(exp => {
+                html += `<th class="py-3 px-2 min-w-[110px] w-[110px] bg-slate-900 border-r border-gray-800">${formatDate(exp)}</th>`;
+            });
+            html += `</tr></thead><tbody>`;
+
+            // Body rows
+            filteredStrikes.forEach(strike => {
+                const isClosest = strike === closestStrike;
+                const strikeClass = isClosest 
+                    ? "py-2 px-4 border-r border-gray-800 sticky left-0 bg-indigo-600 text-white font-bold text-left shadow-lg" 
+                    : "py-2 px-4 border-r border-gray-800 sticky left-0 bg-slate-950 text-gray-300 font-bold text-left";
+
+                html += `<tr class="border-b border-gray-900 hover:opacity-90">`;
+                html += `<td class="${strikeClass}">$${strike.toFixed(1)}</td>`;
+
+                expirations.forEach(exp => {
+                    const val = (gridMap[strike] && gridMap[strike][exp]) || 0;
+                    const formatted = formatNumber(val);
+                    
+                    let bgStyle = "";
+                    let textClass = "text-white";
+
+                    if (val > 0) {
+                        const intensity = Math.min(1.0, Math.max(0.15, val / maxBound));
+                        bgStyle = `background-color: rgba(16, 185, 129, ${intensity.toFixed(2)})`; // Emerald
+                    } else if (val < 0) {
+                        const intensity = Math.min(1.0, Math.max(0.15, Math.abs(val) / maxBound));
+                        bgStyle = `background-color: rgba(239, 68, 68, ${intensity.toFixed(2)})`; // Red
+                    } else {
+                        bgStyle = `background-color: #0f172a`; // Dark background
+                        textClass = "text-gray-600";
+                    }
+
+                    html += `<td class="py-2.5 px-1 border-r border-gray-900 text-center min-w-[110px] w-[110px]" style="${bgStyle}">`;
+                    html += `<span class="${textClass}">${formatted}</span>`;
+                    html += `</td>`;
+                });
+
+                html += `</tr>`;
+            });
+
+            html += `</tbody></table>`;
+            
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        document.getElementById('loadBtn').addEventListener('click', loadHeatmap);
+        
+        ['viewModeSelect', 'metricSelect', 'strikeZoomSelect', 'expFilterSelect', 'clipOutliersCheckbox'].forEach(id => {
+            document.getElementById(id).addEventListener('change', renderOutput);
+        });
+
+        // Initial Load
+        loadHeatmap();
+    </script>
+</body>
+</html>
