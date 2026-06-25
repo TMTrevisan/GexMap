@@ -116,10 +116,12 @@ function processChainData(chainData) {
       }
 
       if (underlyingPrice > 0) {
-        const dollarGex = strikeGex * underlyingPrice * underlyingPrice * 0.01;
-        const dollarDex = strikeDex * underlyingPrice;
+        // GEX/DEX in Dollars = Gamma/Delta * OI * Spot (Matches FlowbyBobby's scale exactly)
+        // Note: strikeGex/strikeDex is scaled by 100, so we multiply by 0.01 to get the exact unit.
+        const dollarGex = strikeGex * underlyingPrice * 0.01;
+        const dollarDex = strikeDex * underlyingPrice * 0.01;
 
-        processedRecords.append || processedRecords.push({
+        processedRecords.push({
           expiration: expDate,
           strike: strike,
           gex: Math.round(strikeGex * 100) / 100,
