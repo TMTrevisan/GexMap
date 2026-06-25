@@ -83,6 +83,59 @@
             </div>
         </div>
 
+        <!-- Legend & Market Guide Accordion -->
+        <div class="mb-6 bg-gray-900/40 border border-gray-800 rounded-xl overflow-hidden">
+            <button id="toggleLegendBtn" class="w-full flex justify-between items-center px-6 py-4 text-sm font-bold text-gray-300 hover:bg-gray-800/30 transition-colors focus:outline-none">
+                <span class="flex items-center gap-2">📖 Options Heatmap Legend & Market Guide</span>
+                <span id="legendArrow" class="transform transition-transform duration-200">▼</span>
+            </button>
+            <div id="legendContent" class="px-6 pb-6">
+                <div class="overflow-x-auto rounded-lg border border-gray-850">
+                    <table class="w-full text-xs text-left text-gray-400">
+                        <thead class="bg-slate-950 text-gray-300 uppercase font-bold border-b border-gray-800">
+                            <tr>
+                                <th class="py-3 px-4">Color</th>
+                                <th class="py-3 px-4">Gamma Meaning</th>
+                                <th class="py-3 px-4">Dealer Position</th>
+                                <th class="py-3 px-4">Price Behavior</th>
+                                <th class="py-3 px-4">Volatility Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800/50 bg-gray-950/20">
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-yellow-400">Yellow</td>
+                                <td class="py-3 px-4">Positive Gamma</td>
+                                <td class="py-3 px-4">Dealers Long</td>
+                                <td class="py-3 px-4 text-emerald-400 font-bold">Mean Reversion</td>
+                                <td class="py-3 px-4 text-emerald-500">Volatility Dampens</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-violet-400">Purple</td>
+                                <td class="py-3 px-4">Negative Gamma</td>
+                                <td class="py-3 px-4">Dealers Short</td>
+                                <td class="py-3 px-4 text-rose-400 font-bold">Momentum Expansion</td>
+                                <td class="py-3 px-4 text-rose-500">Volatility Expands</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-emerald-400">Green</td>
+                                <td class="py-3 px-4">Neutral / Mixed</td>
+                                <td class="py-3 px-4">Balanced Book</td>
+                                <td class="py-3 px-4 text-gray-300">Range Trading</td>
+                                <td class="py-3 px-4">Transitional</td>
+                            </tr>
+                            <tr>
+                                <td class="py-3 px-4 font-bold text-indigo-400 flex items-center gap-1">★ King Node</td>
+                                <td class="py-3 px-4">Max Abs Gamma</td>
+                                <td class="py-3 px-4">Largest Exposure</td>
+                                <td class="py-3 px-4 text-yellow-400 font-bold">Price Magnet</td>
+                                <td class="py-3 px-4 text-yellow-500">Pin / Chop Zone</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Info Grid -->
         <div id="statsRow" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 hidden">
             <div class="bg-gray-900/60 border border-gray-800 p-4 rounded-xl">
@@ -117,6 +170,19 @@
 
     <script>
         let currentData = [];
+
+        // Legend Expand/Collapse
+        document.getElementById('toggleLegendBtn').addEventListener('click', () => {
+            const content = document.getElementById('legendContent');
+            const arrow = document.getElementById('legendArrow');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                arrow.style.transform = 'rotate(0deg)';
+            } else {
+                content.classList.add('hidden');
+                arrow.style.transform = 'rotate(-90deg)';
+            }
+        });
 
         async function loadHeatmap() {
             const symbol = document.getElementById('symbolInput').value.trim();
@@ -219,6 +285,17 @@
             const maxPosVal = posValues.length > 0 ? Math.max(...posValues) : 0;
             const minNegVal = negValues.length > 0 ? Math.min(...negValues) : 0;
 
+            // Find King Node (Max Absolute exposure overall)
+            let kingStrike = null;
+            let maxAbsValue = -1;
+            filteredStrikes.forEach(strike => {
+                const val = strikeTotals[strike] || 0;
+                if (Math.abs(val) > maxAbsValue) {
+                    maxAbsValue = Math.abs(val);
+                    kingStrike = strike;
+                }
+            });
+
             const absValues = values.map(Math.abs);
             const maxBound = clipOutliers ? getPercentileValue(absValues, 0.95) : Math.max(...absValues);
 
@@ -227,7 +304,7 @@
             });
 
             // Build single profile table
-            let html = `<div class="max-w-3xl mx-auto py-4 bg-slate-950/80 rounded-xl p-4 border border-gray-800">`;
+            let html = `<div class="max-w-4xl mx-auto py-4 bg-slate-950/80 rounded-xl p-4 border border-gray-800">`;
             html += `<div class="text-center font-bold text-sm text-gray-400 mb-4 tracking-wider uppercase">${metric.replace('_', ' ')} Profile - ${document.getElementById('symbolInput').value.toUpperCase()}</div>`;
             html += `<table class="w-full border-collapse text-sm font-semibold select-none">`;
             html += `<tbody>`;
@@ -237,31 +314,58 @@
                 const isClosest = strike === closestStrike;
                 const isMaxPos = val > 0 && val === maxPosVal;
                 const isMaxNeg = val < 0 && val === minNegVal;
+                const isKing = strike === kingStrike;
 
-                // Value formatting
+                // Value and behavior description formatting
                 let displayVal = formatNumber(val);
-                if (isMaxPos || isMaxNeg) {
+                let behaviorDesc = "";
+
+                if (isKing) {
+                    displayVal = "★ " + displayVal + " [KING NODE]";
+                    behaviorDesc = "🎯 Price Magnet (Pin / Chop Zone)";
+                } else if (isMaxPos) {
                     displayVal += " *";
+                    behaviorDesc = "📈 Mean Reversion (Vol Dampens)";
+                } else if (isMaxNeg) {
+                    displayVal += " *";
+                    behaviorDesc = "📉 Momentum Exp (Vol Expands)";
+                } else if (val > 0) {
+                    behaviorDesc = "Range Trading (Neutral)";
+                } else if (val < 0) {
+                    behaviorDesc = "Transitional Zone";
                 }
 
+                // Bar Color selection matching Bobby Style + Legend:
+                // Yellow = Max Call Wall (or positive King Node)
+                // Purple = Max Put Wall (or negative King Node)
                 let bgStyle = "";
-                let textClass = "text-white font-extrabold pr-4 text-right block w-full";
+                let textClass = "text-white font-extrabold pr-4 text-right";
+                let descClass = "text-xs font-semibold pl-4 flex items-center";
 
-                if (isMaxPos) {
-                    bgStyle = `background-color: #facc15`; // Yellow
-                    textClass = "text-slate-950 font-black pr-4 text-right block w-full";
+                if (isKing) {
+                    bgStyle = val > 0 ? `background-color: #facc15` : `background-color: #7c3aed`;
+                    textClass = val > 0 ? "text-slate-950 font-black pr-4 text-right" : "text-white font-black pr-4 text-right";
+                    descClass += val > 0 ? " text-yellow-400 font-bold" : " text-violet-400 font-bold";
+                } else if (isMaxPos) {
+                    bgStyle = `background-color: rgba(250, 204, 21, 0.85)`; // Soft Yellow
+                    textClass = "text-slate-950 font-black pr-4 text-right";
+                    descClass += " text-yellow-500/90";
                 } else if (isMaxNeg) {
-                    bgStyle = `background-color: #7c3aed`; // Purple
-                    textClass = "text-white font-black pr-4 text-right block w-full";
+                    bgStyle = `background-color: rgba(124, 58, 237, 0.85)`; // Soft Purple
+                    textClass = "text-white font-black pr-4 text-right";
+                    descClass += " text-violet-400/90";
                 } else if (val > 0) {
                     const intensity = Math.min(1.0, Math.max(0.15, val / maxBound));
-                    bgStyle = `background-color: rgba(34, 197, 94, ${intensity.toFixed(2)})`;
+                    bgStyle = `background-color: rgba(34, 197, 94, ${intensity.toFixed(2)})`; // Green
+                    descClass += " text-emerald-500/80";
                 } else if (val < 0) {
                     const intensity = Math.min(1.0, Math.max(0.15, Math.abs(val) / maxBound));
-                    bgStyle = `background-color: rgba(109, 40, 217, ${intensity.toFixed(2)})`;
+                    bgStyle = `background-color: rgba(109, 40, 217, ${intensity.toFixed(2)})`; // Purpleish-blue
+                    descClass += " text-indigo-400/80";
                 } else {
                     bgStyle = `background-color: #0f172a`;
-                    textClass = "text-gray-600 font-normal pr-4 text-right block w-full";
+                    textClass = "text-gray-600 font-normal pr-4 text-right";
+                    descClass += " text-gray-600";
                 }
 
                 // Left Strike Label
@@ -271,11 +375,12 @@
 
                 html += `<tr class="border-b border-slate-900 hover:opacity-90">`;
                 html += `<td class="py-1"><div class="${strikeClass}">$${strike.toFixed(0)}</div></td>`;
-                html += `<td class="py-1 px-2">`;
-                html += `<div class="w-full h-8 rounded flex items-center" style="${bgStyle}">`;
+                html += `<td class="py-1 px-2 w-[45%]">`;
+                html += `<div class="w-full h-8 rounded flex items-center justify-end" style="${bgStyle}">`;
                 html += `<span class="${textClass}">${displayVal}</span>`;
                 html += `</div>`;
                 html += `</td>`;
+                html += `<td class="${descClass}">${behaviorDesc}</td>`;
                 html += `</tr>`;
             });
 
