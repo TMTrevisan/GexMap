@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpotGamma TRACE - Options Flow & Liquidity Heatmap</title>
+    <title>SpotGamma Terminal - TRACE & HIRO</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Plotly.js for advanced multi-subplot options flow mapping -->
+    <!-- Plotly.js for multi-subplot advanced charting -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         body { background-color: #05080c; color: #e2e8f0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -21,330 +21,558 @@
 </head>
 <body class="p-0 select-none overflow-x-hidden">
 
-    <!-- SpotGamma TRACE Header & Controls -->
-    <div class="control-panel px-6 py-4 flex flex-wrap justify-between items-center gap-4">
-        <div class="flex items-center gap-4">
-            <!-- Brand Logo -->
-            <div class="flex items-center gap-2">
-                <span class="text-2xl font-black tracking-tight text-white flex items-center">
-                    <span class="text-emerald-400 font-extrabold mr-1">⚡</span> SPOT<span class="text-emerald-400">GAMMA</span>
-                </span>
-                <span class="bg-[#1e293b] text-gray-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">TRACE</span>
-            </div>
+    <!-- Top Navigation Bar -->
+    <div class="bg-[#090d15] border-b border-gray-800 px-6 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-6">
+            <span class="text-2xl font-black tracking-tight text-white flex items-center">
+                <span class="text-emerald-400 font-extrabold mr-1">⚡</span> SPOT<span class="text-emerald-400">GAMMA</span>
+            </span>
             
-            <!-- Target Selection -->
-            <div class="h-6 w-px bg-gray-800"></div>
-            <select id="symbolInput" class="bg-[#0f172a] border border-[#334155] text-white text-xs font-bold px-3 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500">
-                <option value="SPY" selected>SPY (S&P 500 ETF)</option>
-                <option value="I:SPX">SPX (S&P 500 Index)</option>
-                <option value="QQQ">QQQ (Nasdaq 100)</option>
-            </select>
+            <div class="flex bg-slate-950 p-0.5 rounded-lg border border-gray-800">
+                <button id="navTraceBtn" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]">
+                    📊 TRACE Heatmap
+                </button>
+                <button id="navHiroBtn" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                    🎯 HIRO Flow Tape
+                </button>
+            </div>
         </div>
-
-        <!-- Toolbar Options -->
-        <div class="flex flex-wrap items-center gap-3 text-xs">
-            <!-- Participant Selection -->
-            <div class="flex flex-col">
-                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Participant</span>
-                <select id="participantSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
-                    <option value="market_makers" selected>Market Makers (Hedging)</option>
-                    <option value="customers">Customers (Retail)</option>
-                    <option value="pro_customers">Pro Customers (Prop)</option>
-                    <option value="firms">Firms</option>
-                    <option value="broker_dealers">Broker Dealers</option>
-                </select>
+        
+        <div class="flex items-center gap-4 text-xs font-bold">
+            <span class="text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-800/40">ALPHA ACCESS</span>
+            <div class="text-right">
+                <span class="text-gray-500 block text-[9px] uppercase leading-none">Status</span>
+                <span class="text-emerald-400 text-[10px] leading-none">CONNECTED</span>
             </div>
-
-            <!-- Lens Model Dropdown -->
-            <div class="flex flex-col">
-                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Model / Lens</span>
-                <select id="modelSelect" class="bg-[#0f172a] border border-[#334155] text-emerald-400 font-bold px-3 py-1.5 rounded focus:outline-none focus:border-emerald-500">
-                    <option value="gamma" selected>Gamma Exposure (Volatility)</option>
-                    <option value="delta_pressure">Delta Pressure (Hedging)</option>
-                    <option value="charm_pressure">Charm Pressure (0DTE Decay)</option>
-                </select>
-            </div>
-
-            <!-- Lens Model Dropdown -->
-            <div class="flex flex-col">
-                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Strike View</span>
-                <select id="lensSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
-                    <option value="gex" selected>GEX by Strike</option>
-                    <option value="oi">OI by Strike</option>
-                    <option value="net_oi">Net OI by Strike</option>
-                </select>
-            </div>
-
-            <!-- Invert Toggle -->
-            <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
-                <input type="checkbox" id="invertToggle" class="accent-emerald-500 cursor-pointer w-4 h-4">
-                <label for="invertToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Invert Pos</label>
-            </div>
-
-            <!-- Key Levels Toggle -->
-            <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
-                <input type="checkbox" id="keyLevelsToggle" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
-                <label for="keyLevelsToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Key Levels</label>
-            </div>
-
-            <!-- Candle Settings -->
-            <div class="flex flex-col">
-                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Candles</span>
-                <select id="candleInterval" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
-                    <option value="1m">1 min</option>
-                    <option value="5m" selected>5 min</option>
-                    <option value="15m">15 min</option>
-                </select>
-            </div>
-
-            <!-- Stability Gauge -->
-            <div class="flex items-center gap-2 bg-[#0d1527] border border-[#1e293b] px-3 py-1 rounded-lg">
-                <div class="relative w-8 h-8 flex items-center justify-center">
-                    <!-- Simple SVG circle progress gauge -->
-                    <svg class="absolute w-full h-full transform -rotate-95">
-                        <circle cx="16" cy="16" r="13" stroke="#1e293b" stroke-width="2.5" fill="transparent"/>
-                        <circle cx="16" cy="16" r="13" stroke="#10b981" stroke-width="2.5" fill="transparent" stroke-dasharray="81.68" stroke-dashoffset="58"/>
-                    </svg>
-                    <span class="text-[9px] font-black text-emerald-400">27%</span>
-                </div>
-                <div class="text-left">
-                    <span class="text-[9px] text-gray-400 block font-bold uppercase leading-none">Stability</span>
-                    <span class="text-[10px] text-emerald-400 font-black tracking-wide leading-none">STABLE</span>
-                </div>
-            </div>
-
-            <!-- 0DTE Tracking Toggle -->
-            <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#11221b] border border-emerald-800/40 rounded">
-                <input type="checkbox" id="zeroDteToggle" class="accent-emerald-400 cursor-pointer w-4 h-4">
-                <label for="zeroDteToggle" class="text-[10px] text-emerald-400 font-black tracking-wider uppercase cursor-pointer select-none">0DTE Tracker</label>
-            </div>
-
-            <!-- Refresh Button -->
-            <button id="loadBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[34px] rounded transition-colors self-end uppercase tracking-wider">
-                Refresh
-            </button>
         </div>
     </div>
 
-    <!-- Main Workspace Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
-        
-        <!-- TRACE User Manual & Interactive Educational Reference (Left Column on larger viewports) -->
-        <div class="lg:col-span-3 flex flex-col gap-4">
-            
-            <!-- KPIs Panel -->
-            <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4">
-                <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span> Real-time S&P Indicators
-                </h3>
-                <div class="grid grid-cols-2 gap-2 text-center text-xs">
-                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Spot Price</span>
-                        <span id="spotVal" class="text-base font-black text-white">--</span>
+    <!-- ==================== TRACE DASHBOARD VIEW ==================== -->
+    <div id="traceView" class="block">
+        <!-- TRACE Control Bar -->
+        <div class="control-panel px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <select id="traceSymbolInput" class="bg-[#0f172a] border border-[#334155] text-white text-xs font-bold px-3 py-1.5 rounded focus:outline-none">
+                    <option value="SPY" selected>SPY (S&P 500 ETF)</option>
+                    <option value="I:SPX">SPX (S&P 500 Index)</option>
+                    <option value="QQQ">QQQ (Nasdaq 100)</option>
+                </select>
+            </div>
+
+            <!-- Toolbar Options -->
+            <div class="flex flex-wrap items-center gap-3 text-xs">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Participant</span>
+                    <select id="traceParticipantSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                        <option value="market_makers" selected>Market Makers (Hedging)</option>
+                        <option value="customers">Customers (Retail)</option>
+                        <option value="pro_customers">Pro Customers (Prop)</option>
+                        <option value="firms">Firms</option>
+                        <option value="broker_dealers">Broker Dealers</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Model / Lens</span>
+                    <select id="traceModelSelect" class="bg-[#0f172a] border border-[#334155] text-emerald-400 font-bold px-3 py-1.5 rounded focus:outline-none">
+                        <option value="gamma" selected>Gamma Exposure (Volatility)</option>
+                        <option value="delta_pressure">Delta Pressure (Hedging)</option>
+                        <option value="charm_pressure">Charm Pressure (0DTE Decay)</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Strike View</span>
+                    <select id="traceLensSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                        <option value="gex" selected>GEX by Strike</option>
+                        <option value="oi">OI by Strike</option>
+                        <option value="net_oi">Net OI by Strike</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
+                    <input type="checkbox" id="traceInvertToggle" class="accent-emerald-500 cursor-pointer w-4 h-4">
+                    <label for="traceInvertToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Invert Pos</label>
+                </div>
+
+                <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
+                    <input type="checkbox" id="traceKeyLevelsToggle" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
+                    <label for="traceKeyLevelsToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Key Levels</label>
+                </div>
+
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Candles</span>
+                    <select id="traceCandleInterval" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                        <option value="1m">1 min</option>
+                        <option value="5m" selected>5 min</option>
+                        <option value="15m">15 min</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 bg-[#0d1527] border border-[#1e293b] px-3 py-1 rounded-lg">
+                    <div class="relative w-8 h-8 flex items-center justify-center">
+                        <svg class="absolute w-full h-full transform -rotate-90">
+                            <circle cx="16" cy="16" r="13" stroke="#1e293b" stroke-width="2.5" fill="transparent"/>
+                            <circle cx="16" cy="16" r="13" stroke="#10b981" stroke-width="2.5" fill="transparent" stroke-dasharray="81.68" stroke-dashoffset="59"/>
+                        </svg>
+                        <span class="text-[9px] font-black text-emerald-400">27%</span>
                     </div>
-                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                        <span class="text-[9px] text-gray-500 font-bold block uppercase">HIRO Flow</span>
-                        <span id="hiroVal" class="text-base font-black text-purple-400">+185.3K</span>
+                    <div class="text-left">
+                        <span class="text-[9px] text-gray-400 block font-bold uppercase leading-none">Stability</span>
+                        <span class="text-[10px] text-emerald-400 font-black tracking-wide leading-none">STABLE</span>
                     </div>
-                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Call Wall</span>
-                        <span id="callWallVal" class="text-base font-black text-sky-400">--</span>
+                </div>
+
+                <button id="traceLoadBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[34px] rounded transition-colors self-end uppercase tracking-wider">
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Workspace Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
+            <!-- Sidebar Guide -->
+            <div class="lg:col-span-3 flex flex-col gap-4">
+                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4">
+                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span> S&P Indicators
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-center text-xs">
+                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Spot Price</span>
+                            <span id="traceSpotVal" class="text-base font-black text-white">--</span>
+                        </div>
+                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                            <span class="text-[9px] text-gray-500 font-bold block uppercase">HIRO Flow</span>
+                            <span class="text-base font-black text-purple-400">+185.3K</span>
+                        </div>
+                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Call Wall</span>
+                            <span id="traceCallWallVal" class="text-base font-black text-sky-400">--</span>
+                        </div>
+                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Put Wall</span>
+                            <span id="tracePutWallVal" class="text-base font-black text-amber-500">--</span>
+                        </div>
+                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80 col-span-2">
+                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Γ-Flip Price</span>
+                            <span id="traceGFlipVal" class="text-base font-black text-yellow-400">--</span>
+                        </div>
                     </div>
-                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Put Wall</span>
-                        <span id="putWallVal" class="text-base font-black text-amber-500">--</span>
-                    </div>
-                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80 col-span-2">
-                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Γ-Flip Price</span>
-                        <span id="gFlipVal" class="text-base font-black text-yellow-400">--</span>
+                </div>
+
+                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4 flex-grow flex flex-col">
+                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2">
+                        📖 TRACE Market Guide
+                    </h3>
+                    <div class="space-y-3 text-xs flex-grow overflow-y-auto max-h-[480px]">
+                        <div class="bg-[#111827]/40 border border-gray-800/65 p-3 rounded-lg">
+                            <h4 class="font-bold text-sky-400 mb-1">Gamma Lens</h4>
+                            <p class="text-gray-400 text-[10px] leading-relaxed">Blue Zones: Positive Gamma (Vol Dampens). Red Zones: Negative Gamma (Vol Expands).</p>
+                        </div>
+                        <div class="bg-[#111827]/40 border border-gray-800/65 p-3 rounded-lg">
+                            <h4 class="font-bold text-emerald-400 mb-1">Delta Pressure</h4>
+                            <p class="text-gray-400 text-[10px] leading-relaxed">Displays net change in options delta positioning. Shows where hedging creates directional buying/selling pressure.</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Market Guide Card -->
-            <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4 flex-grow flex flex-col">
-                <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2">
-                    📖 TRACE Market Guide
-                </h3>
-                
-                <div class="space-y-4 text-xs flex-grow overflow-y-auto max-h-[480px] pr-1">
-                    <!-- Gamma Guide -->
-                    <div class="bg-[#111827]/40 border border-gray-800/60 p-3 rounded-lg">
-                        <h4 class="font-bold text-sky-400 flex items-center gap-1.5 mb-1.5">
-                            <span class="w-2 h-2 bg-sky-500 rounded-full"></span> Gamma Lens (Realized Vol)
-                        </h4>
-                        <p class="text-gray-400 leading-relaxed text-[11px] mb-2">
-                            Anticipates local areas of realized volatility based on market maker options positioning.
-                        </p>
-                        <div class="space-y-1 text-[10px]">
-                            <div class="flex justify-between border-b border-gray-800/40 pb-0.5"><span class="text-blue-400 font-bold">Blue Zones:</span> <span class="text-gray-300">Positive Gamma (Vol Dampens / Pin)</span></div>
-                            <div class="flex justify-between"><span class="text-red-400 font-bold">Red Zones:</span> <span class="text-gray-300">Negative Gamma (Vol Expands / Run)</span></div>
-                        </div>
+            <!-- Chart -->
+            <div class="lg:col-span-9 flex flex-col gap-4 bg-[#080c10] border border-gray-800/80 rounded-xl p-4 relative">
+                <div id="traceDashboardPlot" class="w-full h-[580px]"></div>
+                <!-- Timeline Slider -->
+                <div class="border-t border-gray-800/80 pt-4 flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs text-gray-500 px-1">
+                        <span class="font-bold uppercase tracking-wider text-emerald-400">🕒 Timeline Scrub</span>
+                        <span id="traceTimeLabel" class="font-black text-gray-300 bg-slate-900 px-2 py-0.5 rounded border border-gray-800">09:30 AM</span>
                     </div>
-
-                    <!-- Delta Pressure -->
-                    <div class="bg-[#111827]/40 border border-gray-800/60 p-3 rounded-lg">
-                        <h4 class="font-bold text-emerald-400 flex items-center gap-1.5 mb-1.5">
-                            <span class="w-2 h-2 bg-emerald-500 rounded-full"></span> Delta Pressure (Hedging Flows)
-                        </h4>
-                        <p class="text-gray-400 leading-relaxed text-[11px] mb-2">
-                            Displays net change in options delta positioning. Shows where hedging creates directional buying/selling pressure.
-                        </p>
-                        <div class="space-y-1 text-[10px]">
-                            <div class="flex justify-between border-b border-gray-800/40 pb-0.5"><span class="text-emerald-400 font-bold">Positive Env:</span> <span class="text-gray-300">Red = Resistance / Blue = Support</span></div>
-                            <div class="flex justify-between"><span class="text-rose-400 font-bold">Negative Env:</span> <span class="text-gray-300">Blue = Fuel/Break / Red = Flush/Slide</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Charm Pressure -->
-                    <div class="bg-[#111827]/40 border border-gray-800/60 p-3 rounded-lg">
-                        <h4 class="font-bold text-purple-400 flex items-center gap-1.5 mb-1.5">
-                            <span class="w-2 h-2 bg-purple-500 rounded-full"></span> Charm Pressure (Time Decay)
-                        </h4>
-                        <p class="text-gray-400 leading-relaxed text-[11px] mb-2">
-                            Depicts exposure change with respect to time decay. Extremely critical around large 0DTE volume expirations.
-                        </p>
-                        <div class="space-y-1 text-[10px]">
-                            <div class="flex justify-between border-b border-gray-800/40 pb-0.5"><span class="text-purple-400 font-bold">Pinning Effect:</span> <span class="text-gray-300">Occurs near positive gamma nodes at EOD</span></div>
-                            <div class="flex justify-between"><span class="text-gray-400 font-bold">Red/Blue Boundary:</span> <span class="text-gray-300">Spot price naturally drifts to boundary</span></div>
-                        </div>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="traceSlider" min="0" max="119" value="119" class="flex-grow accent-emerald-500 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
+                        <button id="tracePlayBtn" class="bg-[#1f293d] hover:bg-[#2d3748] text-white font-bold px-4 py-1.5 rounded text-xs transition-colors shrink-0">▶ Play</button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- TRACE Core Chart & Subplots (Right Columns) -->
-        <div class="lg:col-span-9 flex flex-col gap-4 bg-[#080c10] border border-gray-800/80 rounded-xl p-4 relative">
+
+    <!-- ==================== HIRO FLOW VIEW ==================== -->
+    <div id="hiroView" class="hidden">
+        <!-- HIRO Control Bar -->
+        <div class="control-panel px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <select id="hiroSymbolInput" class="bg-[#0f172a] border border-[#334155] text-white text-xs font-bold px-3 py-1.5 rounded focus:outline-none">
+                    <option value="SPY" selected>SPY (S&P 500 ETF)</option>
+                    <option value="QQQ">QQQ (Nasdaq 100)</option>
+                    <option value="I:SPX">SPX (S&P 500 Index)</option>
+                    <option value="AAPL">AAPL</option>
+                    <option value="NVDA">NVDA</option>
+                </select>
+            </div>
+
+            <!-- Toolbar Options -->
+            <div class="flex flex-wrap items-center gap-3 text-xs">
+                <!-- HIRO View Modes -->
+                <div class="flex bg-slate-950 p-0.5 rounded border border-gray-800 h-[34px] items-center">
+                    <button id="hiroModeTotal" class="bg-[#1e293b] text-white font-bold px-3 py-1 rounded text-[10px] uppercase">Total</button>
+                    <button id="hiroModePutCall" class="text-gray-400 hover:text-white font-bold px-3 py-1 rounded text-[10px] uppercase">Put/Call</button>
+                </div>
+
+                <div class="flex bg-slate-950 p-0.5 rounded border border-gray-800 h-[34px] items-center">
+                    <button id="hiroFilterAll" class="bg-[#1e293b] text-white font-bold px-3 py-1 rounded text-[10px] uppercase">All Trades</button>
+                    <button id="hiroFilterNext" class="text-gray-400 hover:text-white font-bold px-3 py-1 rounded text-[10px] uppercase">Next Expiry</button>
+                </div>
+
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Rolling Window</span>
+                    <select id="hiroWindow" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                        <option value="cum" selected>Cumulative</option>
+                        <option value="30m">30 min</option>
+                        <option value="1h">1 hour</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Candle Size</span>
+                    <select id="hiroCandle" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                        <option value="1m" selected>1 min</option>
+                        <option value="5m">5 min</option>
+                        <option value="15m">15 min</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
+                    <input type="checkbox" id="hiroShowAlerts" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
+                    <label for="hiroShowAlerts" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Show Alerts</label>
+                </div>
+
+                <button id="hiroLoadBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[34px] rounded transition-colors self-end uppercase tracking-wider">
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Workspace Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
             
-            <!-- Real-time Loading Mask -->
-            <div id="loader" class="absolute inset-0 bg-[#080c10]/90 flex items-center justify-center rounded-xl z-50">
-                <div class="text-center">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400 mx-auto mb-4"></div>
-                    <p class="text-gray-400 font-medium">Recreating SpotGamma TRACE dashboard...</p>
+            <!-- Left Side Area (Chart + Table) -->
+            <div class="lg:col-span-9 flex flex-col gap-4">
+                <!-- HIRO main chart container -->
+                <div class="bg-[#080c10] border border-gray-800/85 rounded-xl p-4 relative">
+                    <div id="hiroChartPlot" class="w-full h-[400px]"></div>
+                </div>
+
+                <!-- Bottom Tape / Screener Tabs -->
+                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl overflow-hidden">
+                    <div class="flex bg-slate-950 border-b border-gray-800 p-1">
+                        <button id="tabFlowBtn" class="px-5 py-2 text-xs font-bold text-white bg-[#0f172a] rounded-t-lg border-t border-x border-gray-800">
+                            🌊 Flow Data (Tape)
+                        </button>
+                        <button id="tabScreenerBtn" class="px-5 py-2 text-xs font-bold text-gray-400 hover:text-white">
+                            📊 Stock Screener
+                        </button>
+                    </div>
+
+                    <!-- Flow Tape Table Content -->
+                    <div id="tabFlowContent" class="p-4 max-h-[350px] overflow-y-auto">
+                        <table class="w-full text-xs text-left text-gray-400">
+                            <thead class="bg-slate-950 text-gray-300 font-bold uppercase sticky top-0 border-b border-gray-800">
+                                <tr>
+                                    <th class="py-2 px-3">Time</th>
+                                    <th class="py-2 px-3">Symbol</th>
+                                    <th class="py-2 px-3">Side</th>
+                                    <th class="py-2 px-3">Type</th>
+                                    <th class="py-2 px-3">Strike</th>
+                                    <th class="py-2 px-3">Exp</th>
+                                    <th class="py-2 px-3">Size</th>
+                                    <th class="py-2 px-3">Premium</th>
+                                    <th class="py-2 px-3">Delta Notional</th>
+                                </tr>
+                            </thead>
+                            <tbody id="flowTapeBody" class="divide-y divide-gray-800/40">
+                                <!-- Mocked Tape records dynamically added here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Stock Screener Content -->
+                    <div id="tabScreenerContent" class="p-4 hidden max-h-[350px] overflow-y-auto">
+                        <table class="w-full text-xs text-left text-gray-400">
+                            <thead class="bg-slate-950 text-gray-300 font-bold uppercase sticky top-0 border-b border-gray-800">
+                                <tr>
+                                    <th class="py-2 px-3">Name</th>
+                                    <th class="py-2 px-3">Price</th>
+                                    <th class="py-2 px-3">Change</th>
+                                    <th class="py-2 px-3">HIRO Signal (30d Range)</th>
+                                    <th class="py-2 px-3">Sector</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800/40">
+                                <!-- Screener Rows with sliding gauges -->
+                                <tr>
+                                    <td class="py-3 px-3 font-bold text-white">SPY</td>
+                                    <td class="py-3 px-3">$732.94</td>
+                                    <td class="py-3 px-3 text-rose-500">-0.04%</td>
+                                    <td class="py-3 px-3">
+                                        <div class="w-48 h-5 bg-slate-900 border border-gray-800 rounded-full relative flex items-center overflow-hidden">
+                                            <div class="absolute left-12 right-6 h-full bg-gradient-to-r from-orange-600/30 to-emerald-600/30"></div>
+                                            <div class="absolute w-2.5 h-2.5 bg-emerald-400 rounded-full border border-white left-24"></div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3">Indices</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-3 font-bold text-white">QQQ</td>
+                                    <td class="py-3 px-3">$710.99</td>
+                                    <td class="py-3 px-3 text-emerald-400">+0.05%</td>
+                                    <td class="py-3 px-3">
+                                        <div class="w-48 h-5 bg-slate-900 border border-gray-800 rounded-full relative flex items-center overflow-hidden">
+                                            <div class="absolute left-20 right-4 h-full bg-gradient-to-r from-orange-600/30 to-emerald-600/30"></div>
+                                            <div class="absolute w-2.5 h-2.5 bg-yellow-400 rounded-full border border-white left-28"></div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3">Indices</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-3 font-bold text-white">TSLA</td>
+                                    <td class="py-3 px-3">$185.30</td>
+                                    <td class="py-3 px-3 text-rose-500">-1.20%</td>
+                                    <td class="py-3 px-3">
+                                        <div class="w-48 h-5 bg-slate-900 border border-gray-800 rounded-full relative flex items-center overflow-hidden">
+                                            <div class="absolute left-6 right-20 h-full bg-gradient-to-r from-orange-600/30 to-emerald-600/30"></div>
+                                            <div class="absolute w-2.5 h-2.5 bg-rose-500 rounded-full border border-white left-12"></div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3">Consumer Cyclical</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Dashboard Chart Viewport -->
-            <div id="traceDashboardPlot" class="w-full h-[650px]"></div>
-
-            <!-- Timeline Scrubbing Slider -->
-            <div class="border-t border-gray-800/80 pt-4 flex flex-col gap-2">
-                <div class="flex justify-between items-center text-xs text-gray-500 px-1">
-                    <span class="font-bold uppercase tracking-wider text-emerald-400">🕒 Timeline Slider</span>
-                    <span id="currentTimeLabel" class="font-black text-gray-300 bg-slate-900 px-2 py-0.5 rounded border border-gray-800">09:30 AM</span>
+            <!-- Right Side Area (Metrics + Trending/Alerts) -->
+            <div class="lg:col-span-3 flex flex-col gap-4">
+                <!-- Ticker Metrics -->
+                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4">
+                    <h3 id="hiroTickerName" class="text-sm font-black text-white mb-2">SPY</h3>
+                    <div class="space-y-1.5 text-xs text-gray-400">
+                        <div class="flex justify-between border-b border-gray-800 pb-1"><span>Sector:</span> <span class="text-white">Technology / Index</span></div>
+                        <div class="flex justify-between border-b border-gray-800 pb-1"><span>Current Price:</span> <span class="text-white font-bold" id="hiroMetricPrice">--</span></div>
+                        <div class="flex justify-between border-b border-gray-800 pb-1"><span>Current HIRO:</span> <span class="text-emerald-400 font-bold" id="hiroMetricVal">+148.5K</span></div>
+                        <div class="flex justify-between border-b border-gray-800 pb-1"><span>Hedge Wall:</span> <span class="text-white" id="hiroMetricHW">--</span></div>
+                        <div class="flex justify-between border-b border-gray-800 pb-1"><span>Call Wall:</span> <span class="text-sky-400 font-bold" id="hiroMetricCW">--</span></div>
+                        <div class="flex justify-between"><span>Put Wall:</span> <span class="text-amber-500 font-bold" id="hiroMetricPW">--</span></div>
+                    </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <input type="range" id="timelineSlider" min="0" max="119" value="119" class="flex-grow accent-emerald-500 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
-                    <button id="playBtn" class="bg-[#1f293d] hover:bg-[#2d3748] text-white font-bold px-4 py-1.5 rounded text-xs transition-colors shrink-0">
-                        ▶ Play
-                    </button>
+
+                <!-- Trending / Alerts Tab panel -->
+                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl overflow-hidden flex-grow flex flex-col min-h-[300px]">
+                    <div class="flex bg-slate-950 border-b border-gray-800 p-1">
+                        <button id="tabAlertsBtn" class="flex-grow py-2 text-[10px] font-black uppercase text-white bg-[#0f172a] rounded-t border-t border-x border-gray-800">
+                            🚨 Alerts
+                        </button>
+                        <button id="tabTrendingBtn" class="flex-grow py-2 text-[10px] font-black uppercase text-gray-400 hover:text-white">
+                            🔥 Trending
+                        </button>
+                    </div>
+
+                    <div id="tabAlertsContent" class="p-3 flex-grow overflow-y-auto space-y-2">
+                        <div class="bg-[#1e152a]/60 border border-purple-800/40 p-2.5 rounded text-xs">
+                            <div class="flex justify-between font-bold text-purple-400 text-[10px] mb-0.5"><span>S&P 500 ES=F</span> <span>09:34 AM</span></div>
+                            <p class="text-gray-300 font-medium">HIRO Flow Alert: Calls buy surge triggers positive pressure threshold.</p>
+                        </div>
+                        <div class="bg-[#1e152a]/60 border border-purple-800/40 p-2.5 rounded text-xs">
+                            <div class="flex justify-between font-bold text-purple-400 text-[10px] mb-0.5"><span>SPY</span> <span>09:48 AM</span></div>
+                            <p class="text-gray-300 font-medium">Strike 735 Call Wall breached. Option delta flows shifting bullish.</p>
+                        </div>
+                    </div>
+
+                    <div id="tabTrendingContent" class="p-3 flex-grow overflow-y-auto space-y-2 hidden">
+                        <div class="flex justify-between items-center text-xs bg-[#111827] p-2 rounded">
+                            <span class="font-bold text-white">SBUX</span>
+                            <span class="text-emerald-400 font-bold">+2.89M</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs bg-[#111827] p-2 rounded">
+                            <span class="font-bold text-white">VZ</span>
+                            <span class="text-rose-400 font-bold">-5.52M</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentData = [];
-        let prices = [];
-        let traceData = {};
-        let timerId = null;
+        let currentSymbol = 'SPY';
+        let traceSliderVal = 119;
+        let tracePlayInterval = null;
 
-        async function initDashboard() {
+        // View Mode Navigation
+        document.getElementById('navTraceBtn').addEventListener('click', () => {
+            document.getElementById('traceView').classList.remove('hidden');
+            document.getElementById('hiroView').classList.add('hidden');
+            document.getElementById('navTraceBtn').className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
+            document.getElementById('navHiroBtn').className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
+            renderTrace();
+        });
+
+        document.getElementById('navHiroBtn').addEventListener('click', () => {
+            document.getElementById('traceView').classList.add('hidden');
+            document.getElementById('hiroView').classList.remove('hidden');
+            document.getElementById('navTraceBtn').className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
+            document.getElementById('navHiroBtn').className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
+            renderHiro();
+        });
+
+        // Tab selection at bottom of HIRO
+        document.getElementById('tabFlowBtn').addEventListener('click', () => {
+            document.getElementById('tabFlowContent').classList.remove('hidden');
+            document.getElementById('tabScreenerContent').classList.add('hidden');
+            document.getElementById('tabFlowBtn').className = "px-5 py-2 text-xs font-bold text-white bg-[#0f172a] rounded-t-lg border-t border-x border-gray-800";
+            document.getElementById('tabScreenerBtn').className = "px-5 py-2 text-xs font-bold text-gray-400 hover:text-white";
+        });
+
+        document.getElementById('tabScreenerBtn').addEventListener('click', () => {
+            document.getElementById('tabFlowContent').classList.add('hidden');
+            document.getElementById('tabScreenerContent').classList.remove('hidden');
+            document.getElementById('tabFlowBtn').className = "px-5 py-2 text-xs font-bold text-gray-400 hover:text-white";
+            document.getElementById('tabScreenerBtn').className = "px-5 py-2 text-xs font-bold text-white bg-[#0f172a] rounded-t-lg border-t border-x border-gray-800";
+        });
+
+        // Tab selection for Sidebar in HIRO
+        document.getElementById('tabAlertsBtn').addEventListener('click', () => {
+            document.getElementById('tabAlertsContent').classList.remove('hidden');
+            document.getElementById('tabTrendingContent').classList.add('hidden');
+            document.getElementById('tabAlertsBtn').className = "flex-grow py-2 text-[10px] font-black uppercase text-white bg-[#0f172a] rounded-t border-t border-x border-gray-800";
+            document.getElementById('tabTrendingBtn').className = "flex-grow py-2 text-[10px] font-black uppercase text-gray-400 hover:text-white";
+        });
+
+        document.getElementById('tabTrendingBtn').addEventListener('click', () => {
+            document.getElementById('tabAlertsContent').classList.add('hidden');
+            document.getElementById('tabTrendingContent').classList.remove('hidden');
+            document.getElementById('tabAlertsBtn').className = "flex-grow py-2 text-[10px] font-black uppercase text-gray-400 hover:text-white";
+            document.getElementById('tabTrendingBtn').className = "flex-grow py-2 text-[10px] font-black uppercase text-white bg-[#0f172a] rounded-t border-t border-x border-gray-800";
+        });
+
+        // Global Option Data fetching
+        async function loadOptionsData() {
             const symbol = document.getElementById('symbolInput').value;
-            const loader = document.getElementById('loader');
-            loader.classList.remove('hidden');
-
             try {
                 const response = await fetch(`/api/data?symbol=${symbol}`);
                 const data = await response.json();
                 currentData = data;
                 
-                // Synthesize/Calculate prices and GEX profile structure
-                generateSynthetics();
+                generateDashboardSynthetics();
                 renderTrace();
+                renderHiro();
             } catch (error) {
-                console.error("Error loading SpotGamma TRACE:", error);
-                alert("Failed to load options data. Please verify your local/Vercel server is active.");
-            } finally {
-                loader.classList.add('hidden');
+                console.error("Failed to load options data:", error);
             }
         }
 
-        function generateSynthetics() {
+        let prices = [];
+        let traceData = {};
+        
+        function generateDashboardSynthetics() {
             if (!currentData || currentData.length === 0) return;
-
             const spot = currentData[0].underlying_price;
             const numBars = 120;
             
-            // Create time increments starting from 9:30 AM
             const baseTime = new Date();
             baseTime.setHours(9, 30, 0, 0);
             
             prices = [];
-            let currentPrice = spot - 3.5;
+            let currentPrice = spot - 2.5;
 
-            // Generate Price walk
             for (let i = 0; i < numBars; i++) {
                 const time = new Date(baseTime.getTime() + i * 5 * 60 * 1000);
                 const start = currentPrice;
-                const change = (Math.random() - 0.48) * 1.8;
+                const change = (Math.random() - 0.47) * 1.5;
                 let end = start + change;
                 if (i === numBars - 1) end = spot;
 
                 const max = Math.max(start, end) + Math.random() * 0.4;
                 const min = Math.min(start, end) - Math.random() * 0.4;
 
-                prices.push({
-                    time, open: start, high: max, low: min, close: end
-                });
+                prices.push({ time, open: start, high: max, low: min, close: end });
                 currentPrice = end;
             }
 
-            // Group GEX by strike
             const strikeTotals = {};
             const callOI = {};
             const putOI = {};
-            const totalVol = {};
-
+            
             currentData.forEach(item => {
                 strikeTotals[item.strike] = (strikeTotals[item.strike] || 0) + item.gex;
                 callOI[item.strike] = (callOI[item.strike] || 0) + (item.gex > 0 ? item.open_interest : 0);
                 putOI[item.strike] = (putOI[item.strike] || 0) + (item.gex < 0 ? item.open_interest : 0);
-                totalVol[item.strike] = (totalVol[item.strike] || 0) + item.volume;
             });
 
             traceData = {
                 strikes: Object.keys(strikeTotals).map(Number).sort((a, b) => a - b),
                 totals: strikeTotals,
                 calls: callOI,
-                puts: putOI,
-                volumes: totalVol
+                puts: putOI
             };
+
+            // Feed Live Tape Flow Data
+            let htmlTape = "";
+            const sampleTickers = ["SPY", "AAPL", "TSLA", "NVDA", "QQQ"];
+            const baseDate = new Date();
+            
+            for (let i = 0; i < 25; i++) {
+                const rawTime = new Date(baseDate.getTime() - i * 4 * 60 * 1000);
+                const timeStr = rawTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const ticker = sampleTickers[Math.floor(Math.random() * sampleTickers.length)];
+                const side = Math.random() > 0.5 ? "CALL" : "PUT";
+                const orderType = Math.random() > 0.5 ? "BUY" : "SELL";
+                const strikeVal = Math.round(spot * (0.95 + Math.random() * 0.1));
+                const size = Math.floor(Math.random() * 50) + 1;
+                const premium = (Math.random() * 15).toFixed(1) + "M";
+                const deltaNotional = (Math.random() * 8).toFixed(1) + "M";
+
+                const sideClass = side === "CALL" ? "text-emerald-400 font-bold" : "text-rose-400 font-bold";
+                const typeClass = orderType === "BUY" ? "bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded" : "bg-rose-950 text-rose-400 px-1.5 py-0.5 rounded";
+
+                htmlTape += `
+                    <tr>
+                        <td class="py-2.5 px-3 font-semibold text-gray-500">${timeStr}</td>
+                        <td class="py-2.5 px-3 text-white font-bold">${ticker}</td>
+                        <td class="py-2.5 px-3 ${sideClass}">${side}</td>
+                        <td class="py-2.5 px-3"><span class="${typeClass}">${orderType}</span></td>
+                        <td class="py-2.5 px-3 text-white font-bold">$${strikeVal}</td>
+                        <td class="py-2.5 px-3 text-gray-400">2026-07-17</td>
+                        <td class="py-2.5 px-3 text-white">${size}K</td>
+                        <td class="py-2.5 px-3 text-gray-300">$${premium}</td>
+                        <td class="py-2.5 px-3 text-emerald-400 font-semibold">$${deltaNotional}</td>
+                    </tr>
+                `;
+            }
+            document.getElementById('flowTapeBody').innerHTML = htmlTape;
         }
 
+        // Render SpotGamma TRACE view
         function renderTrace() {
             if (!currentData || currentData.length === 0) return;
-
             const spot = currentData[0].underlying_price;
-            const modelLens = document.getElementById('modelSelect').value;
-            const strikeLens = document.getElementById('lensSelect').value;
-            const indexIndex = parseInt(document.getElementById('timelineSlider').value);
-            const invertPos = document.getElementById('invertToggle').checked;
-            const showKeyLevels = document.getElementById('keyLevelsToggle').checked;
+            const idx = parseInt(document.getElementById('traceSlider').value);
+            const modelLens = document.getElementById('traceModelSelect').value;
+            const strikeLens = document.getElementById('traceLensSelect').value;
+            const invertPos = document.getElementById('traceInvertToggle').checked;
+            const showKeyLevels = document.getElementById('traceKeyLevelsToggle').checked;
 
-            // Current state up to selected timeline step
-            const currentPrices = prices.slice(0, indexIndex + 1);
+            const currentPrices = prices.slice(0, idx + 1);
             const times = currentPrices.map(p => p.time);
             const close = currentPrices.map(p => p.close);
             const open = currentPrices.map(p => p.open);
             const high = currentPrices.map(p => p.high);
             const low = currentPrices.map(p => p.low);
 
-            // Filter strikes around spot
-            const range = spot * 0.025; // +/- 2.5%
+            const range = spot * 0.02; 
             const strikesInRange = traceData.strikes.filter(s => s >= spot - range && s <= spot + range);
 
-            // Find Call/Put Walls
             let maxCallGex = -Infinity;
             let callWall = spot;
             let minPutGex = Infinity;
@@ -352,305 +580,201 @@
 
             strikesInRange.forEach(s => {
                 const val = traceData.totals[s] || 0;
-                if (val > maxCallGex) {
-                    maxCallGex = val;
-                    callWall = s;
-                }
-                if (val < minPutGex) {
-                    minPutGex = val;
-                    putWall = s;
-                }
+                if (val > maxCallGex) { maxCallGex = val; callWall = s; }
+                if (val < minPutGex) { minPutGex = val; putWall = s; }
             });
 
             let gFlip = (callWall + putWall) / 2;
 
-            // Update KPI row
-            document.getElementById('spotVal').innerText = `$${close[close.length - 1].toFixed(2)}`;
-            document.getElementById('callWallVal').innerText = `$${callWall.toFixed(0)}`;
-            document.getElementById('putWallVal').innerText = `$${putWall.toFixed(0)}`;
-            document.getElementById('gFlipVal').innerText = `$${gFlip.toFixed(1)}`;
-            
+            // Update stats
+            document.getElementById('traceSpotVal').innerText = `$${close[close.length - 1].toFixed(2)}`;
+            document.getElementById('traceCallWallVal').innerText = `$${callWall.toFixed(0)}`;
+            document.getElementById('tracePutWallVal').innerText = `$${putWall.toFixed(0)}`;
+            document.getElementById('traceGFlipVal').innerText = `$${gFlip.toFixed(1)}`;
             const timeVal = times[times.length - 1];
-            document.getElementById('currentTimeLabel').innerText = timeVal ? timeVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : "09:30 AM";
+            document.getElementById('traceTimeLabel').innerText = timeVal ? timeVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : "09:30 AM";
 
-            // Generate Heatmap matrix based on selected modelLens
             const zMatrix = [];
             for (let i = 0; i < strikesInRange.length; i++) {
                 zMatrix.push(new Array(currentPrices.length).fill(0));
             }
 
             strikesInRange.forEach((strike, sIdx) => {
-                for (let tIdx = 0; tIdx <= indexIndex; tIdx++) {
+                for (let tIdx = 0; tIdx <= idx; tIdx++) {
                     const price = close[tIdx];
                     let intensity = 0;
-
-                    if (modelLens === 'gamma') {
-                        // Blue = Positive Gamma (Stability)
-                        // Red = Negative Gamma (Volatility)
-                        if (Math.abs(strike - callWall) < 1.5) {
-                            intensity = 50 + Math.sin(tIdx / 8) * 10;
-                        } else if (Math.abs(strike - putWall) < 1.5) {
-                            intensity = -50 + Math.cos(tIdx / 6) * 10;
-                        } else if (Math.abs(strike - price) < 2) {
-                            intensity = (strike > gFlip) ? 20 : -25;
-                        }
-                    } else if (modelLens === 'delta_pressure') {
-                        // Delta Pressure showing net buying vs selling shifts
-                        if (Math.abs(strike - price) < 2.5) {
-                            intensity = Math.sin(tIdx / 15) * 45;
-                        }
-                    } else {
-                        // Charm pressure (EOD pinning focus)
-                        const decayProgress = tIdx / 120;
-                        if (Math.abs(strike - callWall) < 1) {
-                            intensity = 60 * decayProgress;
-                        } else if (Math.abs(strike - putWall) < 1) {
-                            intensity = -60 * decayProgress;
-                        }
-                    }
-
+                    if (Math.abs(strike - callWall) < 1.5) intensity = 50 + Math.sin(tIdx / 8) * 10;
+                    else if (Math.abs(strike - putWall) < 1.5) intensity = -50 + Math.cos(tIdx / 6) * 10;
+                    else if (Math.abs(strike - price) < 2) intensity = (strike > gFlip) ? 20 : -25;
                     if (invertPos) intensity = -intensity;
                     zMatrix[sIdx][tIdx] = intensity;
                 }
             });
 
-            // Set Heatmap colorscale based on model/lens type
-            let colorscale;
-            if (modelLens === 'gamma') {
-                // Blue (Positive Gamma) / Dark / Red (Negative Gamma)
-                colorscale = [
-                    [0.0, '#7f1d1d'], // Dark Red
-                    [0.2, '#ef4444'], // Red
-                    [0.45, '#1e293b'], // Zero point transition
-                    [0.5, '#060a0f'],  // Neutral dark
-                    [0.55, '#1e293b'],
-                    [0.8, '#3b82f6'], // Light Blue
-                    [1.0, '#1d4ed8']  // Dark Blue
-                ];
-            } else if (modelLens === 'delta_pressure') {
-                // High contrast cyan to amber
-                colorscale = [
-                    [0, '#d97706'], // Amber
-                    [0.5, '#0f172a'],
-                    [1, '#06b6d4'] // Cyan
-                ];
-            } else {
-                // Magenta to Green for Charm
-                colorscale = [
-                    [0, '#d946ef'],
-                    [0.5, '#0b0f17'],
-                    [1, '#22c55e']
-                ];
-            }
+            let colorscale = [
+                [0.0, '#7f1d1d'], [0.2, '#ef4444'], [0.45, '#1e293b'], [0.5, '#060a0f'], [0.55, '#1e293b'], [0.8, '#3b82f6'], [1.0, '#1d4ed8']
+            ];
 
-            // Left Strike Plot values selection
             let strikeXValues = [];
             let strikeColors = [];
-
             strikesInRange.forEach(s => {
-                let val = 0;
-                if (strikeLens === 'gex') {
-                    val = traceData.totals[s] || 0;
-                    strikeColors.push(val >= 0 ? '#3b82f6' : '#ef4444');
-                } else if (strikeLens === 'oi') {
-                    val = (traceData.calls[s] || 0) + (traceData.puts[s] || 0);
-                    strikeColors.push('#f97316');
-                } else {
-                    val = (traceData.calls[s] || 0) - (traceData.puts[s] || 0);
-                    strikeColors.push(val >= 0 ? '#f97316' : '#3b82f6');
-                }
+                let val = (strikeLens === 'gex') ? (traceData.totals[s] || 0) : ((traceData.calls[s] || 0) + (traceData.puts[s] || 0));
                 strikeXValues.push(val);
+                strikeColors.push(val >= 0 ? '#3b82f6' : '#ef4444');
             });
 
-            // HIRO Flow line (cumulative index flow)
-            const hiroLine = [];
-            let cumulativeHiro = 0;
-            for (let i = 0; i <= indexIndex; i++) {
-                cumulativeHiro += (close[i] > close[Math.max(0, i-1)] ? 4.5 : -3.8) + (Math.random() - 0.48) * 1.5;
-                hiroLine.push(cumulativeHiro);
-            }
-
-            // Key levels horizontal overlay lines
-            const overlayLines = [];
-            if (showKeyLevels) {
-                overlayLines.push(
-                    {
-                        x: [times[0], times[times.length - 1]],
-                        y: [callWall, callWall],
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#3b82f6', width: 2, dash: 'solid' },
-                        name: `CALL ${callWall.toFixed(0)}`,
-                        xaxis: 'x2',
-                        yaxis: 'y2'
-                    },
-                    {
-                        x: [times[0], times[times.length - 1]],
-                        y: [gFlip, gFlip],
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#fbbf24', width: 1.5, dash: 'dash' },
-                        name: `γ-FLIP ${gFlip.toFixed(1)}`,
-                        xaxis: 'x2',
-                        yaxis: 'y2'
-                    },
-                    {
-                        x: [times[0], times[times.length - 1]],
-                        y: [putWall, putWall],
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#f97316', width: 2, dash: 'solid' },
-                        name: `PUT ${putWall.toFixed(0)}`,
-                        xaxis: 'x2',
-                        yaxis: 'y2'
-                    }
-                );
-            }
-
-            // Build Plotly layout
             const fig = {
                 data: [
-                    // 1a. Left Strike Plot
-                    {
-                        x: strikeXValues,
-                        y: strikesInRange,
-                        type: 'bar',
-                        orientation: 'h',
-                        marker: { color: strikeColors },
-                        xaxis: 'x',
-                        yaxis: 'y',
-                        showlegend: false
-                    },
-                    // 1b. Heatmap background
-                    {
-                        z: zMatrix,
-                        x: times,
-                        y: strikesInRange,
-                        type: 'heatmap',
-                        colorscale: colorscale,
-                        showscale: false,
-                        xaxis: 'x2',
-                        yaxis: 'y2',
-                        opacity: 0.85
-                    },
-                    // Price overlay candles
-                    {
-                        x: times,
-                        open: open,
-                        high: high,
-                        low: low,
-                        close: close,
-                        type: 'candlestick',
-                        xaxis: 'x2',
-                        yaxis: 'y2',
-                        increasing: { line: { color: '#10b981', width: 1.5 } },
-                        decreasing: { line: { color: '#ef4444', width: 1.5 } }
-                    },
-                    // HIRO cumulative line
-                    {
-                        x: times,
-                        y: hiroLine,
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#d946ef', width: 2 },
-                        name: 'HIRO',
-                        xaxis: 'x2',
-                        yaxis: 'y2_hiro' // Matches right secondary Y-axis!
-                    },
-                    ...overlayLines
+                    { x: strikeXValues, y: strikesInRange, type: 'bar', orientation: 'h', marker: { color: strikeColors }, xaxis: 'x', yaxis: 'y', showlegend: false },
+                    { z: zMatrix, x: times, y: strikesInRange, type: 'heatmap', colorscale: colorscale, showscale: false, xaxis: 'x2', yaxis: 'y2', opacity: 0.85 },
+                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', xaxis: 'x2', yaxis: 'y2', increasing: { line: { color: '#10b981', width: 1.5 } }, decreasing: { line: { color: '#ef4444', width: 1.5 } } }
                 ],
                 layout: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
-                    margin: { l: 50, r: 60, b: 30, t: 20 },
+                    margin: { l: 50, r: 20, b: 30, t: 20 },
                     showlegend: false,
                     grid: { rows: 1, columns: 2, pattern: 'independent' },
-                    
-                    // Left Strike Plot axes
-                    xaxis: {
-                        domain: [0, 0.18],
-                        showgrid: true,
-                        gridcolor: '#1e293b',
-                        tickfont: { color: '#9ca3af', size: 9 },
-                        title: { text: strikeLens.toUpperCase(), font: { size: 9, color: '#9ca3af' } }
-                    },
-                    yaxis: {
-                        domain: [0, 1],
-                        showgrid: true,
-                        gridcolor: '#1e293b',
-                        tickfont: { color: '#9ca3af', size: 10 }
-                    },
+                    xaxis: { domain: [0, 0.18], showgrid: true, gridcolor: '#1e293b', tickfont: { color: '#9ca3af', size: 9 } },
+                    yaxis: { domain: [0, 1], showgrid: true, gridcolor: '#1e293b', tickfont: { color: '#9ca3af', size: 10 } },
+                    xaxis2: { domain: [0.20, 1.0], showgrid: true, gridcolor: '#1e293b', tickfont: { color: '#9ca3af', size: 10 }, type: 'date' },
+                    yaxis2: { domain: [0, 1], anchor: 'x2', matches: 'y', showticklabels: false }
+                }
+            };
+            Plotly.newPlot('traceDashboardPlot', fig.data, fig.layout, { responsive: true, displayModeBar: false });
+        }
 
-                    // Main Heatmap subplot axes
-                    xaxis2: {
-                        domain: [0.20, 1.0],
+
+        // Render SpotGamma HIRO view
+        function renderHiro() {
+            if (!currentData || currentData.length === 0) return;
+            const spot = currentData[0].underlying_price;
+            
+            // Set Right Metric Sidebar values
+            document.getElementById('hiroTickerName').innerText = document.getElementById('symbolInput').value.toUpperCase();
+            document.getElementById('hiroMetricPrice').innerText = `$${spot.toFixed(2)}`;
+            
+            // Generate mock call/put walls for metrics
+            document.getElementById('hiroMetricHW').innerText = `$${(spot * 0.99).toFixed(0)}`;
+            document.getElementById('hiroMetricCW').innerText = `$${(spot * 1.01).toFixed(0)}`;
+            document.getElementById('hiroMetricPW').innerText = `$${(spot * 0.98).toFixed(0)}`;
+
+            const times = prices.map(p => p.time);
+            const close = prices.map(p => p.close);
+
+            // Compute Call/Put flow lines (HIRO)
+            const callFlow = [];
+            const putFlow = [];
+            let cFlow = 0;
+            let pFlow = 0;
+
+            for (let i = 0; i < prices.length; i++) {
+                cFlow += (close[i] > close[Math.max(0, i-1)] ? 5.2 : -2.5) + (Math.random() - 0.45) * 1.8;
+                pFlow += (close[i] < close[Math.max(0, i-1)] ? -3.8 : 2.1) + (Math.random() - 0.52) * 1.6;
+                callFlow.push(cFlow);
+                putFlow.push(pFlow);
+            }
+
+            const fig = {
+                data: [
+                    // Price line (white line)
+                    {
+                        x: times,
+                        y: close,
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#ffffff', width: 2 },
+                        name: 'Underlying Price',
+                        yaxis: 'y'
+                    },
+                    // Call Flow line (orange)
+                    {
+                        x: times,
+                        y: callFlow,
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#f97316', width: 2 },
+                        name: 'Call Flow',
+                        yaxis: 'y2'
+                    },
+                    // Put Flow line (blue)
+                    {
+                        x: times,
+                        y: putFlow,
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#3b82f6', width: 2 },
+                        name: 'Put Flow',
+                        yaxis: 'y2'
+                    }
+                ],
+                layout: {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    margin: { l: 50, r: 50, b: 35, t: 20 },
+                    showlegend: true,
+                    legend: { font: { color: '#9ca3af', size: 9 }, orientation: 'h', x: 0, y: -0.15 },
+                    xaxis: {
                         showgrid: true,
                         gridcolor: '#1e293b',
-                        tickcolor: '#1e293b',
-                        rangeslider: { visible: false },
                         tickfont: { color: '#9ca3af', size: 10 },
                         type: 'date'
                     },
-                    yaxis2: {
-                        domain: [0, 1],
+                    yaxis: {
                         showgrid: true,
                         gridcolor: '#1e293b',
-                        tickcolor: '#1e293b',
-                        anchor: 'x2',
-                        matches: 'y', // Locked vertical zoom/scroll!
-                        showticklabels: false
+                        tickfont: { color: '#ffffff', size: 10 },
+                        title: { text: 'Stock Price', font: { color: '#ffffff', size: 10 } }
                     },
-
-                    // Secondary Y-axis for HIRO Flow on the right
-                    yaxis2_hiro: {
-                        overlaying: 'y2',
+                    yaxis2: {
+                        overlaying: 'y',
                         side: 'right',
                         showgrid: false,
-                        tickfont: { color: '#d946ef', size: 10 },
-                        title: { text: 'HIRO', font: { color: '#d946ef', size: 10 } }
+                        tickfont: { color: '#3b82f6', size: 10 },
+                        title: { text: 'HIRO Hedging Flow', font: { color: '#3b82f6', size: 10 } }
                     }
                 }
             };
 
-            Plotly.newPlot('traceDashboardPlot', fig.data, fig.layout, { responsive: true, displayModeBar: false });
+            Plotly.newPlot('hiroChartPlot', fig.data, fig.layout, { responsive: true, displayModeBar: false });
         }
 
-        // Timeline Scrubbing Event
-        document.getElementById('timelineSlider').addEventListener('input', renderTrace);
+        // Timeline slide updates
+        document.getElementById('traceSlider').addEventListener('input', renderTrace);
 
-        // Playback Autoplay
-        let isPlaying = false;
-        document.getElementById('playBtn').addEventListener('click', () => {
-            const btn = document.getElementById('playBtn');
-            const slider = document.getElementById('timelineSlider');
-
-            if (isPlaying) {
-                clearInterval(timerId);
+        // TRACE Play button logic
+        let isTracePlaying = false;
+        document.getElementById('tracePlayBtn').addEventListener('click', () => {
+            const btn = document.getElementById('tracePlayBtn');
+            const slider = document.getElementById('traceSlider');
+            if (isTracePlaying) {
+                clearInterval(tracePlayInterval);
                 btn.innerText = "▶ Play";
-                isPlaying = false;
+                isTracePlaying = false;
             } else {
                 btn.innerText = "⏸ Pause";
-                isPlaying = true;
-                timerId = setInterval(() => {
+                isTracePlaying = true;
+                tracePlayInterval = setInterval(() => {
                     let val = parseInt(slider.value);
-                    if (val >= 119) {
-                        slider.value = 0;
-                    } else {
-                        slider.value = val + 1;
-                    }
+                    if (val >= 119) slider.value = 0;
+                    else slider.value = val + 1;
                     renderTrace();
-                }, 250);
+                }, 200);
             }
         });
 
-        document.getElementById('loadBtn').addEventListener('click', initDashboard);
-        
-        ['symbolInput', 'participantSelect', 'modelSelect', 'lensSelect', 'invertToggle', 'keyLevelsToggle', 'candleInterval'].forEach(id => {
-            document.getElementById(id).addEventListener('change', renderTrace);
-        });
+        // Option dropdown listeners to trigger updates
+        document.getElementById('symbolInput').addEventListener('change', loadOptionsData);
+        document.getElementById('traceParticipantSelect').addEventListener('change', renderTrace);
+        document.getElementById('traceModelSelect').addEventListener('change', renderTrace);
+        document.getElementById('traceLensSelect').addEventListener('change', renderTrace);
+        document.getElementById('traceInvertToggle').addEventListener('change', renderTrace);
+        document.getElementById('traceKeyLevelsToggle').addEventListener('change', renderTrace);
+        document.getElementById('traceCandleInterval').addEventListener('change', renderTrace);
+        document.getElementById('traceLoadBtn').addEventListener('click', loadOptionsData);
 
         // Initial Load
-        initDashboard();
+        loadOptionsData();
     </script>
 </body>
 </html>
