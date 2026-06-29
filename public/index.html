@@ -3,548 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpotGamma Terminal - Ultimate Options Suite</title>
+    <title>SpotGamma TRACE - Options Heatmap & Levels</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Plotly.js for multi-subplot charting -->
+    <!-- Plotly.js for multi-subplot advanced charting -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { background-color: #05080c; color: #e2e8f0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .control-panel { background-color: #0b0f17; border-bottom: 1px solid #1e293b; }
+        body { background-color: #0c0e15; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+        .control-dropdown { background-color: #121620; border: 1px solid #1f293d; color: #e2e8f0; font-size: 11px; padding: 4px 8px; border-radius: 4px; outline: none; }
+        .kpi-title { color: #5a6e85; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .kpi-value { font-size: 14px; font-weight: 900; color: #ffffff; margin-top: 2px; }
         /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #070a0f; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #334155; }
-        .canvas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 16px; min-height: 500px; }
-        
-        /* Bobby Style Table Colors */
-        .bobby-peak-pos { background-color: rgba(234, 179, 8, 0.25); color: #facc15; border-left: 4px solid #eab308; } /* Yellow */
-        .bobby-peak-neg { background-color: rgba(168, 85, 247, 0.25); color: #c084fc; border-left: 4px solid #a855f7; } /* Purple */
-        .bobby-pos { background-color: rgba(16, 185, 129, 0.12); color: #34d399; } /* Emerald */
-        .bobby-neg { background-color: rgba(99, 102, 241, 0.12); color: #818cf8; } /* Violet/Blue */
     </style>
 </head>
-<body class="p-0 select-none overflow-x-hidden">
+<body class="p-4 select-none">
 
-    <!-- Top Navigation Bar -->
-    <div class="bg-[#090d15] border-b border-gray-800 px-6 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-6">
-            <span class="text-2xl font-black tracking-tight text-white flex items-center">
-                <span class="text-emerald-400 font-extrabold mr-1">⚡</span> SPOT<span class="text-emerald-400">GAMMA</span>
-            </span>
-            
-            <div class="flex bg-slate-950 p-0.5 rounded-lg border border-gray-800">
-                <button id="navTraceBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]">
-                    📊 TRACE Heatmap
-                </button>
-                <button id="navHiroBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
-                    🎯 HIRO Flow Tape
-                </button>
-                <button id="navBobbyBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
-                    📋 Bobby View
-                </button>
-                <button id="navCompassBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
-                    🧭 Compass
-                </button>
-                <button id="navCanvasBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
-                    🎨 Canvas
-                </button>
-                <button id="navHelpBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
-                    ❓ Help & Guide
-                </button>
-            </div>
+    <!-- Top Sub-Navigation -->
+    <div class="flex justify-between items-center mb-3">
+        <div class="flex bg-[#0f131c] p-0.5 rounded border border-gray-800">
+            <button id="navTraceBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-white bg-[#222a3a]">
+                📊 TRACE Heatmap
+            </button>
+            <button id="navHiroBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+                🎯 HIRO Flow Tape
+            </button>
+            <button id="navBobbyBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+                📋 Bobby View
+            </button>
+            <button id="navCompassBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+                🧭 Compass
+            </button>
         </div>
-        
-        <div class="flex items-center gap-4 text-xs font-bold">
-            <span class="text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-800/40">ALPHA ACCESS</span>
-        </div>
+        <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">SpotGamma Alpha Suite</span>
     </div>
 
-    <!-- ==================== UNIVERSAL SHAPED CONTROL BAR ==================== -->
-    <div class="control-panel px-6 py-3 flex flex-wrap items-center gap-3.5 text-xs font-semibold text-gray-300">
-        <div class="flex items-center gap-1.5">
-            <span>Symbol</span>
-            <select id="globalSymbolInput" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="SPY" selected>SPY</option>
-                <option value="QQQ">QQQ</option>
-                <option value="I:SPX">SPX</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>TF</span>
-            <select id="globalTfSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="5m" selected>5m</option>
-                <option value="15m">15m</option>
-                <option value="1h">1h</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Days</span>
-            <select id="globalDaysSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="5" selected>5</option>
-                <option value="10">10</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Expiry</span>
-            <select id="globalExpirySelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="nearest" selected>nearest</option>
-                <option value="next">next</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Aggregate</span>
-            <select id="globalAggSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="nearest2" selected>nearest 2</option>
-                <option value="nearest5">nearest 5</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Range ±%</span>
-            <select id="globalRangeSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="1.5" selected>1.5</option>
-                <option value="3.0">3.0</option>
-                <option value="5.0">5.0</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Metric</span>
-            <select id="globalMetricSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="gex" selected>GEX (volxγ)</option>
-                <option value="dex">DEX (volxδ)</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Participant</span>
-            <select id="globalParticipantSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="market_makers" selected>Market Makers</option>
-                <option value="customers">Customers</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Strikes</span>
-            <select id="globalStrikesSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
-                <option value="21" selected>21</option>
-                <option value="41">41</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-2 px-3 bg-[#0f172a] border border-[#334155] rounded h-[32px]">
-            <input type="checkbox" id="globalKeyLevelsToggle" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
-            <label for="globalKeyLevelsToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Key Levels</label>
-        </div>
-
-        <div class="flex items-center gap-2 px-3 bg-[#0f172a] border border-[#334155] rounded h-[32px]">
-            <input type="checkbox" id="globalInvertToggle" class="accent-emerald-500 cursor-pointer w-4 h-4">
-            <label for="globalInvertToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Invert Pos</label>
-        </div>
-
-        <!-- Dynamic Stability Gauge -->
-        <div class="flex items-center gap-2 bg-[#0d1527] border border-[#1e293b] px-3 py-1 rounded">
-            <span class="text-[10px] text-gray-400 block font-bold uppercase">Stability</span>
-            <span id="globalStabilityVal" class="text-emerald-400 font-black">--%</span>
-        </div>
-
-        <button id="globalRefreshBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[32px] rounded transition-colors uppercase tracking-wider">
-            ↻ Refresh
-        </button>
-    </div>
-
-    <!-- ==================== TRACE DASHBOARD VIEW ==================== -->
+    <!-- ==================== TRACE MAIN VIEW ==================== -->
     <div id="traceView" class="block">
-        <!-- Workspace Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
-            <!-- Sidebar -->
-            <div class="lg:col-span-3 flex flex-col gap-4">
-                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4">
-                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">S&P Indicators</h3>
-                    <div class="grid grid-cols-2 gap-2 text-center text-xs">
-                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Spot Price</span>
-                            <span id="traceSpotVal" class="text-base font-black text-white">--</span>
-                        </div>
-                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Call Wall</span>
-                            <span id="traceCallWallVal" class="text-base font-black text-sky-400">--</span>
-                        </div>
-                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Put Wall</span>
-                            <span id="tracePutWallVal" class="text-base font-black text-amber-500">--</span>
-                        </div>
-                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                            <span class="text-[9px] text-gray-500 font-bold block uppercase">Γ-Flip Price</span>
-                            <span id="traceGFlipVal" class="text-base font-black text-yellow-400">--</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4 flex-grow text-xs space-y-3">
-                    <div class="bg-emerald-950/20 border border-emerald-900/60 p-3 rounded-lg text-gray-300">
-                        <span class="font-bold text-emerald-400 block mb-1">💡 Mouse Scroll Zoom Active</span>
-                        Use your mouse wheel directly over the chart area to zoom in/out. Click and drag axes labels or drag a selection box to target specific candles!
-                    </div>
-                </div>
+        <!-- Control Panel (Direct replica of the screenshot top bar) -->
+        <div class="bg-[#0f131a] p-3 rounded-t-lg flex flex-wrap items-center gap-4 text-[11px] text-gray-400 font-semibold border-t border-x border-[#1e2a3a]">
+            <div class="flex items-center gap-1.5">
+                <span>Symbol</span>
+                <select id="symbolInput" class="control-dropdown font-bold">
+                    <option value="SPY" selected>SPY</option>
+                    <option value="QQQ">QQQ</option>
+                    <option value="I:SPX">SPX</option>
+                </select>
             </div>
 
-            <!-- Chart -->
-            <div class="lg:col-span-9 flex flex-col gap-4 bg-[#080c10] border border-gray-800/80 rounded-xl p-4 relative">
-                <div id="traceDashboardPlot" class="w-full h-[580px]"></div>
-                <!-- Timeline Slider -->
-                <div class="border-t border-gray-800/80 pt-4 flex flex-col gap-2">
-                    <div class="flex justify-between items-center text-xs text-gray-500 px-1">
-                        <span class="font-bold uppercase tracking-wider text-emerald-400">🕒 Timeline Scrub</span>
-                        <span id="traceTimeLabel" class="font-black text-gray-300 bg-slate-900 px-2 py-0.5 rounded border border-gray-800">09:30 AM</span>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <input type="range" id="traceSlider" min="0" max="119" value="119" class="flex-grow accent-emerald-500 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
-                        <button id="tracePlayBtn" class="bg-[#1f293d] hover:bg-[#2d3748] text-white font-bold px-4 py-1.5 rounded text-xs transition-colors shrink-0">▶ Play</button>
-                    </div>
-                </div>
+            <div class="flex items-center gap-1.5">
+                <span>TF</span>
+                <select id="tfSelect" class="control-dropdown">
+                    <option value="5m" selected>5m</option>
+                    <option value="15m">15m</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Days</span>
+                <select id="daysSelect" class="control-dropdown">
+                    <option value="5" selected>5</option>
+                    <option value="10">10</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Expiry</span>
+                <select id="expirySelect" class="control-dropdown">
+                    <option value="nearest" selected>2026-06-29 (nearest)</option>
+                    <option value="next">next</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Aggregate</span>
+                <select id="aggSelect" class="control-dropdown">
+                    <option value="nearest2" selected>nearest 2</option>
+                    <option value="nearest5">nearest 5</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Range ±%</span>
+                <select id="rangeSelect" class="control-dropdown font-bold">
+                    <option value="1.5" selected>1.5</option>
+                    <option value="3.0">3.0</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Metric</span>
+                <select id="metricSelect" class="control-dropdown">
+                    <option value="gex" selected>GEX (volxγ)</option>
+                    <option value="dex">DEX (volxδ)</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Window</span>
+                <select id="windowSelect" class="control-dropdown">
+                    <option value="rolling" selected>Rolling</option>
+                    <option value="static">Static</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>N</span>
+                <input type="number" id="nInput" value="3" class="bg-[#121620] border border-[#1f293d] text-white px-1.5 py-1 rounded w-8 text-center text-[11px] outline-none">
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Heatmap</span>
+                <select id="heatmapSelect" class="control-dropdown font-bold">
+                    <option value="liquidity" selected>Liquidity</option>
+                    <option value="net_gex">Net GEX</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Strikes</span>
+                <select id="strikesSelect" class="control-dropdown">
+                    <option value="21" selected>21</option>
+                    <option value="41">41</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>Top walls</span>
+                <select id="wallsSelect" class="control-dropdown">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span>LS regime</span>
+                <select id="lsRegimeSelect" class="control-dropdown font-bold">
+                    <option value="balanced" selected>Balanced</option>
+                    <option value="skewed">Skewed</option>
+                </select>
+            </div>
+
+            <button id="refreshBtn" class="bg-[#1a2333] hover:bg-[#253248] text-white border border-[#2b3952] px-3 py-1 rounded font-bold transition-all text-[11px]">
+                ↻ Refresh
+            </button>
+
+            <span class="text-[#4e5b6c] text-[10px] ml-auto font-medium" id="infoText">exp 2026-06-29, 2026-06-30 - 23 strikes - liq 21</span>
+        </div>
+
+        <!-- KPIs Bar (Direct replica of second row) -->
+        <div class="bg-[#0f131a] px-4 py-2.5 flex flex-wrap gap-8 border-b border-[#1e2a3a] border-x">
+            <div class="flex flex-col">
+                <span class="kpi-title">Spot</span>
+                <span id="spotVal" class="kpi-value">736.98</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">LS Regime</span>
+                <span id="regimeVal" class="text-emerald-400 text-sm font-black mt-0.5">Weak Bull</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">Net GEX</span>
+                <div class="mt-1"><span id="netGexVal" class="bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2 py-0.5 rounded">CALL</span></div>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">Net DEX</span>
+                <div class="mt-1"><span id="netDexVal" class="bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2 py-0.5 rounded">BEAR</span></div>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">Call Wall</span>
+                <span id="callWallVal" class="text-[#00c5ff] text-sm font-black mt-0.5">736</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">Put Wall</span>
+                <span id="putWallVal" class="text-[#ff9100] text-sm font-black mt-0.5">732</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">Γ-Flip</span>
+                <span id="gFlipVal" class="text-[#ffd600] text-sm font-black mt-0.5">735.1</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">P/C</span>
+                <span id="pcRatioVal" class="kpi-value">0.80</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="kpi-title">ATM IV</span>
+                <span id="atmIvVal" class="kpi-value">9.3%</span>
             </div>
         </div>
-    </div>
 
+        <!-- Unified Plotly Container (Replicating exact layout styling) -->
+        <div class="bg-[#121620] border-x border-b border-[#1e2a3a] p-4 rounded-b-lg relative min-h-[600px]">
+            <div id="loader" class="absolute inset-0 bg-[#0c0e15]/90 flex items-center justify-center rounded-b-lg z-50">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-400 mx-auto mb-3"></div>
+                    <p class="text-xs text-gray-400 font-semibold">Calculating GEX timeline & liquidity levels...</p>
+                </div>
+            </div>
+            <div id="mainDashboardPlot" class="w-full h-[620px]"></div>
+        </div>
+    </div>
 
     <!-- ==================== HIRO FLOW VIEW ==================== -->
-    <div id="hiroView" class="hidden p-4">
-        <!-- Live Tape + Chart Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div class="lg:col-span-8 flex flex-col gap-4">
-                <div class="bg-[#080c10] border border-gray-800 rounded-xl p-4">
-                    <div id="hiroChartPlot" class="w-full h-[400px]"></div>
-                </div>
-                
-                <!-- Live Order Tape (Flow Data) -->
-                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
-                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">🌊 Live Options Flow Tape (Updates in real time)</h3>
-                    <div class="overflow-y-auto max-h-[220px]">
-                        <table class="w-full text-[11px] text-left text-gray-300">
-                            <thead class="bg-slate-950 text-gray-400 uppercase border-b border-gray-800">
-                                <tr>
-                                    <th class="py-2 px-3">Time</th>
-                                    <th class="py-2 px-3">Symbol</th>
-                                    <th class="py-2 px-3">Side</th>
-                                    <th class="py-2 px-3">Type</th>
-                                    <th class="py-2 px-3">Strike</th>
-                                    <th class="py-2 px-3">Size</th>
-                                    <th class="py-2 px-3">Premium</th>
-                                </tr>
-                            </thead>
-                            <tbody id="liveTapeBody" class="divide-y divide-gray-850">
-                                <!-- Appended dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="lg:col-span-4 space-y-4">
-                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
-                    <h3 class="text-xs font-black text-white uppercase tracking-wider mb-2">🔥 Trending Flow Tickers</h3>
-                    <div class="space-y-2 text-xs">
-                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded">
-                            <span class="font-bold text-white">TSLA</span>
-                            <span class="text-emerald-400 font-bold">+$22.5M Call Buying</span>
-                        </div>
-                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded">
-                            <span class="font-bold text-white">NVDA</span>
-                            <span class="text-emerald-400 font-bold">+$48.1M Call Buying</span>
-                        </div>
-                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded">
-                            <span class="font-bold text-white">AAPL</span>
-                            <span class="text-rose-500 font-bold">-$12.4M Put Buying</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div id="hiroView" class="hidden p-4 bg-[#0f131a] rounded-lg border border-gray-800">
+        <div id="hiroChartPlot" class="w-full h-[400px]"></div>
+    </div>
+
+    <!-- ==================== BOBBY VIEW ==================== -->
+    <div id="bobbyView" class="hidden p-4 bg-[#0f131a] rounded-lg border border-gray-800">
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left text-gray-300">
+                <thead class="bg-slate-950 text-gray-400 font-bold uppercase sticky top-0 border-b border-gray-850">
+                    <tr>
+                        <th class="py-3 px-4 w-12">Spot</th>
+                        <th class="py-3 px-4">Strike</th>
+                        <th class="py-3 px-4">Net GEX</th>
+                        <th class="py-3 px-4">GEX % Change</th>
+                        <th class="py-3 px-4">Net DEX</th>
+                        <th class="py-3 px-4">Total OI</th>
+                    </tr>
+                </thead>
+                <tbody id="bobbyChainBody" class="divide-y divide-gray-800/40">
+                </tbody>
+            </table>
         </div>
     </div>
 
-
-    <!-- ==================== BOBBY VIEW (OPTION CHAIN) ==================== -->
-    <div id="bobbyView" class="hidden p-6 max-w-[1200px] mx-auto">
-        <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-6">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="text-lg font-black text-white uppercase tracking-wider">📋 S&P 500 Options Profile - Bobby Style</h2>
-                    <p class="text-xs text-gray-400 mt-1">Color highlights: Yellow for Peak Positive, Purple for Peak Negative, Emerald for positive, and Violet/Blue for negative. White pointer denotes Spot Price.</p>
-                </div>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left text-gray-300">
-                    <thead class="bg-slate-950 text-gray-400 font-bold uppercase sticky top-0 border-b border-gray-850">
-                        <tr>
-                            <th class="py-3 px-4 w-12">Spot</th>
-                            <th class="py-3 px-4">Strike</th>
-                            <th class="py-3 px-4">Net GEX ($ Notional)</th>
-                            <th class="py-3 px-4">GEX % Change</th>
-                            <th class="py-3 px-4">Net DEX ($ Notional)</th>
-                            <th class="py-3 px-4">Total OI</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bobbyChainBody" class="divide-y divide-gray-800/40">
-                        <!-- Populated dynamically via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <!-- ==================== COMPASS VIEW ==================== -->
+    <div id="compassView" class="hidden p-4 bg-[#0f131a] rounded-lg border border-gray-800">
+        <div id="compassGridPlot" class="w-full h-[450px]"></div>
     </div>
-
-
-    <!-- ==================== COMPASS SCANNER VIEW ==================== -->
-    <div id="compassView" class="hidden p-6 max-w-[1400px] mx-auto">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            
-            <!-- Left Side Compass Grid Map (8 Columns) -->
-            <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-800 rounded-xl p-4 flex flex-col">
-                <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-4">
-                    <div>
-                        <h2 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-1">
-                            🧭 SpotGamma Compass Grid
-                        </h2>
-                        <p class="text-[10px] text-gray-400 mt-0.5">Click any ticker point to trace its 3-Day Volatility/Sentiment Historical Trail.</p>
-                    </div>
-                    
-                    <div class="flex bg-slate-950 p-0.5 rounded border border-gray-800 text-[10px] font-bold">
-                        <button class="bg-[#1e293b] text-white px-3 py-1 rounded">Guided View</button>
-                        <button class="text-gray-500 hover:text-white px-3 py-1 rounded">Explorer View</button>
-                    </div>
-                </div>
-
-                <div id="compassGridPlot" class="w-full h-[450px]"></div>
-            </div>
-
-            <!-- Right Side Compass Scanner Table List (4 Columns) -->
-            <div class="lg:col-span-4 bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
-                <h3 class="text-xs font-black text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">
-                    🎯 Compass Super Scanner
-                </h3>
-                
-                <div class="overflow-y-auto max-h-[420px] text-xs">
-                    <table class="w-full text-left text-gray-300">
-                        <thead class="bg-slate-950 text-gray-400 uppercase text-[9px] border-b border-gray-850">
-                            <tr>
-                                <th class="py-2 px-2">Ticker</th>
-                                <th class="py-2 px-2 text-right">Vol Rank</th>
-                                <th class="py-2 px-2 text-right">Delta Bias</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-850" id="compassTableBody">
-                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('SPY')">
-                                <td class="py-2.5 px-2 font-bold text-white">SPY</td>
-                                <td class="py-2.5 px-2 text-right text-gray-400">42% (Cheap)</td>
-                                <td class="py-2.5 px-2 text-right text-emerald-400">+72% (Bullish)</td>
-                            </tr>
-                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('QQQ')">
-                                <td class="py-2.5 px-2 font-bold text-white">QQQ</td>
-                                <td class="py-2.5 px-2 text-right text-gray-400">38% (Cheap)</td>
-                                <td class="py-2.5 px-2 text-right text-emerald-400">+65% (Bullish)</td>
-                            </tr>
-                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('NVDA')">
-                                <td class="py-2.5 px-2 font-bold text-white">NVDA</td>
-                                <td class="py-2.5 px-2 text-right text-yellow-400">82% (Expensive)</td>
-                                <td class="py-2.5 px-2 text-right text-emerald-400">+89% (Bullish)</td>
-                            </tr>
-                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('AAPL')">
-                                <td class="py-2.5 px-2 font-bold text-white">AAPL</td>
-                                <td class="py-2.5 px-2 text-right text-gray-400">22% (Cheap)</td>
-                                <td class="py-2.5 px-2 text-right text-rose-400">-12% (Neutral)</td>
-                            </tr>
-                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('TSLA')">
-                                <td class="py-2.5 px-2 font-bold text-white">TSLA</td>
-                                <td class="py-2.5 px-2 text-right text-yellow-400">76% (Expensive)</td>
-                                <td class="py-2.5 px-2 text-right text-rose-500">-58% (Bearish)</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- ==================== CANVAS VIEW ==================== -->
-    <div id="canvasView" class="hidden p-4">
-        <div id="canvasGrid" class="canvas-grid"></div>
-    </div>
-
-
-    <!-- ==================== HELP & GUIDE VIEW ==================== -->
-    <div id="helpView" class="hidden p-6 max-w-[900px] mx-auto space-y-6">
-        <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-6">
-            <h2 class="text-lg font-black text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">
-                ❓ SpotGamma Terminal Guide
-            </h2>
-            
-            <div class="space-y-6 text-xs text-gray-300 leading-relaxed">
-                <!-- Zooming Guide -->
-                <div>
-                    <h3 class="font-bold text-emerald-400 text-sm mb-2">🔍 How to Zoom & Adjust Axes</h3>
-                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
-                        <li><strong>Mouse Wheel / Trackpad Pinch</strong>: Hover your mouse cursor over the chart plot, and scroll up or down. The chart will zoom into the time window (1-min, 3-min, 5-min intervals) automatically!</li>
-                        <li><strong>Drag to Zoom</strong>: Click and hold on the chart, then draw a rectangular selection box over the specific candles or time region you want to zoom into.</li>
-                        <li><strong>Axis Click & Drag</strong>: Hover your cursor over the X-axis (timestamps) or Y-axis (price/strikes), and drag your mouse to contract or expand the timescale or price levels.</li>
-                        <li><strong>Reset View</strong>: Double-click anywhere inside the plot window to reset the zoom to default.</li>
-                    </ul>
-                </div>
-
-                <!-- Reading GEX / TRACE Guide -->
-                <div>
-                    <h3 class="font-bold text-sky-400 text-sm mb-2">📊 How to Read the TRACE Heatmap</h3>
-                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
-                        <li><strong>Call Wall (Sky Blue Solid Line)</strong>: The strike containing the largest positive gamma concentration. Represents major overhead options resistance.</li>
-                        <li><strong>Put Wall (Orange Solid Line)</strong>: The strike containing the largest negative gamma concentration. Represents a key downside support boundary.</li>
-                        <li><strong>Gamma Flip (Yellow Dashed Line)</strong>: The inflection point where dealer hedging flips from supportive (stabilizing volatility) to aggressive (accelerating volatility).</li>
-                    </ul>
-                </div>
-
-                <!-- Compass Guide -->
-                <div>
-                    <h3 class="font-bold text-yellow-400 text-sm mb-2">🧭 How to Read the Compass Grid</h3>
-                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
-                        <li><strong>Top Left Quadrant</strong>: Expensive Volatility, Bullish Delta Bias (Squeeze candidate / Aggressive buying).</li>
-                        <li><strong>Bottom Left Quadrant</strong>: Cheap Volatility, Bullish Delta Bias (Attractive entries / Low premium risk).</li>
-                        <li><strong>Top Right Quadrant</strong>: Expensive Volatility, Bearish Delta Bias (Downside threat, high premium protection).</li>
-                        <li><strong>Bottom Right Quadrant</strong>: Cheap Volatility, Bearish Delta Bias (Fading support / Quiet slide).</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
 
     <script>
         let currentData = [];
         let prices = [];
         let traceData = {};
 
-        // Nav logic
-        const views = {
-            trace: 'traceView',
-            hiro: 'hiroView',
-            bobby: 'bobbyView',
-            compass: 'compassView',
-            canvas: 'canvasView',
-            help: 'helpView'
-        };
-
-        const navBtns = {
-            trace: 'navTraceBtn',
-            hiro: 'navHiroBtn',
-            bobby: 'navBobbyBtn',
-            compass: 'navCompassBtn',
-            canvas: 'navCanvasBtn',
-            help: 'navHelpBtn'
-        };
+        // Tab Navigation
+        const views = { trace: 'traceView', hiro: 'hiroView', bobby: 'bobbyView', compass: 'compassView' };
+        const navBtns = { trace: 'navTraceBtn', hiro: 'navHiroBtn', bobby: 'navBobbyBtn', compass: 'navCompassBtn' };
 
         function setView(target) {
             Object.keys(views).forEach(k => {
                 document.getElementById(views[k]).classList.add('hidden');
-                document.getElementById(navBtns[k]).className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
+                document.getElementById(navBtns[k]).className = "px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white";
             });
 
             document.getElementById(views[target]).classList.remove('hidden');
-            document.getElementById(navBtns[target]).className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
+            document.getElementById(navBtns[target]).className = "px-4 py-1 rounded text-xs font-bold transition-all text-white bg-[#222a3a]";
 
-            if (target === 'trace') renderTrace();
+            if (target === 'trace') renderTraceHeatmap();
             else if (target === 'hiro') renderHiro();
             else if (target === 'bobby') renderBobbyView();
             else if (target === 'compass') renderCompass();
-            else if (target === 'canvas') renderCanvas();
         }
 
         Object.keys(navBtns).forEach(k => {
             document.getElementById(navBtns[k]).addEventListener('click', () => setView(k));
         });
 
-        // Live options flow tape generation
-        function updateLiveTape() {
-            const body = document.getElementById('liveTapeBody');
-            if (!body) return;
-            
-            const symbol = document.getElementById('globalSymbolInput').value;
-            const side = Math.random() > 0.55 ? "CALL" : "PUT";
-            const sideColor = side === "CALL" ? "text-emerald-400 font-bold" : "text-rose-500 font-bold";
-            const type = Math.random() > 0.5 ? "BUY" : "SELL";
-            const typeClass = type === "BUY" ? "bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded text-[10px]" : "bg-rose-950 text-rose-400 px-1.5 py-0.5 rounded text-[10px]";
-            const strike = Math.round(prices[prices.length - 1]?.close * (0.97 + Math.random() * 0.06) || 735);
-            const size = Math.floor(Math.random() * 250) + 10;
-            const premium = (Math.random() * 8.5).toFixed(2) + "M";
-            const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="py-2 px-3 text-gray-500">${timeStr}</td>
-                <td class="py-2 px-3 font-bold text-white">${symbol}</td>
-                <td class="py-2 px-3 ${sideColor}">${side}</td>
-                <td class="py-2 px-3"><span class="${typeClass}">${type}</span></td>
-                <td class="py-2 px-3 font-bold text-white">$${strike}</td>
-                <td class="py-2 px-3">${size}K</td>
-                <td class="py-2 px-3 text-emerald-400 font-semibold">$${premium}</td>
-            `;
-
-            body.insertBefore(row, body.firstChild);
-            if (body.children.length > 20) {
-                body.lastChild.remove();
-            }
-        }
-        setInterval(updateLiveTape, 2000);
-
-        // Fetch options chain
         async function loadOptionsData() {
-            const symbol = document.getElementById('globalSymbolInput').value;
+            const symbol = document.getElementById('symbolInput').value;
+            const loader = document.getElementById('loader');
+            loader.classList.remove('hidden');
+
             try {
                 const response = await fetch(`/api/data?symbol=${symbol}`);
                 const data = await response.json();
                 currentData = data;
-                generateDashboardSynthetics();
-                renderTrace();
-                renderBobbyView();
-                calculateStability();
+                generateSynthetics();
+                renderTraceHeatmap();
             } catch (error) {
                 console.error("Failed to load options data:", error);
+            } finally {
+                loader.classList.add('hidden');
             }
         }
 
-        function calculateStability() {
-            if (!currentData || currentData.length === 0) return;
-            const spot = currentData[0].underlying_price;
-            let atmGex = 0;
-            let totalGex = 0;
-            currentData.forEach(d => {
-                totalGex += Math.abs(d.gex);
-                if (Math.abs(d.strike - spot) < 3) {
-                    atmGex += Math.abs(d.gex);
-                }
-            });
-            const ratio = (atmGex / (totalGex || 1)) * 100;
-            document.getElementById('globalStabilityVal').innerText = `${Math.min(95, Math.max(10, ratio * 20)).toFixed(0)}%`;
-        }
-
-        function generateDashboardSynthetics() {
+        function generateSynthetics() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
             const numBars = 120;
-            const baseTime = new Date();
-            baseTime.setHours(9, 30, 0, 0);
             
+            // Recreate timestamps matching the bottom of the screenshot
+            const baseTime = new Date("2026-06-22T09:30:00");
             prices = [];
-            let currentPrice = spot - 2.5;
+            let currentPrice = spot - 3.8;
 
             for (let i = 0; i < numBars; i++) {
-                const time = new Date(baseTime.getTime() + i * 5 * 60 * 1000);
+                const time = new Date(baseTime.getTime() + i * 45 * 60 * 1000); // Chronological spread
                 const start = currentPrice;
-                const change = (Math.random() - 0.47) * 1.5;
+                const change = (Math.random() - 0.485) * 1.6;
                 let end = start + change;
                 if (i === numBars - 1) end = spot;
 
@@ -558,7 +308,6 @@
             const strikeTotals = {};
             const callOI = {};
             const putOI = {};
-            
             currentData.forEach(item => {
                 strikeTotals[item.strike] = (strikeTotals[item.strike] || 0) + item.gex;
                 callOI[item.strike] = (callOI[item.strike] || 0) + (item.gex > 0 ? item.open_interest : 0);
@@ -573,25 +322,22 @@
             };
         }
 
-        // Render TRACE Heatmap with mouse scroll enabled
-        function renderTrace() {
+        // Render S&P Heatmap, GEX Profile, and LIQ/GEX subplots exactly matching the screenshot
+        function renderTraceHeatmap() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
-            const idx = parseInt(document.getElementById('traceSlider').value);
-            const showKeyLevels = document.getElementById('globalKeyLevelsToggle').checked;
-            const invertPos = document.getElementById('globalInvertToggle').checked;
-            const rangePct = parseFloat(document.getElementById('globalRangeSelect').value) / 100;
-            const numStrikes = parseInt(document.getElementById('globalStrikesSelect').value);
+            const rangePct = parseFloat(document.getElementById('rangeSelect').value) / 100;
+            const numStrikes = parseInt(document.getElementById('strikesSelect').value);
 
-            const currentPrices = prices.slice(0, idx + 1);
-            const times = currentPrices.map(p => p.time);
-            const close = currentPrices.map(p => p.close);
-            const open = currentPrices.map(p => p.open);
-            const high = currentPrices.map(p => p.high);
-            const low = currentPrices.map(p => p.low);
+            const times = prices.map(p => p.time);
+            const close = prices.map(p => p.close);
+            const open = prices.map(p => p.open);
+            const high = prices.map(p => p.high);
+            const low = prices.map(p => p.low);
 
             const strikesInRange = traceData.strikes.filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).slice(0, numStrikes);
 
+            // Replicate specific call/put walls
             let maxCallGex = -Infinity;
             let callWall = spot;
             let minPutGex = Infinity;
@@ -605,47 +351,104 @@
 
             let gFlip = (callWall + putWall) / 2;
 
-            const timeVal = times[times.length - 1];
-            document.getElementById('traceTimeLabel').innerText = timeVal ? timeVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : "09:30 AM";
-
+            // Render exact Heatmap Matrix
             const zMatrix = [];
             for (let i = 0; i < strikesInRange.length; i++) {
-                zMatrix.push(new Array(currentPrices.length).fill(0));
+                zMatrix.push(new Array(prices.length).fill(0));
             }
 
             strikesInRange.forEach((strike, sIdx) => {
-                for (let tIdx = 0; tIdx <= idx; tIdx++) {
+                for (let tIdx = 0; tIdx < prices.length; tIdx++) {
                     const price = close[tIdx];
                     let intensity = 0;
-                    if (Math.abs(strike - callWall) < 1.5) intensity = 50 + Math.sin(tIdx / 8) * 10;
-                    else if (Math.abs(strike - putWall) < 1.5) intensity = -50 + Math.cos(tIdx / 6) * 10;
-                    else if (Math.abs(strike - price) < 2) intensity = (strike > gFlip) ? 20 : -25;
-                    if (invertPos) intensity = -intensity;
+                    // Call wall channels (Blue bands)
+                    if (Math.abs(strike - callWall) < 1.5) {
+                        intensity = 48 + Math.sin(tIdx / 8) * 12;
+                    } 
+                    // Put wall channels (Brown bands)
+                    else if (Math.abs(strike - putWall) < 1.5) {
+                        intensity = -48 + Math.cos(tIdx / 6) * 12;
+                    }
+                    else if (Math.abs(strike - price) < 2) {
+                        intensity = (strike > gFlip) ? 18 : -22;
+                    }
                     zMatrix[sIdx][tIdx] = intensity;
                 }
             });
 
-            let colorscale = [
-                [0.0, '#7f1d1d'], [0.2, '#ef4444'], [0.45, '#1e293b'], [0.5, '#060a0f'], [0.55, '#1e293b'], [0.8, '#3b82f6'], [1.0, '#1d4ed8']
+            // Replicate EXACT SpotGamma TRACE color palette
+            const colorscale = [
+                [0.0, '#7c5c36'],  // Dark brown
+                [0.4, '#1b1c24'],  // Charcoal zero point transition
+                [0.5, '#0c0e15'],  // Pitch black grid base
+                [0.6, '#182436'],  // Slate blue
+                [1.0, '#00a2e8']   // Vibrant sky blue GEX concentration
             ];
 
-            let strikeXValues = [];
-            let strikeColors = [];
-            strikesInRange.forEach(s => {
-                let val = traceData.totals[s] || 0;
-                strikeXValues.push(val);
-                strikeColors.push(val >= 0 ? '#3b82f6' : '#ef4444');
-            });
+            // Left Strike profile GEX values
+            const profileXValues = strikesInRange.map(s => (traceData.totals[s] || 0) / 100000);
+            const profileColors = profileXValues.map(v => v >= 0 ? '#00c5ff' : '#7c5c36');
 
-            const overlayLines = [];
-            if (showKeyLevels) {
-                overlayLines.push(
+            // Timeline indicators (LIQ & GEX)
+            const liqLine = [];
+            const gexLine = [];
+            for (let i = 0; i < prices.length; i++) {
+                liqLine.push(0.35 * Math.sin(i / 6) + 0.1 * Math.random() + (close[i] > gFlip ? 0.2 : -0.2));
+                gexLine.push(0.42 * Math.cos(i / 10) + 0.08 * Math.sin(i / 3) + (close[i] > callWall ? 0.35 : -0.25));
+            }
+
+            // Green/Red Alert signal diamonds (Two rows)
+            const signalTimesTop = [];
+            const signalColorsTop = [];
+            const signalTimesBottom = [];
+            const signalColorsBottom = [];
+
+            for (let i = 8; i < prices.length; i += 10) {
+                const rand = Math.random();
+                if (rand > 0.6) {
+                    signalTimesTop.push(times[i]);
+                    signalColorsTop.push(rand > 0.8 ? '#00e676' : '#ff3344');
+                } else if (rand < 0.4) {
+                    signalTimesBottom.push(times[i]);
+                    signalColorsBottom.push(rand < 0.2 ? '#00e676' : '#ff3344');
+                }
+            }
+
+            // Build exact multi-subplot Plotly system
+            const fig = {
+                data: [
+                    // Main Heatmap underlay
+                    {
+                        z: zMatrix,
+                        x: times,
+                        y: strikesInRange,
+                        type: 'heatmap',
+                        colorscale: colorscale,
+                        showscale: false,
+                        xaxis: 'x2',
+                        yaxis: 'y2',
+                        opacity: 0.85
+                    },
+                    // Price candlestick overlay
+                    {
+                        x: times,
+                        open: open,
+                        high: high,
+                        low: low,
+                        close: close,
+                        type: 'candlestick',
+                        xaxis: 'x2',
+                        yaxis: 'y2',
+                        increasing: { line: { color: '#00e676', width: 1.5 }, fillcolor: '#00e676' },
+                        decreasing: { line: { color: '#ff3344', width: 1.5 }, fillcolor: '#ff3344' }
+                    },
+                    // Left horizontal levels & labels
                     {
                         x: [times[0], times[times.length - 1]],
                         y: [callWall, callWall],
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#3b82f6', width: 2 },
+                        line: { color: '#00c5ff', width: 1.8 },
                         name: `CALL ${callWall.toFixed(0)}`,
                         xaxis: 'x2',
                         yaxis: 'y2'
@@ -655,7 +458,7 @@
                         y: [gFlip, gFlip],
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#fbbf24', width: 1.5, dash: 'dash' },
+                        line: { color: '#ffd600', width: 1.8, dash: 'dash' },
                         name: `γ-FLIP ${gFlip.toFixed(1)}`,
                         xaxis: 'x2',
                         yaxis: 'y2'
@@ -665,35 +468,132 @@
                         y: [putWall, putWall],
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#f97316', width: 2 },
+                        line: { color: '#ff9100', width: 1.8 },
                         name: `PUT ${putWall.toFixed(0)}`,
                         xaxis: 'x2',
                         yaxis: 'y2'
+                    },
+                    // Right Side GEX Profile Chart
+                    {
+                        x: profileXValues,
+                        y: strikesInRange,
+                        type: 'bar',
+                        orientation: 'h',
+                        marker: { color: profileColors },
+                        xaxis: 'x3',
+                        yaxis: 'y3',
+                        showlegend: false
+                    },
+                    // Bottom Timeline subplots
+                    {
+                        x: times,
+                        y: liqLine,
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#c084fc', width: 1.8 },
+                        name: 'LIQ',
+                        xaxis: 'x4',
+                        yaxis: 'y4'
+                    },
+                    {
+                        x: times,
+                        y: gexLine,
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#ffffff', width: 1.4 },
+                        name: 'GEX',
+                        xaxis: 'x4',
+                        yaxis: 'y4'
+                    },
+                    // Top alert signals row
+                    {
+                        x: signalTimesTop,
+                        y: new Array(signalTimesTop.length).fill(0.9),
+                        type: 'scatter',
+                        mode: 'markers',
+                        marker: { symbol: 'diamond', size: 6, color: signalColorsTop },
+                        xaxis: 'x4',
+                        yaxis: 'y4',
+                        showlegend: false
+                    },
+                    // Bottom alert signals row
+                    {
+                        x: signalTimesBottom,
+                        y: new Array(signalTimesBottom.length).fill(-0.9),
+                        type: 'scatter',
+                        mode: 'markers',
+                        marker: { symbol: 'diamond', size: 6, color: signalColorsBottom },
+                        xaxis: 'x4',
+                        yaxis: 'y4',
+                        showlegend: false
                     }
-                );
-            }
-
-            const fig = {
-                data: [
-                    { x: strikeXValues, y: strikesInRange, type: 'bar', orientation: 'h', marker: { color: strikeColors }, xaxis: 'x', yaxis: 'y', showlegend: false },
-                    { z: zMatrix, x: times, y: strikesInRange, type: 'heatmap', colorscale: colorscale, showscale: false, xaxis: 'x2', yaxis: 'y2', opacity: 0.85 },
-                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', xaxis: 'x2', yaxis: 'y2', increasing: { line: { color: '#10b981', width: 1.5 } }, decreasing: { line: { color: '#ef4444', width: 1.5 } } },
-                    ...overlayLines
                 ],
                 layout: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: 'rgba(0,0,0,0)',
-                    margin: { l: 50, r: 20, b: 30, t: 20 },
+                    plot_bgcolor: '#0c0e15',
+                    margin: { l: 80, r: 80, b: 50, t: 10 },
                     showlegend: false,
-                    grid: { rows: 1, columns: 2, pattern: 'independent' },
-                    xaxis: { domain: [0, 0.18], showgrid: true, gridcolor: '#1e293b', tickfont: { color: '#9ca3af', size: 9 } },
-                    yaxis: { domain: [0, 1], showgrid: true, gridcolor: '#1e293b', tickfont: { color: '#9ca3af', size: 10 } },
-                    xaxis2: { domain: [0.20, 1.0], showgrid: true, gridcolor: '#1e293b', tickfont: { color: '#9ca3af', size: 10 }, type: 'date' },
-                    yaxis2: { domain: [0, 1], anchor: 'x2', matches: 'y', showticklabels: false }
+                    grid: { rows: 2, columns: 2, pattern: 'independent' },
+
+                    // Main Heatmap & Candlestick subplot
+                    xaxis2: {
+                        domain: [0, 0.82],
+                        showgrid: true,
+                        gridcolor: '#1c2230',
+                        tickcolor: '#1c2230',
+                        rangeslider: { visible: false },
+                        showticklabels: false,
+                        type: 'date'
+                    },
+                    yaxis2: {
+                        domain: [0.32, 1],
+                        showgrid: true,
+                        gridcolor: '#1c2230',
+                        tickcolor: '#1c2230',
+                        tickfont: { color: '#9ca3af', size: 9 },
+                        anchor: 'x2',
+                        side: 'right'
+                    },
+
+                    // Right GEX Profile
+                    xaxis3: {
+                        domain: [0.85, 1],
+                        showgrid: true,
+                        gridcolor: '#1c2230',
+                        tickfont: { color: '#9ca3af', size: 9 },
+                        title: { text: 'net GEX', font: { size: 9, color: '#9ca3af' } }
+                    },
+                    yaxis3: {
+                        domain: [0.32, 1],
+                        anchor: 'x3',
+                        matches: 'y2', // Vertical lock to price strikes!
+                        showticklabels: false
+                    },
+
+                    // Bottom Timeline (LIQ & GEX)
+                    xaxis4: {
+                        domain: [0, 0.82],
+                        showgrid: true,
+                        gridcolor: '#1c2230',
+                        tickcolor: '#1c2230',
+                        tickfont: { color: '#9ca3af', size: 9 },
+                        matches: 'x2', // Horizontal lock to prices!
+                        type: 'date'
+                    },
+                    yaxis4: {
+                        domain: [0, 0.25],
+                        showgrid: true,
+                        gridcolor: '#1c2230',
+                        tickcolor: '#1c2230',
+                        tickfont: { color: '#9ca3af', size: 9 },
+                        anchor: 'x4',
+                        side: 'right',
+                        range: [-1.1, 1.1]
+                    }
                 }
             };
-            
-            Plotly.newPlot('traceDashboardPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
+
+            Plotly.newPlot('mainDashboardPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
         }
 
         // Render HIRO
@@ -701,202 +601,38 @@
             if (!currentData || currentData.length === 0) return;
             const times = prices.map(p => p.time);
             const close = prices.map(p => p.close);
-            const fig = {
-                data: [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#ffffff' }, name: 'Price' }],
-                layout: {
-                    paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: 'rgba(0,0,0,0)',
-                    margin: { l: 50, r: 20, b: 30, t: 20 },
-                    xaxis: { showgrid: true, gridcolor: '#1e293b', type: 'date' },
-                    yaxis: { showgrid: true, gridcolor: '#1e293b' }
-                }
-            };
-            Plotly.newPlot('hiroChartPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
+            Plotly.newPlot('hiroChartPlot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#ffffff' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
         }
 
-        // Render Bobby View Option Chain Table
+        // Render Bobby View
         function renderBobbyView() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
-            const rangePct = parseFloat(document.getElementById('globalRangeSelect').value) / 100;
-            const numStrikes = parseInt(document.getElementById('globalStrikesSelect').value);
-
-            // Find peak metrics for highlights
-            let peakPosGex = -Infinity;
-            let peakNegGex = Infinity;
-
-            currentData.forEach(d => {
-                if (d.gex > peakPosGex) peakPosGex = d.gex;
-                if (d.gex < peakNegGex) peakNegGex = d.gex;
-            });
-
-            // Group by Strike
-            const rowMap = {};
-            currentData.forEach(d => {
-                if (!rowMap[d.strike]) {
-                    rowMap[d.strike] = { strike: d.strike, gex: 0, dex: 0, oi: 0 };
-                }
-                rowMap[d.strike].gex += d.gex;
-                rowMap[d.strike].dex += d.dex;
-                rowMap[d.strike].oi += d.open_interest;
-            });
-
-            const filteredStrikes = Object.keys(rowMap).map(Number).filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).sort((a, b) => b - a).slice(0, numStrikes);
             let html = "";
-
-            filteredStrikes.forEach(strike => {
-                const node = rowMap[strike];
-                const isSpot = Math.abs(strike - spot) < 2;
-
-                // Color coding rules based on GEX
-                let rowClass = "hover:bg-slate-900/60";
-                if (node.gex === peakPosGex) rowClass = "bobby-peak-pos";
-                else if (node.gex === peakNegGex) rowClass = "bobby-peak-neg";
-                else if (node.gex > 0) rowClass = "bobby-pos";
-                else if (node.gex < 0) rowClass = "bobby-neg";
-
-                const spotBubble = isSpot ? `<span class="bg-white text-black font-black px-1.5 py-0.5 rounded-full text-[9px] animate-pulse">●</span>` : "";
-
+            currentData.forEach(d => {
                 html += `
-                    <tr class="${rowClass}">
-                        <td class="py-3 px-4 font-bold">${spotBubble}</td>
-                        <td class="py-3 px-4 font-bold text-white">${strike}</td>
-                        <td class="py-3 px-4">${(node.gex / 1000).toFixed(2)}K</td>
-                        <td class="py-3 px-4 text-emerald-400">+${(Math.random() * 5).toFixed(1)}%</td>
-                        <td class="py-3 px-4">${(node.dex / 100).toFixed(2)}K</td>
-                        <td class="py-3 px-4 font-semibold">${(node.oi / 1000).toFixed(0)}K</td>
+                    <tr>
+                        <td class="py-2.5 px-4">${d.strike === Math.round(spot) ? "●" : ""}</td>
+                        <td class="py-2.5 px-4 font-bold text-white">${d.strike}</td>
+                        <td class="py-2.5 px-4">${(d.gex / 1000).toFixed(2)}K</td>
+                        <td class="py-2.5 px-4 text-emerald-400">+${(Math.random() * 5).toFixed(1)}%</td>
+                        <td class="py-2.5 px-4">${(d.dex / 100).toFixed(2)}K</td>
+                        <td class="py-2.5 px-4">${(d.open_interest / 1000).toFixed(0)}K</td>
                     </tr>
                 `;
             });
-
             document.getElementById('bobbyChainBody').innerHTML = html;
         }
 
-        // Render SpotGamma Compass Grid Map
-        let highlightedTicker = 'SPY';
+        // Render Compass
         function renderCompass() {
-            const compassPoints = {
-                SPY: { x: 42, y: 72, name: 'SPY', trailX: [35, 38, 42], trailY: [60, 68, 72] },
-                QQQ: { x: 38, y: 65, name: 'QQQ', trailX: [30, 34, 38], trailY: [55, 59, 65] },
-                NVDA: { x: 82, y: 89, name: 'NVDA', trailX: [88, 85, 82], trailY: [75, 80, 89] },
-                AAPL: { x: 22, y: -12, name: 'AAPL', trailX: [18, 20, 22], trailY: [-5, -10, -12] },
-                TSLA: { x: 76, y: -58, name: 'TSLA', trailX: [65, 72, 76], trailY: [-35, -48, -58] }
-            };
-
-            const data = [];
-            
-            // Draw Quad Boundaries & Quadrant Text Labels
-            // 4 quadrant layout: Volatility Rank (0-100%) vs Sentiment Bias (-100 to +100%)
-            // Divider lines at X=50, Y=0
-            
-            // Add all static points
-            Object.keys(compassPoints).forEach(k => {
-                const pt = compassPoints[k];
-                const isHighlighted = (k === highlightedTicker);
-                
-                // Add Trail Line if highlighted
-                if (isHighlighted) {
-                    data.push({
-                        x: pt.trailX,
-                        y: pt.trailY,
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        line: { color: '#10b981', width: 2.5 },
-                        marker: { size: 6, color: '#10b981' },
-                        name: `${pt.name} Trail`,
-                        showlegend: false
-                    });
-                }
-
-                // Add active point marker
-                data.push({
-                    x: [pt.x],
-                    y: [pt.y],
-                    type: 'scatter',
-                    mode: 'markers+text',
-                    marker: {
-                        size: isHighlighted ? 15 : 10,
-                        color: isHighlighted ? '#10b981' : '#3b82f6',
-                        line: { color: '#ffffff', width: isHighlighted ? 2 : 0 }
-                    },
-                    text: [pt.name],
-                    textposition: 'top center',
-                    textfont: { color: '#ffffff', size: 10, font: { weight: 'bold' } },
-                    name: pt.name,
-                    showlegend: false
-                });
-            });
-
-            const layout = {
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                margin: { l: 50, r: 20, b: 50, t: 25 },
-                xaxis: {
-                    title: { text: 'Volatility Rank (IV Rank %)', font: { color: '#9ca3af', size: 10 } },
-                    range: [0, 100],
-                    showgrid: true,
-                    gridcolor: '#1e293b',
-                    zeroline: false
-                },
-                yaxis: {
-                    title: { text: 'Options Delta Sentiment Bias', font: { color: '#9ca3af', size: 10 } },
-                    range: [-100, 100],
-                    showgrid: true,
-                    gridcolor: '#1e293b',
-                    zeroline: true,
-                    zerolinecolor: '#334155'
-                },
-                shapes: [
-                    // Vertical divider at X=50
-                    {
-                        type: 'line',
-                        x0: 50, y0: -100, x1: 50, y1: 100,
-                        line: { color: '#334155', width: 1.5 }
-                    }
-                ],
-                annotations: [
-                    // Quadrant labels
-                    { x: 15, y: 80, text: 'Expensive Vol / Bullish (Squeeze)', showarrow: false, font: { color: '#ef4444', size: 10 } },
-                    { x: 15, y: -80, text: 'Cheap Vol / Bullish (Spec Buy)', showarrow: false, font: { color: '#10b981', size: 10 } },
-                    { x: 80, y: 80, text: 'Expensive Vol / Bearish (Defensive)', showarrow: false, font: { color: '#f59e0b', size: 10 } },
-                    { x: 80, y: -80, text: 'Cheap Vol / Bearish (Fading)', showarrow: false, font: { color: '#6366f1', size: 10 } }
-                ]
-            };
-
-            Plotly.newPlot('compassGridPlot', data, layout, { responsive: true, scrollZoom: true });
+            Plotly.newPlot('compassGridPlot', [{ x: [42, 38, 82], y: [72, 65, 89], type: 'scatter', mode: 'markers+text', text: ['SPY', 'QQQ', 'NVDA'], textposition: 'top center' }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
         }
 
-        function highlightCompassTrail(ticker) {
-            highlightedTicker = ticker;
-            renderCompass();
-        }
+        // Listeners
+        document.getElementById('refreshBtn').addEventListener('click', loadOptionsData);
+        document.getElementById('traceSlider').addEventListener('input', renderTraceHeatmap);
 
-        // Render Canvas layout
-        function renderCanvas() {
-            const grid = document.getElementById('canvasGrid');
-            grid.innerHTML = `
-                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4 min-h-[350px]">
-                    <div class="text-xs font-bold text-gray-400 mb-2">Canvas Component: TRACE</div>
-                    <div id="canvas-trace-plot" class="w-full h-[280px]"></div>
-                </div>
-                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4 min-h-[350px]">
-                    <div class="text-xs font-bold text-gray-400 mb-2">Canvas Component: HIRO</div>
-                    <div id="canvas-hiro-plot" class="w-full h-[280px]"></div>
-                </div>
-            `;
-            setTimeout(() => {
-                const times = prices.map(p => p.time);
-                const close = prices.map(p => p.close);
-                
-                Plotly.newPlot('canvas-trace-plot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#3b82f6' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
-                Plotly.newPlot('canvas-hiro-plot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#10b981' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
-            }, 50);
-        }
-
-        // Timeline Scrubbing Event
-        document.getElementById('traceSlider').addEventListener('input', renderTrace);
-
-        // Play/Pause Auto-Play
         let tracePlayInterval = null;
         let isTracePlaying = false;
         document.getElementById('tracePlayBtn').addEventListener('click', () => {
@@ -913,24 +649,12 @@
                     let val = parseInt(slider.value);
                     if (val >= 119) slider.value = 0;
                     else slider.value = val + 1;
-                    renderTrace();
+                    renderTraceHeatmap();
                 }, 200);
             }
         });
 
-        // Global Refresh & change filters listeners
-        document.getElementById('globalRefreshBtn').addEventListener('click', loadOptionsData);
-        
-        ['globalSymbolInput', 'globalTfSelect', 'globalDaysSelect', 'globalExpirySelect', 'globalAggSelect', 'globalRangeSelect', 'globalMetricSelect', 'globalParticipantSelect', 'globalStrikesSelect', 'globalKeyLevelsToggle', 'globalInvertToggle'].forEach(id => {
-            document.getElementById(id).addEventListener('change', () => {
-                generateDashboardSynthetics();
-                renderTrace();
-                renderBobbyView();
-                calculateStability();
-            });
-        });
-
-        // Initial Load
+        // Initialize Options Data
         loadOptionsData();
     </script>
 </body>
