@@ -44,6 +44,9 @@
                 <button id="navBobbyBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                     📋 Bobby View
                 </button>
+                <button id="navCompassBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                    🧭 Compass
+                </button>
                 <button id="navCanvasBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                     🎨 Canvas
                 </button>
@@ -298,6 +301,78 @@
     </div>
 
 
+    <!-- ==================== COMPASS SCANNER VIEW ==================== -->
+    <div id="compassView" class="hidden p-6 max-w-[1400px] mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <!-- Left Side Compass Grid Map (8 Columns) -->
+            <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-800 rounded-xl p-4 flex flex-col">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-4">
+                    <div>
+                        <h2 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-1">
+                            🧭 SpotGamma Compass Grid
+                        </h2>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Click any ticker point to trace its 3-Day Volatility/Sentiment Historical Trail.</p>
+                    </div>
+                    
+                    <div class="flex bg-slate-950 p-0.5 rounded border border-gray-800 text-[10px] font-bold">
+                        <button class="bg-[#1e293b] text-white px-3 py-1 rounded">Guided View</button>
+                        <button class="text-gray-500 hover:text-white px-3 py-1 rounded">Explorer View</button>
+                    </div>
+                </div>
+
+                <div id="compassGridPlot" class="w-full h-[450px]"></div>
+            </div>
+
+            <!-- Right Side Compass Scanner Table List (4 Columns) -->
+            <div class="lg:col-span-4 bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
+                <h3 class="text-xs font-black text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">
+                    🎯 Compass Super Scanner
+                </h3>
+                
+                <div class="overflow-y-auto max-h-[420px] text-xs">
+                    <table class="w-full text-left text-gray-300">
+                        <thead class="bg-slate-950 text-gray-400 uppercase text-[9px] border-b border-gray-850">
+                            <tr>
+                                <th class="py-2 px-2">Ticker</th>
+                                <th class="py-2 px-2 text-right">Vol Rank</th>
+                                <th class="py-2 px-2 text-right">Delta Bias</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-850" id="compassTableBody">
+                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('SPY')">
+                                <td class="py-2.5 px-2 font-bold text-white">SPY</td>
+                                <td class="py-2.5 px-2 text-right text-gray-400">42% (Cheap)</td>
+                                <td class="py-2.5 px-2 text-right text-emerald-400">+72% (Bullish)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('QQQ')">
+                                <td class="py-2.5 px-2 font-bold text-white">QQQ</td>
+                                <td class="py-2.5 px-2 text-right text-gray-400">38% (Cheap)</td>
+                                <td class="py-2.5 px-2 text-right text-emerald-400">+65% (Bullish)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('NVDA')">
+                                <td class="py-2.5 px-2 font-bold text-white">NVDA</td>
+                                <td class="py-2.5 px-2 text-right text-yellow-400">82% (Expensive)</td>
+                                <td class="py-2.5 px-2 text-right text-emerald-400">+89% (Bullish)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('AAPL')">
+                                <td class="py-2.5 px-2 font-bold text-white">AAPL</td>
+                                <td class="py-2.5 px-2 text-right text-gray-400">22% (Cheap)</td>
+                                <td class="py-2.5 px-2 text-right text-rose-400">-12% (Neutral)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('TSLA')">
+                                <td class="py-2.5 px-2 font-bold text-white">TSLA</td>
+                                <td class="py-2.5 px-2 text-right text-yellow-400">76% (Expensive)</td>
+                                <td class="py-2.5 px-2 text-right text-rose-500">-58% (Bearish)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <!-- ==================== CANVAS VIEW ==================== -->
     <div id="canvasView" class="hidden p-4">
         <div id="canvasGrid" class="canvas-grid"></div>
@@ -322,6 +397,27 @@
                         <li><strong>Reset View</strong>: Double-click anywhere inside the plot window to reset the zoom to default.</li>
                     </ul>
                 </div>
+
+                <!-- Reading GEX / TRACE Guide -->
+                <div>
+                    <h3 class="font-bold text-sky-400 text-sm mb-2">📊 How to Read the TRACE Heatmap</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
+                        <li><strong>Call Wall (Sky Blue Solid Line)</strong>: The strike containing the largest positive gamma concentration. Represents major overhead options resistance.</li>
+                        <li><strong>Put Wall (Orange Solid Line)</strong>: The strike containing the largest negative gamma concentration. Represents a key downside support boundary.</li>
+                        <li><strong>Gamma Flip (Yellow Dashed Line)</strong>: The inflection point where dealer hedging flips from supportive (stabilizing volatility) to aggressive (accelerating volatility).</li>
+                    </ul>
+                </div>
+
+                <!-- Compass Guide -->
+                <div>
+                    <h3 class="font-bold text-yellow-400 text-sm mb-2">🧭 How to Read the Compass Grid</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
+                        <li><strong>Top Left Quadrant</strong>: Expensive Volatility, Bullish Delta Bias (Squeeze candidate / Aggressive buying).</li>
+                        <li><strong>Bottom Left Quadrant</strong>: Cheap Volatility, Bullish Delta Bias (Attractive entries / Low premium risk).</li>
+                        <li><strong>Top Right Quadrant</strong>: Expensive Volatility, Bearish Delta Bias (Downside threat, high premium protection).</li>
+                        <li><strong>Bottom Right Quadrant</strong>: Cheap Volatility, Bearish Delta Bias (Fading support / Quiet slide).</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -337,6 +433,7 @@
             trace: 'traceView',
             hiro: 'hiroView',
             bobby: 'bobbyView',
+            compass: 'compassView',
             canvas: 'canvasView',
             help: 'helpView'
         };
@@ -345,6 +442,7 @@
             trace: 'navTraceBtn',
             hiro: 'navHiroBtn',
             bobby: 'navBobbyBtn',
+            compass: 'navCompassBtn',
             canvas: 'navCanvasBtn',
             help: 'navHelpBtn'
         };
@@ -361,6 +459,7 @@
             if (target === 'trace') renderTrace();
             else if (target === 'hiro') renderHiro();
             else if (target === 'bobby') renderBobbyView();
+            else if (target === 'compass') renderCompass();
             else if (target === 'canvas') renderCanvas();
         }
 
@@ -671,6 +770,105 @@
             });
 
             document.getElementById('bobbyChainBody').innerHTML = html;
+        }
+
+        // Render SpotGamma Compass Grid Map
+        let highlightedTicker = 'SPY';
+        function renderCompass() {
+            const compassPoints = {
+                SPY: { x: 42, y: 72, name: 'SPY', trailX: [35, 38, 42], trailY: [60, 68, 72] },
+                QQQ: { x: 38, y: 65, name: 'QQQ', trailX: [30, 34, 38], trailY: [55, 59, 65] },
+                NVDA: { x: 82, y: 89, name: 'NVDA', trailX: [88, 85, 82], trailY: [75, 80, 89] },
+                AAPL: { x: 22, y: -12, name: 'AAPL', trailX: [18, 20, 22], trailY: [-5, -10, -12] },
+                TSLA: { x: 76, y: -58, name: 'TSLA', trailX: [65, 72, 76], trailY: [-35, -48, -58] }
+            };
+
+            const data = [];
+            
+            // Draw Quad Boundaries & Quadrant Text Labels
+            // 4 quadrant layout: Volatility Rank (0-100%) vs Sentiment Bias (-100 to +100%)
+            // Divider lines at X=50, Y=0
+            
+            // Add all static points
+            Object.keys(compassPoints).forEach(k => {
+                const pt = compassPoints[k];
+                const isHighlighted = (k === highlightedTicker);
+                
+                // Add Trail Line if highlighted
+                if (isHighlighted) {
+                    data.push({
+                        x: pt.trailX,
+                        y: pt.trailY,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        line: { color: '#10b981', width: 2.5 },
+                        marker: { size: 6, color: '#10b981' },
+                        name: `${pt.name} Trail`,
+                        showlegend: false
+                    });
+                }
+
+                // Add active point marker
+                data.push({
+                    x: [pt.x],
+                    y: [pt.y],
+                    type: 'scatter',
+                    mode: 'markers+text',
+                    marker: {
+                        size: isHighlighted ? 15 : 10,
+                        color: isHighlighted ? '#10b981' : '#3b82f6',
+                        line: { color: '#ffffff', width: isHighlighted ? 2 : 0 }
+                    },
+                    text: [pt.name],
+                    textposition: 'top center',
+                    textfont: { color: '#ffffff', size: 10, font: { weight: 'bold' } },
+                    name: pt.name,
+                    showlegend: false
+                });
+            });
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 50, r: 20, b: 50, t: 25 },
+                xaxis: {
+                    title: { text: 'Volatility Rank (IV Rank %)', font: { color: '#9ca3af', size: 10 } },
+                    range: [0, 100],
+                    showgrid: true,
+                    gridcolor: '#1e293b',
+                    zeroline: false
+                },
+                yaxis: {
+                    title: { text: 'Options Delta Sentiment Bias', font: { color: '#9ca3af', size: 10 } },
+                    range: [-100, 100],
+                    showgrid: true,
+                    gridcolor: '#1e293b',
+                    zeroline: true,
+                    zerolinecolor: '#334155'
+                },
+                shapes: [
+                    // Vertical divider at X=50
+                    {
+                        type: 'line',
+                        x0: 50, y0: -100, x1: 50, y1: 100,
+                        line: { color: '#334155', width: 1.5 }
+                    }
+                ],
+                annotations: [
+                    // Quadrant labels
+                    { x: 15, y: 80, text: 'Expensive Vol / Bullish (Squeeze)', showarrow: false, font: { color: '#ef4444', size: 10 } },
+                    { x: 15, y: -80, text: 'Cheap Vol / Bullish (Spec Buy)', showarrow: false, font: { color: '#10b981', size: 10 } },
+                    { x: 80, y: 80, text: 'Expensive Vol / Bearish (Defensive)', showarrow: false, font: { color: '#f59e0b', size: 10 } },
+                    { x: 80, y: -80, text: 'Cheap Vol / Bearish (Fading)', showarrow: false, font: { color: '#6366f1', size: 10 } }
+                ]
+            };
+
+            Plotly.newPlot('compassGridPlot', data, layout, { responsive: true, scrollZoom: true });
+        }
+
+        function highlightCompassTrail(ticker) {
+            highlightedTicker = ticker;
+            renderCompass();
         }
 
         // Render Canvas layout
