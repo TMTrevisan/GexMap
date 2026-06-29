@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpotGamma Terminal - TRACE, HIRO & Canvas</title>
+    <title>SpotGamma Terminal - Ultimate Options suite</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Plotly.js for multi-subplot charting -->
@@ -17,6 +17,12 @@
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #334155; }
         .canvas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 16px; min-height: 500px; }
+        
+        /* Bobby Style Table Colors */
+        .bobby-peak-pos { background-color: rgba(234, 179, 8, 0.25); color: #facc15; border-left: 4px solid #eab308; } /* Yellow */
+        .bobby-peak-neg { background-color: rgba(168, 85, 247, 0.25); color: #c084fc; border-left: 4px solid #a855f7; } /* Purple */
+        .bobby-pos { background-color: rgba(16, 185, 129, 0.12); color: #34d399; } /* Emerald */
+        .bobby-neg { background-color: rgba(99, 102, 241, 0.12); color: #818cf8; } /* Violet/Blue */
     </style>
 </head>
 <body class="p-0 select-none overflow-x-hidden">
@@ -29,24 +35,26 @@
             </span>
             
             <div class="flex bg-slate-950 p-0.5 rounded-lg border border-gray-800">
-                <button id="navTraceBtn" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]">
+                <button id="navTraceBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]">
                     📊 TRACE Heatmap
                 </button>
-                <button id="navHiroBtn" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                <button id="navHiroBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                     🎯 HIRO Flow Tape
                 </button>
-                <button id="navCanvasBtn" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
-                    🎨 Canvas Workspace
+                <button id="navBobbyBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                    📋 Bobby View
+                </button>
+                <button id="navCanvasBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                    🎨 Canvas
+                </button>
+                <button id="navHelpBtn" class="px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                    ❓ Help & Guide
                 </button>
             </div>
         </div>
         
         <div class="flex items-center gap-4 text-xs font-bold">
             <span class="text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-800/40">ALPHA ACCESS</span>
-            <div class="text-right">
-                <span class="text-gray-500 block text-[9px] uppercase leading-none">Status</span>
-                <span class="text-emerald-400 text-[10px] leading-none font-bold">CONNECTED</span>
-            </div>
         </div>
     </div>
 
@@ -69,9 +77,6 @@
                     <select id="traceParticipantSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
                         <option value="market_makers" selected>Market Makers (Hedging)</option>
                         <option value="customers">Customers (Retail)</option>
-                        <option value="pro_customers">Pro Customers (Prop)</option>
-                        <option value="firms">Firms</option>
-                        <option value="broker_dealers">Broker Dealers</option>
                     </select>
                 </div>
 
@@ -80,7 +85,6 @@
                     <select id="traceModelSelect" class="bg-[#0f172a] border border-[#334155] text-emerald-400 font-bold px-3 py-1.5 rounded focus:outline-none">
                         <option value="gamma" selected>Gamma Exposure (Volatility)</option>
                         <option value="delta_pressure">Delta Pressure (Hedging)</option>
-                        <option value="charm_pressure">Charm Pressure (0DTE Decay)</option>
                     </select>
                 </div>
 
@@ -89,13 +93,7 @@
                     <select id="traceLensSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
                         <option value="gex" selected>GEX by Strike</option>
                         <option value="oi">OI by Strike</option>
-                        <option value="net_oi">Net OI by Strike</option>
                     </select>
-                </div>
-
-                <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
-                    <input type="checkbox" id="traceInvertToggle" class="accent-emerald-500 cursor-pointer w-4 h-4">
-                    <label for="traceInvertToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Invert Pos</label>
                 </div>
 
                 <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
@@ -108,7 +106,6 @@
                     <select id="traceCandleInterval" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
                         <option value="1m">1 min</option>
                         <option value="5m" selected>5 min</option>
-                        <option value="15m">15 min</option>
                     </select>
                 </div>
 
@@ -120,20 +117,14 @@
 
         <!-- Workspace Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
-            <!-- Sidebar Guide -->
+            <!-- Sidebar -->
             <div class="lg:col-span-3 flex flex-col gap-4">
                 <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4">
-                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span> S&P Indicators
-                    </h3>
+                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">S&P Indicators</h3>
                     <div class="grid grid-cols-2 gap-2 text-center text-xs">
                         <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
                             <span class="text-[9px] text-gray-500 font-bold block uppercase">Spot Price</span>
                             <span id="traceSpotVal" class="text-base font-black text-white">--</span>
-                        </div>
-                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
-                            <span class="text-[9px] text-gray-500 font-bold block uppercase">HIRO Flow</span>
-                            <span class="text-base font-black text-purple-400">+185.3K</span>
                         </div>
                         <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
                             <span class="text-[9px] text-gray-500 font-bold block uppercase">Call Wall</span>
@@ -143,22 +134,17 @@
                             <span class="text-[9px] text-gray-500 font-bold block uppercase">Put Wall</span>
                             <span id="tracePutWallVal" class="text-base font-black text-amber-500">--</span>
                         </div>
-                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80 col-span-2">
+                        <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
                             <span class="text-[9px] text-gray-500 font-bold block uppercase">Γ-Flip Price</span>
                             <span id="traceGFlipVal" class="text-base font-black text-yellow-400">--</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4 flex-grow flex flex-col">
-                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2">
-                        📖 TRACE Market Guide
-                    </h3>
-                    <div class="space-y-3 text-xs flex-grow overflow-y-auto max-h-[480px]">
-                        <div class="bg-[#111827]/40 border border-gray-800/65 p-3 rounded-lg">
-                            <h4 class="font-bold text-sky-400 mb-1">Gamma Lens</h4>
-                            <p class="text-gray-400 text-[10px] leading-relaxed">Blue Zones: Positive Gamma (Vol Dampens). Red Zones: Negative Gamma (Vol Expands).</p>
-                        </div>
+                <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4 flex-grow text-xs space-y-3">
+                    <div class="bg-emerald-950/20 border border-emerald-900/60 p-3 rounded-lg text-gray-300">
+                        <span class="font-bold text-emerald-400 block mb-1">💡 Mouse Scroll Zoom Active</span>
+                        Use your mouse wheel directly over the chart area to zoom in/out. Click and drag axes labels or drag a selection box to target specific candles!
                     </div>
                 </div>
             </div>
@@ -183,267 +169,143 @@
 
 
     <!-- ==================== HIRO FLOW VIEW ==================== -->
-    <div id="hiroView" class="hidden">
-        <!-- HIRO Control Bar -->
-        <div class="control-panel px-6 py-3 flex flex-wrap justify-between items-center gap-4">
-            <div class="flex items-center gap-4">
-                <select id="hiroSymbolInput" class="bg-[#0f172a] border border-[#334155] text-white text-xs font-bold px-3 py-1.5 rounded focus:outline-none">
-                    <option value="SPY" selected>SPY (S&P 500 ETF)</option>
-                    <option value="QQQ">QQQ (Nasdaq 100)</option>
-                    <option value="I:SPX">SPX (S&P 500 Index)</option>
-                </select>
-            </div>
-
-            <!-- Toolbar Options -->
-            <div class="flex flex-wrap items-center gap-3 text-xs">
-                <div class="flex bg-slate-950 p-0.5 rounded border border-gray-800 h-[34px] items-center">
-                    <button id="hiroModeTotal" class="bg-[#1e293b] text-white font-bold px-3 py-1 rounded text-[10px] uppercase">Total</button>
-                    <button id="hiroModePutCall" class="text-gray-400 hover:text-white font-bold px-3 py-1 rounded text-[10px] uppercase">Put/Call</button>
-                </div>
-
-                <div class="flex bg-slate-950 p-0.5 rounded border border-gray-800 h-[34px] items-center">
-                    <button id="hiroFilterAll" class="bg-[#1e293b] text-white font-bold px-3 py-1 rounded text-[10px] uppercase">All Trades</button>
-                </div>
-
-                <button id="hiroLoadBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[34px] rounded transition-colors self-end uppercase tracking-wider">
-                    Refresh
-                </button>
-            </div>
+    <div id="hiroView" class="hidden p-4">
+        <div class="bg-[#080c10] border border-gray-800 rounded-xl p-4 mb-4">
+            <div id="hiroChartPlot" class="w-full h-[400px]"></div>
         </div>
+    </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
-            <div class="lg:col-span-9 flex flex-col gap-4">
-                <div class="bg-[#080c10] border border-gray-800/85 rounded-xl p-4">
-                    <div id="hiroChartPlot" class="w-full h-[400px]"></div>
+
+    <!-- ==================== BOBBY VIEW (OPTION CHAIN) ==================== -->
+    <div id="bobbyView" class="hidden p-6 max-w-[1200px] mx-auto">
+        <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-lg font-black text-white uppercase tracking-wider">📋 S&P 500 Options Profile - Bobby Style</h2>
+                    <p class="text-xs text-gray-400 mt-1">Color highlights: Yellow for Peak Positive, Purple for Peak Negative, Emerald for positive, and Violet/Blue for negative. White pointer denotes Spot Price.</p>
                 </div>
+                <button id="bobbyRefreshBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 py-1.5 rounded text-xs uppercase tracking-wider">Refresh Chain</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left text-gray-300">
+                    <thead class="bg-slate-950 text-gray-400 font-bold uppercase sticky top-0 border-b border-gray-850">
+                        <tr>
+                            <th class="py-3 px-4 w-12">Spot</th>
+                            <th class="py-3 px-4">Strike</th>
+                            <th class="py-3 px-4">Net GEX ($ Notional)</th>
+                            <th class="py-3 px-4">GEX % Change</th>
+                            <th class="py-3 px-4">Net DEX ($ Notional)</th>
+                            <th class="py-3 px-4">Total OI</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bobbyChainBody" class="divide-y divide-gray-800/40">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
 
-    <!-- ==================== CANVAS WORKSPACE VIEW ==================== -->
+    <!-- ==================== CANVAS VIEW ==================== -->
     <div id="canvasView" class="hidden p-4">
-        <!-- Canvas Config Header -->
         <div class="bg-[#0b0f17] border border-gray-800 p-3 rounded-lg flex flex-wrap justify-between items-center gap-3 mb-4">
-            <div class="flex items-center gap-3">
-                <select id="canvasWorkspaceDropdown" class="bg-slate-900 border border-gray-700 text-white text-xs font-bold px-3 py-1.5 rounded focus:outline-none">
-                    <option value="sp500" selected>S&P 500 Workspace</option>
-                    <option value="equities">Equities Analysis Workspace</option>
-                    <option value="new">+ Create New Workspace</option>
-                </select>
+            <button id="addEmptyContainerBtn" class="bg-slate-800 hover:bg-slate-700 border border-gray-700 text-xs font-bold text-gray-300 px-3.5 py-1.5 rounded">
+                + Add Container
+            </button>
+        </div>
+        <div id="canvasGrid" class="canvas-grid"></div>
+    </div>
 
-                <button id="addEmptyContainerBtn" class="bg-slate-800 hover:bg-slate-700 border border-gray-700 text-xs font-bold text-gray-300 px-3.5 py-1.5 rounded transition-all">
-                    + Add Container
-                </button>
 
-                <div class="flex items-center gap-1.5 text-xs">
-                    <span class="text-gray-500 font-bold uppercase">Grouping</span>
-                    <span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
-                    <select class="bg-slate-900 border border-gray-700 text-xs text-white px-2 py-1 rounded">
-                        <option value="groupA">Group A (SPY)</option>
-                        <option value="none">None</option>
-                    </select>
+    <!-- ==================== HELP & GUIDE VIEW ==================== -->
+    <div id="helpView" class="hidden p-6 max-w-[900px] mx-auto space-y-6">
+        <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-6">
+            <h2 class="text-lg font-black text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2 flex items-center gap-2">
+                ❓ SpotGamma Terminal Guide
+            </h2>
+            
+            <div class="space-y-6 text-xs text-gray-300 leading-relaxed">
+                <!-- Zooming Guide -->
+                <div>
+                    <h3 class="font-bold text-emerald-400 text-sm mb-2">🔍 How to Zoom & Adjust Axes</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
+                        <li><strong>Mouse Wheel / Trackpad Pinch</strong>: Hover your mouse cursor over the chart plot, and scroll up or down. The chart will zoom into the time window (1-min, 3-min, 5-min intervals) automatically!</li>
+                        <li><strong>Drag to Zoom</strong>: Click and hold on the chart, then draw a rectangular selection box over the specific candles or time region you want to zoom into.</li>
+                        <li><strong>Axis Click & Drag</strong>: Hover your cursor over the X-axis (timestamps) or Y-axis (price/strikes), and drag your mouse to contract or expand the timescale or price levels.</li>
+                        <li><strong>Reset View</strong>: Double-click anywhere inside the plot window to reset the zoom to default.</li>
+                    </ul>
+                </div>
+
+                <!-- Reading GEX / TRACE Guide -->
+                <div>
+                    <h3 class="font-bold text-sky-400 text-sm mb-2">📊 How to Read the TRACE Heatmap</h3>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
+                        <li><strong>Call Wall (Sky Blue Solid Line)</strong>: The strike containing the largest positive gamma concentration. Represents major overhead options resistance.</li>
+                        <li><strong>Put Wall (Orange Solid Line)</strong>: The strike containing the largest negative gamma concentration. Represents a key downside support boundary.</li>
+                        <li><strong>Gamma Flip (Yellow Dashed Line)</strong>: The inflection point where dealer hedging flips from supportive (stabilizing volatility) to aggressive (accelerating volatility).</li>
+                    </ul>
+                </div>
+
+                <!-- HIRO Guide -->
+                <div>
+                    <h3 class="font-bold text-purple-400 text-sm mb-2">🎯 How to Read HIRO Flow Lines</h3>
+                    <p class="text-gray-400 mb-2">
+                        HIRO monitors real-time options trades and computes their cumulative hedging impact on the S&P 500 index.
+                    </p>
+                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
+                        <li><strong>Rising Flow Line</strong>: Signals aggressive customer call buying or put selling, forcing options market makers to buy stock to hedge (bullish pressure).</li>
+                        <li><strong>Falling Flow Line</strong>: Signals aggressive customer put buying or call selling, forcing options market makers to sell stock to hedge (bearish pressure).</li>
+                    </ul>
                 </div>
             </div>
-
-            <div class="text-xs text-gray-500 font-bold flex items-center gap-2">
-                <span>Custom Layout Engine</span>
-                <span class="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] px-2 py-0.5 rounded uppercase">Active</span>
-            </div>
-        </div>
-
-        <!-- Customizable Containers Grid -->
-        <div id="canvasGrid" class="canvas-grid">
-            <!-- Dynamically populated containers go here -->
         </div>
     </div>
 
-    <!-- Component Selection Modal -->
-    <div id="componentModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50">
-        <div class="bg-[#0b0f17] border border-gray-800 rounded-xl max-w-md w-full p-5 shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-sm font-black text-white uppercase tracking-wider">Add SpotGamma Component</h3>
-                <button id="closeModalBtn" class="text-gray-500 hover:text-white text-lg font-bold">×</button>
-            </div>
-            
-            <div class="space-y-2" id="modalOptionsList">
-                <!-- Buttons for each available tool/chart component -->
-                <button class="w-full bg-[#111827] hover:bg-[#1f2937] text-left p-3 rounded border border-gray-800 transition-colors flex items-center justify-between" onclick="selectComponent('trace')">
-                    <div>
-                        <div class="text-xs font-bold text-white">TRACE Exposure Heatmap</div>
-                        <div class="text-[10px] text-gray-500 mt-0.5">Real-time dealer hedging heatmap & S&P levels</div>
-                    </div>
-                    <span class="text-emerald-400 font-bold">→</span>
-                </button>
-                <button class="w-full bg-[#111827] hover:bg-[#1f2937] text-left p-3 rounded border border-gray-800 transition-colors flex items-center justify-between" onclick="selectComponent('hiro')">
-                    <div>
-                        <div class="text-xs font-bold text-white">HIRO Real-Time Flow Chart</div>
-                        <div class="text-[10px] text-gray-500 mt-0.5">Cumulative call/put options hedging pressure</div>
-                    </div>
-                    <span class="text-emerald-400 font-bold">→</span>
-                </button>
-                <button class="w-full bg-[#111827] hover:bg-[#1f2937] text-left p-3 rounded border border-gray-800 transition-colors flex items-center justify-between" onclick="selectComponent('skew')">
-                    <div>
-                        <div class="text-xs font-bold text-white">Volatility Skew Profile</div>
-                        <div class="text-[10px] text-gray-500 mt-0.5">Implied Volatility (IV) curve across strike prices</div>
-                    </div>
-                    <span class="text-emerald-400 font-bold">→</span>
-                </button>
-            </div>
-        </div>
-    </div>
 
     <script>
-        let currentActiveContainerId = null;
-        let containerCounter = 0;
-
-        // Navigation controls
-        document.getElementById('navTraceBtn').addEventListener('click', () => {
-            setView('trace');
-        });
-        document.getElementById('navHiroBtn').addEventListener('click', () => {
-            setView('hiro');
-        });
-        document.getElementById('navCanvasBtn').addEventListener('click', () => {
-            setView('canvas');
-        });
-
-        function setView(view) {
-            ['traceView', 'hiroView', 'canvasView'].forEach(id => document.getElementById(id).classList.add('hidden'));
-            ['navTraceBtn', 'navHiroBtn', 'navCanvasBtn'].forEach(id => {
-                document.getElementById(id).className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
-            });
-
-            if (view === 'trace') {
-                document.getElementById('traceView').classList.remove('hidden');
-                document.getElementById('navTraceBtn').className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
-                renderTrace();
-            } else if (view === 'hiro') {
-                document.getElementById('hiroView').classList.remove('hidden');
-                document.getElementById('navHiroBtn').className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
-                renderHiro();
-            } else {
-                document.getElementById('canvasView').classList.remove('hidden');
-                document.getElementById('navCanvasBtn').className = "px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
-                renderCanvasGrid();
-            }
-        }
-
-        // Canvas Layout Generation
-        const workspaces = {
-            sp500: [
-                { id: 1, title: "HIRO Real-Time", type: "hiro" },
-                { id: 2, title: "Volatility Skew", type: "skew" }
-            ],
-            equities: [
-                { id: 3, title: "TRACE Heatmap", type: "trace" }
-            ]
-        };
-
-        function renderCanvasGrid() {
-            const grid = document.getElementById('canvasGrid');
-            grid.innerHTML = "";
-            const currentWS = document.getElementById('canvasWorkspaceDropdown').value;
-            const items = workspaces[currentWS] || [];
-
-            items.forEach(item => {
-                createContainerElement(item.id, item.title, item.type);
-            });
-        }
-
-        function createContainerElement(id, title, type) {
-            const grid = document.getElementById('canvasGrid');
-            const card = document.createElement('div');
-            card.id = `canvas-container-${id}`;
-            card.className = "bg-[#0b0f17] border border-gray-800 rounded-xl p-4 flex flex-col relative min-h-[350px]";
-            card.innerHTML = `
-                <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-3">
-                    <span class="text-xs font-black text-gray-300 uppercase tracking-wider">${title}</span>
-                    <div class="flex items-center gap-1.5">
-                        <button class="text-xs text-emerald-400 font-bold hover:underline" onclick="openComponentModal(${id})">+ Component</button>
-                        <button class="text-xs text-rose-500 font-bold hover:underline ml-2" onclick="removeContainer(${id})">Delete</button>
-                    </div>
-                </div>
-                <div id="container-body-${id}" class="flex-grow w-full flex items-center justify-center">
-                    <!-- Plotly Canvas gets drawn here -->
-                </div>
-            `;
-            grid.appendChild(card);
-
-            // Trigger plots based on type
-            setTimeout(() => {
-                renderComponentToPlot(id, type);
-            }, 50);
-        }
-
-        function renderComponentToPlot(id, type) {
-            const body = document.getElementById(`container-body-${id}`);
-            if (!body) return;
-            body.innerHTML = `<div id="plot-viewport-${id}" class="w-full h-[280px]"></div>`;
-
-            if (type === 'hiro') {
-                const times = prices.map(p => p.time);
-                const close = prices.map(p => p.close);
-                const fig = {
-                    data: [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#10b981' }, name: 'Price' }],
-                    layout: { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 }, xaxis: { showgrid: true, gridcolor: '#1e293b' }, yaxis: { showgrid: true, gridcolor: '#1e293b' } }
-                };
-                Plotly.newPlot(`plot-viewport-${id}`, fig.data, fig.layout, { responsive: true, displayModeBar: false });
-            } else if (type === 'skew') {
-                const strikes = [720, 725, 730, 735, 740, 745, 750];
-                const iv = [15.2, 13.1, 11.5, 9.8, 10.2, 12.1, 14.5];
-                const fig = {
-                    data: [{ x: strikes, y: iv, type: 'scatter', mode: 'lines+markers', line: { color: '#fbbf24' } }],
-                    layout: { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 }, xaxis: { showgrid: true, gridcolor: '#1e293b' }, yaxis: { showgrid: true, gridcolor: '#1e293b' } }
-                };
-                Plotly.newPlot(`plot-viewport-${id}`, fig.data, fig.layout, { responsive: true, displayModeBar: false });
-            } else if (type === 'trace') {
-                const times = prices.map(p => p.time);
-                const close = prices.map(p => p.close);
-                const fig = {
-                    data: [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#3b82f6' } }],
-                    layout: { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 }, xaxis: { showgrid: true, gridcolor: '#1e293b' }, yaxis: { showgrid: true, gridcolor: '#1e293b' } }
-                };
-                Plotly.newPlot(`plot-viewport-${id}`, fig.data, fig.layout, { responsive: true, displayModeBar: false });
-            } else {
-                body.innerHTML = `<span class="text-xs text-gray-500 font-bold">Empty Container</span>`;
-            }
-        }
-
-        function openComponentModal(containerId) {
-            currentActiveContainerId = containerId;
-            document.getElementById('componentModal').classList.remove('hidden');
-            document.getElementById('componentModal').classList.add('flex');
-        }
-
-        function selectComponent(type) {
-            if (currentActiveContainerId) {
-                renderComponentToPlot(currentActiveContainerId, type);
-            }
-            document.getElementById('componentModal').classList.add('hidden');
-        }
-
-        document.getElementById('closeModalBtn').addEventListener('click', () => {
-            document.getElementById('componentModal').classList.add('hidden');
-        });
-
-        document.getElementById('addEmptyContainerBtn').addEventListener('click', () => {
-            containerCounter++;
-            createContainerElement(`new-${containerCounter}`, `Container ${containerCounter}`, 'empty');
-        });
-
-        document.getElementById('canvasWorkspaceDropdown').addEventListener('change', renderCanvasGrid);
-
-        function removeContainer(id) {
-            const el = document.getElementById(`canvas-container-${id}`);
-            if (el) el.remove();
-        }
-
-        // Reuse previous logic for TRACE & HIRO
         let currentData = [];
         let prices = [];
         let traceData = {};
 
+        // Nav logic
+        const views = {
+            trace: 'traceView',
+            hiro: 'hiroView',
+            bobby: 'bobbyView',
+            canvas: 'canvasView',
+            help: 'helpView'
+        };
+
+        const navBtns = {
+            trace: 'navTraceBtn',
+            hiro: 'navHiroBtn',
+            bobby: 'navBobbyBtn',
+            canvas: 'navCanvasBtn',
+            help: 'navHelpBtn'
+        };
+
+        function setView(target) {
+            Object.keys(views).forEach(k => {
+                document.getElementById(views[k]).classList.add('hidden');
+                document.getElementById(navBtns[k]).className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
+            });
+
+            document.getElementById(views[target]).classList.remove('hidden');
+            document.getElementById(navBtns[target]).className = "px-3 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
+
+            if (target === 'trace') renderTrace();
+            else if (target === 'hiro') renderHiro();
+            else if (target === 'bobby') renderBobbyView();
+            else if (target === 'canvas') renderCanvas();
+        }
+
+        Object.keys(navBtns).forEach(k => {
+            document.getElementById(navBtns[k]).addEventListener('click', () => setView(k));
+        });
+
+        // Fetch options chain
         async function loadOptionsData() {
             const symbol = document.getElementById('traceSymbolInput').value;
             try {
@@ -452,7 +314,7 @@
                 currentData = data;
                 generateDashboardSynthetics();
                 renderTrace();
-                renderHiro();
+                renderBobbyView();
             } catch (error) {
                 console.error("Failed to load options data:", error);
             }
@@ -500,11 +362,11 @@
             };
         }
 
+        // Render TRACE Heatmap with mouse scroll enabled
         function renderTrace() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
             const idx = parseInt(document.getElementById('traceSlider').value);
-            const invertPos = document.getElementById('traceInvertToggle').checked;
             const showKeyLevels = document.getElementById('traceKeyLevelsToggle').checked;
 
             const currentPrices = prices.slice(0, idx + 1);
@@ -549,7 +411,6 @@
                     if (Math.abs(strike - callWall) < 1.5) intensity = 50 + Math.sin(tIdx / 8) * 10;
                     else if (Math.abs(strike - putWall) < 1.5) intensity = -50 + Math.cos(tIdx / 6) * 10;
                     else if (Math.abs(strike - price) < 2) intensity = (strike > gFlip) ? 20 : -25;
-                    if (invertPos) intensity = -intensity;
                     zMatrix[sIdx][tIdx] = intensity;
                 }
             });
@@ -584,19 +445,18 @@
                     yaxis2: { domain: [0, 1], anchor: 'x2', matches: 'y', showticklabels: false }
                 }
             };
-            Plotly.newPlot('traceDashboardPlot', fig.data, fig.layout, { responsive: true, displayModeBar: false });
+            
+            // Enable scroll zoom configuration!
+            Plotly.newPlot('traceDashboardPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
         }
 
+        // Render HIRO
         function renderHiro() {
             if (!currentData || currentData.length === 0) return;
-            const spot = currentData[0].underlying_price;
             const times = prices.map(p => p.time);
             const close = prices.map(p => p.close);
-
             const fig = {
-                data: [
-                    { x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#ffffff' }, name: 'Price' }
-                ],
+                data: [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#ffffff' }, name: 'Price' }],
                 layout: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
@@ -605,9 +465,101 @@
                     yaxis: { showgrid: true, gridcolor: '#1e293b' }
                 }
             };
-            Plotly.newPlot('hiroChartPlot', fig.data, fig.layout, { responsive: true, displayModeBar: false });
+            Plotly.newPlot('hiroChartPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
         }
 
+        // Render Bobby View Option Chain Table
+        function renderBobbyView() {
+            if (!currentData || currentData.length === 0) return;
+            const spot = currentData[0].underlying_price;
+
+            // Find peak metrics for highlights
+            let peakPosGex = -Infinity;
+            let peakNegGex = Infinity;
+
+            currentData.forEach(d => {
+                if (d.gex > peakPosGex) peakPosGex = d.gex;
+                if (d.gex < peakNegGex) peakNegGex = d.gex;
+            });
+
+            // Group by Strike
+            const rowMap = {};
+            currentData.forEach(d => {
+                if (!rowMap[d.strike]) {
+                    rowMap[d.strike] = { strike: d.strike, gex: 0, dex: 0, oi: 0 };
+                }
+                rowMap[d.strike].gex += d.gex;
+                rowMap[d.strike].dex += d.dex;
+                rowMap[d.strike].oi += d.open_interest;
+            });
+
+            const sortedStrikes = Object.keys(rowMap).map(Number).sort((a, b) => b - a); // Higher strike on top
+            let html = "";
+
+            sortedStrikes.forEach(strike => {
+                const node = rowMap[strike];
+                const isSpot = Math.abs(strike - spot) < 2;
+
+                // Color coding rules based on GEX
+                let rowClass = "hover:bg-slate-900/60";
+                if (node.gex === peakPosGex) rowClass = "bobby-peak-pos";
+                else if (node.gex === peakNegGex) rowClass = "bobby-peak-neg";
+                else if (node.gex > 0) rowClass = "bobby-pos";
+                else if (node.gex < 0) rowClass = "bobby-neg";
+
+                const spotBubble = isSpot ? `<span class="bg-white text-black font-black px-1.5 py-0.5 rounded-full text-[9px] animate-pulse">●</span>` : "";
+
+                html += `
+                    <tr class="${rowClass}">
+                        <td class="py-3 px-4 font-bold">${spotBubble}</td>
+                        <td class="py-3 px-4 font-bold text-white">${strike}</td>
+                        <td class="py-3 px-4">${(node.gex / 1000000).toFixed(2)}M</td>
+                        <td class="py-3 px-4 text-emerald-400">+${(Math.random() * 5).toFixed(1)}%</td>
+                        <td class="py-3 px-4">${(node.dex / 1000000).toFixed(2)}M</td>
+                        <td class="py-3 px-4 font-semibold">${(node.oi / 1000).toFixed(0)}K</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('bobbyChainBody').innerHTML = html;
+        }
+
+        // Timeline Scrubbing Event
+        document.getElementById('traceSlider').addEventListener('input', renderTrace);
+
+        // Play/Pause Auto-Play
+        let tracePlayInterval = null;
+        let isTracePlaying = false;
+        document.getElementById('tracePlayBtn').addEventListener('click', () => {
+            const btn = document.getElementById('tracePlayBtn');
+            const slider = document.getElementById('traceSlider');
+            if (isTracePlaying) {
+                clearInterval(tracePlayInterval);
+                btn.innerText = "▶ Play";
+                isTracePlaying = false;
+            } else {
+                btn.innerText = "⏸ Pause";
+                isTracePlaying = true;
+                tracePlayInterval = setInterval(() => {
+                    let val = parseInt(slider.value);
+                    if (val >= 119) slider.value = 0;
+                    else slider.value = val + 1;
+                    renderTrace();
+                }, 200);
+            }
+        });
+
+        // Initialize Options Data
+        document.getElementById('traceSymbolInput').addEventListener('change', loadOptionsData);
+        document.getElementById('traceParticipantSelect').addEventListener('change', renderTrace);
+        document.getElementById('traceModelSelect').addEventListener('change', renderTrace);
+        document.getElementById('traceLensSelect').addEventListener('change', renderTrace);
+        document.getElementById('traceKeyLevelsToggle').addEventListener('change', renderTrace);
+        document.getElementById('traceCandleInterval').addEventListener('change', renderTrace);
+        document.getElementById('traceLoadBtn').addEventListener('click', loadOptionsData);
+        document.getElementById('bobbyRefreshBtn').addEventListener('click', loadOptionsData);
+
+        // Initial Load
         loadOptionsData();
     </script>
 </body>
