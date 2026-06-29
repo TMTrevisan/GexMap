@@ -3,193 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Options Exposure & Liquidity Dashboard</title>
+    <title>SpotGamma TRACE - Options Flow & Liquidity Heatmap</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Plotly.js for Multi-Subplot Advanced Charting -->
+    <!-- Plotly.js for advanced multi-subplot options flow mapping -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { background-color: #0b0e14; color: #f3f4f6; font-family: system-ui, sans-serif; }
-        .kpi-card { background-color: #11151e; border: 1px solid #1f293d; }
+        body { background-color: #05080c; color: #e2e8f0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .control-panel { background-color: #0b0f17; border-bottom: 1px solid #1e293b; }
+        .kpi-card { background-color: #0f172a; border: 1px solid #1e293b; }
         /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0f131a; }
-        ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: #070a0f; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
     </style>
 </head>
-<body class="p-4 select-none">
-    <div class="max-w-[1600px] mx-auto">
-        <!-- Control Bar -->
-        <div class="bg-[#111520] border border-[#1f2a3f] p-3 rounded-lg flex flex-wrap items-center gap-3 text-xs font-semibold mb-4 text-gray-300">
-            <div class="flex items-center gap-1.5">
-                <span>Symbol</span>
-                <select id="symbolInput" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none focus:border-emerald-500">
-                    <option value="SPY" selected>SPY</option>
-                    <option value="QQQ">QQQ</option>
-                    <option value="I:SPX">SPX</option>
-                    <option value="AAPL">AAPL</option>
-                    <option value="NVDA">NVDA</option>
-                </select>
-            </div>
+<body class="p-0 select-none overflow-x-hidden">
 
-            <div class="flex items-center gap-1.5">
-                <span>TF</span>
-                <select id="tfSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="5m" selected>5m</option>
-                    <option value="15m">15m</option>
-                    <option value="1h">1h</option>
-                </select>
+    <!-- SpotGamma TRACE Header & Controls -->
+    <div class="control-panel px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-4">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-2">
+                <span class="text-2xl font-black tracking-tight text-white flex items-center">
+                    <span class="text-emerald-400 font-extrabold mr-1">⚡</span> SPOT<span class="text-emerald-400">GAMMA</span>
+                </span>
+                <span class="bg-[#1e293b] text-gray-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">TRACE</span>
             </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Days</span>
-                <select id="daysSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="5" selected>5</option>
-                    <option value="10">10</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Expiry</span>
-                <select id="expirySelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="nearest" selected>nearest</option>
-                    <option value="next">next</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Aggregate</span>
-                <select id="aggSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="nearest2" selected>nearest 2</option>
-                    <option value="nearest5">nearest 5</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Range ±%</span>
-                <select id="rangeSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="1.5" selected>1.5</option>
-                    <option value="3.0">3.0</option>
-                    <option value="5.0">5.0</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Metric</span>
-                <select id="metricSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="gex" selected>GEX (volxγ)</option>
-                    <option value="dex">DEX (volxδ)</option>
-                    <option value="volume">Volume</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Window</span>
-                <select id="windowSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="rolling" selected>Rolling</option>
-                    <option value="static">Static</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>N</span>
-                <input type="number" id="nInput" value="3" class="bg-[#181f2d] border border-[#2d3a54] text-white px-1.5 py-1 rounded w-10 text-center">
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Heatmap</span>
-                <select id="heatmapSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="liquidity" selected>Liquidity</option>
-                    <option value="net_gex">Net GEX</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Strikes</span>
-                <select id="strikesSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="21" selected>21</option>
-                    <option value="41">41</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>Top walls</span>
-                <select id="wallsSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-1.5">
-                <span>LS regime</span>
-                <select id="lsRegimeSelect" class="bg-[#181f2d] border border-[#2d3a54] text-white px-2 py-1 rounded focus:outline-none">
-                    <option value="balanced" selected>Balanced</option>
-                    <option value="skewed">Skewed</option>
-                </select>
-            </div>
-
-            <button id="loadBtn" class="bg-[#2a3854] hover:bg-[#394a6d] text-white px-4 py-1 rounded font-bold transition-colors">
-                ↻ Refresh
-            </button>
+            
+            <!-- Target Selection -->
+            <div class="h-6 w-px bg-gray-800"></div>
+            <select id="symbolInput" class="bg-[#0f172a] border border-[#334155] text-white text-xs font-bold px-3 py-1.5 rounded-lg focus:outline-none focus:border-emerald-500">
+                <option value="SPY" selected>SPY (S&P 500 ETF)</option>
+                <option value="I:SPX">SPX (S&P 500 Index)</option>
+                <option value="QQQ">QQQ (Nasdaq 100)</option>
+            </select>
         </div>
 
-        <!-- KPIs Row -->
-        <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3 mb-4 text-center">
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Spot</div>
-                <div id="spotVal" class="text-base font-black mt-0.5 text-white">--</div>
+        <!-- Toolbar Options -->
+        <div class="flex flex-wrap items-center gap-3 text-xs">
+            <!-- Participant Selection -->
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Participant</span>
+                <select id="participantSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                    <option value="market_makers" selected>Market Makers (Hedging)</option>
+                    <option value="customers">Customers (Retail)</option>
+                    <option value="pro_customers">Pro Customers (Prop)</option>
+                    <option value="firms">Firms</option>
+                    <option value="broker_dealers">Broker Dealers</option>
+                </select>
             </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">LS Regime</div>
-                <div id="regimeVal" class="text-sm font-black mt-1 text-emerald-400">Weak Bull</div>
-            </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Net GEX</div>
-                <div class="mt-1"><span id="netGexVal" class="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] px-2 py-0.5 rounded font-black">CALL</span></div>
-            </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Net DEX</div>
-                <div class="mt-1"><span id="netDexVal" class="bg-rose-950 text-rose-400 border border-rose-800 text-[10px] px-2 py-0.5 rounded font-black">BEAR</span></div>
-            </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Call Wall</div>
-                <div id="callWallVal" class="text-base font-black mt-0.5 text-sky-400">--</div>
-            </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Put Wall</div>
-                <div id="putWallVal" class="text-base font-black mt-0.5 text-amber-500">--</div>
-            </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Γ-Flip</div>
-                <div id="gFlipVal" class="text-base font-black mt-0.5 text-yellow-400">--</div>
-            </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">P/C</div>
-                <div id="pcRatioVal" class="text-base font-black mt-0.5 text-white">--</div>
-            </div>
-            <div class="kpi-card p-2 rounded-lg">
-                <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">ATM IV</div>
-                <div id="atmIvVal" class="text-base font-black mt-0.5 text-white">--</div>
-            </div>
-        </div>
 
-        <!-- Main Dashboard Visualization Grid -->
-        <div class="bg-[#0e121b] border border-[#1a2333] rounded-xl p-4 relative min-h-[600px]">
-            <div id="loader" class="absolute inset-0 bg-[#0b0e14]/90 flex items-center justify-center rounded-xl z-50">
-                <div class="text-center">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400 mx-auto mb-4"></div>
-                    <p class="text-gray-400 font-medium">Calculating GEX timeline & liquidity snapshots...</p>
+            <!-- Lens Model Dropdown -->
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Model / Lens</span>
+                <select id="modelSelect" class="bg-[#0f172a] border border-[#334155] text-emerald-400 font-bold px-3 py-1.5 rounded focus:outline-none focus:border-emerald-500">
+                    <option value="gamma" selected>Gamma Exposure (Volatility)</option>
+                    <option value="delta_pressure">Delta Pressure (Hedging)</option>
+                    <option value="charm_pressure">Charm Pressure (0DTE Decay)</option>
+                </select>
+            </div>
+
+            <!-- Lens Model Dropdown -->
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Strike View</span>
+                <select id="lensSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                    <option value="gex" selected>GEX by Strike</option>
+                    <option value="oi">OI by Strike</option>
+                    <option value="net_oi">Net OI by Strike</option>
+                </select>
+            </div>
+
+            <!-- Invert Toggle -->
+            <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
+                <input type="checkbox" id="invertToggle" class="accent-emerald-500 cursor-pointer w-4 h-4">
+                <label for="invertToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Invert Pos</label>
+            </div>
+
+            <!-- Key Levels Toggle -->
+            <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
+                <input type="checkbox" id="keyLevelsToggle" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
+                <label for="keyLevelsToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Key Levels</label>
+            </div>
+
+            <!-- Candle Settings -->
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Candles</span>
+                <select id="candleInterval" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
+                    <option value="1m">1 min</option>
+                    <option value="5m" selected>5 min</option>
+                    <option value="15m">15 min</option>
+                </select>
+            </div>
+
+            <!-- Stability Gauge -->
+            <div class="flex items-center gap-2 bg-[#0d1527] border border-[#1e293b] px-3 py-1 rounded-lg">
+                <div class="relative w-8 h-8 flex items-center justify-center">
+                    <!-- Simple SVG circle progress gauge -->
+                    <svg class="absolute w-full h-full transform -rotate-95">
+                        <circle cx="16" cy="16" r="13" stroke="#1e293b" stroke-width="2.5" fill="transparent"/>
+                        <circle cx="16" cy="16" r="13" stroke="#10b981" stroke-width="2.5" fill="transparent" stroke-dasharray="81.68" stroke-dashoffset="58"/>
+                    </svg>
+                    <span class="text-[9px] font-black text-emerald-400">27%</span>
+                </div>
+                <div class="text-left">
+                    <span class="text-[9px] text-gray-400 block font-bold uppercase leading-none">Stability</span>
+                    <span class="text-[10px] text-emerald-400 font-black tracking-wide leading-none">STABLE</span>
                 </div>
             </div>
-            <div id="mainDashboardPlot" class="w-full h-[700px]"></div>
+
+            <!-- 0DTE Tracking Toggle -->
+            <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#11221b] border border-emerald-800/40 rounded">
+                <input type="checkbox" id="zeroDteToggle" class="accent-emerald-400 cursor-pointer w-4 h-4">
+                <label for="zeroDteToggle" class="text-[10px] text-emerald-400 font-black tracking-wider uppercase cursor-pointer select-none">0DTE Tracker</label>
+            </div>
+
+            <!-- Refresh Button -->
+            <button id="loadBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[34px] rounded transition-colors self-end uppercase tracking-wider">
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Workspace Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
+        
+        <!-- TRACE User Manual & Interactive Educational Reference (Left Column on larger viewports) -->
+        <div class="lg:col-span-3 flex flex-col gap-4">
+            
+            <!-- KPIs Panel -->
+            <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4">
+                <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span> Real-time S&P Indicators
+                </h3>
+                <div class="grid grid-cols-2 gap-2 text-center text-xs">
+                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Spot Price</span>
+                        <span id="spotVal" class="text-base font-black text-white">--</span>
+                    </div>
+                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                        <span class="text-[9px] text-gray-500 font-bold block uppercase">HIRO Flow</span>
+                        <span id="hiroVal" class="text-base font-black text-purple-400">+185.3K</span>
+                    </div>
+                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Call Wall</span>
+                        <span id="callWallVal" class="text-base font-black text-sky-400">--</span>
+                    </div>
+                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80">
+                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Put Wall</span>
+                        <span id="putWallVal" class="text-base font-black text-amber-500">--</span>
+                    </div>
+                    <div class="bg-[#111827] p-2 rounded border border-gray-800/80 col-span-2">
+                        <span class="text-[9px] text-gray-500 font-bold block uppercase">Γ-Flip Price</span>
+                        <span id="gFlipVal" class="text-base font-black text-yellow-400">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Guide Card -->
+            <div class="bg-[#0b0f17] border border-[#1e293b] rounded-xl p-4 flex-grow flex flex-col">
+                <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2">
+                    📖 TRACE Market Guide
+                </h3>
+                
+                <div class="space-y-4 text-xs flex-grow overflow-y-auto max-h-[480px] pr-1">
+                    <!-- Gamma Guide -->
+                    <div class="bg-[#111827]/40 border border-gray-800/60 p-3 rounded-lg">
+                        <h4 class="font-bold text-sky-400 flex items-center gap-1.5 mb-1.5">
+                            <span class="w-2 h-2 bg-sky-500 rounded-full"></span> Gamma Lens (Realized Vol)
+                        </h4>
+                        <p class="text-gray-400 leading-relaxed text-[11px] mb-2">
+                            Anticipates local areas of realized volatility based on market maker options positioning.
+                        </p>
+                        <div class="space-y-1 text-[10px]">
+                            <div class="flex justify-between border-b border-gray-800/40 pb-0.5"><span class="text-blue-400 font-bold">Blue Zones:</span> <span class="text-gray-300">Positive Gamma (Vol Dampens / Pin)</span></div>
+                            <div class="flex justify-between"><span class="text-red-400 font-bold">Red Zones:</span> <span class="text-gray-300">Negative Gamma (Vol Expands / Run)</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Delta Pressure -->
+                    <div class="bg-[#111827]/40 border border-gray-800/60 p-3 rounded-lg">
+                        <h4 class="font-bold text-emerald-400 flex items-center gap-1.5 mb-1.5">
+                            <span class="w-2 h-2 bg-emerald-500 rounded-full"></span> Delta Pressure (Hedging Flows)
+                        </h4>
+                        <p class="text-gray-400 leading-relaxed text-[11px] mb-2">
+                            Displays net change in options delta positioning. Shows where hedging creates directional buying/selling pressure.
+                        </p>
+                        <div class="space-y-1 text-[10px]">
+                            <div class="flex justify-between border-b border-gray-800/40 pb-0.5"><span class="text-emerald-400 font-bold">Positive Env:</span> <span class="text-gray-300">Red = Resistance / Blue = Support</span></div>
+                            <div class="flex justify-between"><span class="text-rose-400 font-bold">Negative Env:</span> <span class="text-gray-300">Blue = Fuel/Break / Red = Flush/Slide</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Charm Pressure -->
+                    <div class="bg-[#111827]/40 border border-gray-800/60 p-3 rounded-lg">
+                        <h4 class="font-bold text-purple-400 flex items-center gap-1.5 mb-1.5">
+                            <span class="w-2 h-2 bg-purple-500 rounded-full"></span> Charm Pressure (Time Decay)
+                        </h4>
+                        <p class="text-gray-400 leading-relaxed text-[11px] mb-2">
+                            Depicts exposure change with respect to time decay. Extremely critical around large 0DTE volume expirations.
+                        </p>
+                        <div class="space-y-1 text-[10px]">
+                            <div class="flex justify-between border-b border-gray-800/40 pb-0.5"><span class="text-purple-400 font-bold">Pinning Effect:</span> <span class="text-gray-300">Occurs near positive gamma nodes at EOD</span></div>
+                            <div class="flex justify-between"><span class="text-gray-400 font-bold">Red/Blue Boundary:</span> <span class="text-gray-300">Spot price naturally drifts to boundary</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRACE Core Chart & Subplots (Right Columns) -->
+        <div class="lg:col-span-9 flex flex-col gap-4 bg-[#080c10] border border-gray-800/80 rounded-xl p-4 relative">
+            
+            <!-- Real-time Loading Mask -->
+            <div id="loader" class="absolute inset-0 bg-[#080c10]/90 flex items-center justify-center rounded-xl z-50">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400 mx-auto mb-4"></div>
+                    <p class="text-gray-400 font-medium">Recreating SpotGamma TRACE dashboard...</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Chart Viewport -->
+            <div id="traceDashboardPlot" class="w-full h-[650px]"></div>
+
+            <!-- Timeline Scrubbing Slider -->
+            <div class="border-t border-gray-800/80 pt-4 flex flex-col gap-2">
+                <div class="flex justify-between items-center text-xs text-gray-500 px-1">
+                    <span class="font-bold uppercase tracking-wider text-emerald-400">🕒 Timeline Slider</span>
+                    <span id="currentTimeLabel" class="font-black text-gray-300 bg-slate-900 px-2 py-0.5 rounded border border-gray-800">09:30 AM</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="timelineSlider" min="0" max="119" value="119" class="flex-grow accent-emerald-500 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
+                    <button id="playBtn" class="bg-[#1f293d] hover:bg-[#2d3748] text-white font-bold px-4 py-1.5 rounded text-xs transition-colors shrink-0">
+                        ▶ Play
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         let currentData = [];
+        let prices = [];
+        let traceData = {};
+        let timerId = null;
 
-        async function loadDashboard() {
-            const symbol = document.getElementById('symbolInput').value.trim();
+        async function initDashboard() {
+            const symbol = document.getElementById('symbolInput').value;
             const loader = document.getElementById('loader');
             loader.classList.remove('hidden');
 
@@ -197,219 +258,231 @@
                 const response = await fetch(`/api/data?symbol=${symbol}`);
                 const data = await response.json();
                 currentData = data;
-                renderDashboard();
+                
+                // Synthesize/Calculate prices and GEX profile structure
+                generateSynthetics();
+                renderTrace();
             } catch (error) {
-                console.error("Failed to load options data:", error);
-                alert("Error loading dashboard data. Check Vercel API connection.");
+                console.error("Error loading SpotGamma TRACE:", error);
+                alert("Failed to load options data. Please verify your local/Vercel server is active.");
             } finally {
                 loader.classList.add('hidden');
             }
         }
 
-        function getPercentileValue(arr, percentile) {
-            if (arr.length === 0) return 0;
-            const sorted = [...arr].sort((a, b) => a - b);
-            const index = Math.floor((sorted.length - 1) * percentile);
-            return sorted[index];
-        }
-
-        function renderDashboard() {
+        function generateSynthetics() {
             if (!currentData || currentData.length === 0) return;
 
             const spot = currentData[0].underlying_price;
-            const metric = document.getElementById('metricSelect').value;
-            const rangePct = parseFloat(document.getElementById('rangeSelect').value) / 100;
-            const numStrikes = parseInt(document.getElementById('strikesSelect').value);
-
-            // 1. Calculate Option Walls and KPIs
-            const strikeTotals = {};
-            const ivs = [];
-            let callOiSum = 0;
-            let putOiSum = 0;
-
-            currentData.forEach(item => {
-                strikeTotals[item.strike] = (strikeTotals[item.strike] || 0) + item.gex;
-                if (Math.abs(item.strike - spot) < 2) {
-                    ivs.push(item.volume); // proxy for IV representation
-                }
-                // Calculate P/C ratio based on volume/OI
-                callOiSum += item.gex > 0 ? item.open_interest : 0;
-                putOiSum += item.gex < 0 ? item.open_interest : 0;
-            });
-
-            const uniqueStrikes = Object.keys(strikeTotals).map(Number).sort((a, b) => a - b);
-            const spotStrikes = uniqueStrikes.filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct));
-
-            let callWall = spot;
-            let maxCallGex = -Infinity;
-            let putWall = spot;
-            let minPutGex = Infinity;
-
-            spotStrikes.forEach(strike => {
-                const val = strikeTotals[strike];
-                if (val > maxCallGex) {
-                    maxCallGex = val;
-                    callWall = strike;
-                }
-                if (val < minPutGex) {
-                    minPutGex = val;
-                    putWall = strike;
-                }
-            });
-
-            // Gamma Flip Price level approximation
-            let gFlip = (callWall + putWall) / 2;
-            const pcRatio = putOiSum > 0 ? (callOiSum / putOiSum).toFixed(2) : "1.00";
-            
-            // Set KPI Values
-            document.getElementById('spotVal').innerText = `$${spot.toFixed(2)}`;
-            document.getElementById('callWallVal').innerText = `$${callWall.toFixed(0)}`;
-            document.getElementById('putWallVal').innerText = `$${putWall.toFixed(0)}`;
-            document.getElementById('gFlipVal').innerText = `$${gFlip.toFixed(1)}`;
-            document.getElementById('pcRatioVal').innerText = pcRatio;
-            document.getElementById('atmIvVal').innerText = `${(9.3 + Math.random()).toFixed(1)}%`;
-
-            const totalGex = currentData.reduce((acc, d) => acc + d.dollar_gex, 0);
-            if (totalGex >= 0) {
-                document.getElementById('netGexVal').innerText = "CALL";
-                document.getElementById('netGexVal').className = "bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] px-2 py-0.5 rounded font-black";
-                document.getElementById('regimeVal').innerText = "Weak Bull";
-                document.getElementById('regimeVal').className = "text-sm font-black mt-1 text-emerald-400";
-            } else {
-                document.getElementById('netGexVal').innerText = "PUT";
-                document.getElementById('netGexVal').className = "bg-rose-950 text-rose-400 border border-rose-800 text-[10px] px-2 py-0.5 rounded font-black";
-                document.getElementById('regimeVal').innerText = "Weak Bear";
-                document.getElementById('regimeVal').className = "text-sm font-black mt-1 text-rose-400";
-            }
-
-            // 2. Synthesize Historical Candle Data & Heatmap
-            // 5 days of data = 5 * 78 bars of 5m
             const numBars = 120;
-            const times = [];
-            const open = [];
-            const high = [];
-            const low = [];
-            const close = [];
             
-            let baseTime = new Date();
+            // Create time increments starting from 9:30 AM
+            const baseTime = new Date();
             baseTime.setHours(9, 30, 0, 0);
-            let currentPrice = spot - 5; // Start price slightly lower
+            
+            prices = [];
+            let currentPrice = spot - 3.5;
 
-            // Create smooth random walk matching spot price at end
+            // Generate Price walk
             for (let i = 0; i < numBars; i++) {
-                let dt = new Date(baseTime.getTime() + i * 5 * 60 * 1000);
-                times.push(dt);
-
-                let start = currentPrice;
-                let change = (Math.random() - 0.49) * 1.5;
+                const time = new Date(baseTime.getTime() + i * 5 * 60 * 1000);
+                const start = currentPrice;
+                const change = (Math.random() - 0.48) * 1.8;
                 let end = start + change;
-                if (i === numBars - 1) end = spot; // Pin to spot at end
+                if (i === numBars - 1) end = spot;
 
-                let max = Math.max(start, end) + Math.random() * 0.5;
-                let min = Math.min(start, end) - Math.random() * 0.5;
+                const max = Math.max(start, end) + Math.random() * 0.4;
+                const min = Math.min(start, end) - Math.random() * 0.4;
 
-                open.push(start);
-                high.push(max);
-                low.push(min);
-                close.push(end);
+                prices.push({
+                    time, open: start, high: max, low: min, close: end
+                });
                 currentPrice = end;
             }
 
-            // Create Heatmap Z Matrix (strikes vs times)
-            const strikesRange = spotStrikes.slice(0, numStrikes);
+            // Group GEX by strike
+            const strikeTotals = {};
+            const callOI = {};
+            const putOI = {};
+            const totalVol = {};
+
+            currentData.forEach(item => {
+                strikeTotals[item.strike] = (strikeTotals[item.strike] || 0) + item.gex;
+                callOI[item.strike] = (callOI[item.strike] || 0) + (item.gex > 0 ? item.open_interest : 0);
+                putOI[item.strike] = (putOI[item.strike] || 0) + (item.gex < 0 ? item.open_interest : 0);
+                totalVol[item.strike] = (totalVol[item.strike] || 0) + item.volume;
+            });
+
+            traceData = {
+                strikes: Object.keys(strikeTotals).map(Number).sort((a, b) => a - b),
+                totals: strikeTotals,
+                calls: callOI,
+                puts: putOI,
+                volumes: totalVol
+            };
+        }
+
+        function renderTrace() {
+            if (!currentData || currentData.length === 0) return;
+
+            const spot = currentData[0].underlying_price;
+            const modelLens = document.getElementById('modelSelect').value;
+            const strikeLens = document.getElementById('lensSelect').value;
+            const indexIndex = parseInt(document.getElementById('timelineSlider').value);
+            const invertPos = document.getElementById('invertToggle').checked;
+            const showKeyLevels = document.getElementById('keyLevelsToggle').checked;
+
+            // Current state up to selected timeline step
+            const currentPrices = prices.slice(0, indexIndex + 1);
+            const times = currentPrices.map(p => p.time);
+            const close = currentPrices.map(p => p.close);
+            const open = currentPrices.map(p => p.open);
+            const high = currentPrices.map(p => p.high);
+            const low = currentPrices.map(p => p.low);
+
+            // Filter strikes around spot
+            const range = spot * 0.025; // +/- 2.5%
+            const strikesInRange = traceData.strikes.filter(s => s >= spot - range && s <= spot + range);
+
+            // Find Call/Put Walls
+            let maxCallGex = -Infinity;
+            let callWall = spot;
+            let minPutGex = Infinity;
+            let putWall = spot;
+
+            strikesInRange.forEach(s => {
+                const val = traceData.totals[s] || 0;
+                if (val > maxCallGex) {
+                    maxCallGex = val;
+                    callWall = s;
+                }
+                if (val < minPutGex) {
+                    minPutGex = val;
+                    putWall = s;
+                }
+            });
+
+            let gFlip = (callWall + putWall) / 2;
+
+            // Update KPI row
+            document.getElementById('spotVal').innerText = `$${close[close.length - 1].toFixed(2)}`;
+            document.getElementById('callWallVal').innerText = `$${callWall.toFixed(0)}`;
+            document.getElementById('putWallVal').innerText = `$${putWall.toFixed(0)}`;
+            document.getElementById('gFlipVal').innerText = `$${gFlip.toFixed(1)}`;
+            
+            const timeVal = times[times.length - 1];
+            document.getElementById('currentTimeLabel').innerText = timeVal ? timeVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : "09:30 AM";
+
+            // Generate Heatmap matrix based on selected modelLens
             const zMatrix = [];
-            for (let i = 0; i < strikesRange.length; i++) {
-                zMatrix.push(new Array(numBars).fill(0));
+            for (let i = 0; i < strikesInRange.length; i++) {
+                zMatrix.push(new Array(currentPrices.length).fill(0));
             }
 
-            // Populate Heatmap (concentrated near call/put walls)
-            strikesRange.forEach((strike, sIdx) => {
-                for (let tIdx = 0; tIdx < numBars; tIdx++) {
-                    const priceAtTime = close[tIdx];
+            strikesInRange.forEach((strike, sIdx) => {
+                for (let tIdx = 0; tIdx <= indexIndex; tIdx++) {
+                    const price = close[tIdx];
                     let intensity = 0;
-                    
-                    // Call wall concentration (Blue bands)
-                    if (Math.abs(strike - callWall) < 1) {
-                        intensity = 40 + Math.sin(tIdx / 5) * 15;
-                    }
-                    // Put wall concentration (Brown bands)
-                    else if (Math.abs(strike - putWall) < 1) {
-                        intensity = -35 + Math.cos(tIdx / 8) * 10;
-                    } 
-                    // Dynamic concentration near the moving price
-                    else if (Math.abs(strike - priceAtTime) < 1.5) {
-                        intensity = (Math.sin(tIdx / 12) > 0) ? 20 : -20;
+
+                    if (modelLens === 'gamma') {
+                        // Blue = Positive Gamma (Stability)
+                        // Red = Negative Gamma (Volatility)
+                        if (Math.abs(strike - callWall) < 1.5) {
+                            intensity = 50 + Math.sin(tIdx / 8) * 10;
+                        } else if (Math.abs(strike - putWall) < 1.5) {
+                            intensity = -50 + Math.cos(tIdx / 6) * 10;
+                        } else if (Math.abs(strike - price) < 2) {
+                            intensity = (strike > gFlip) ? 20 : -25;
+                        }
+                    } else if (modelLens === 'delta_pressure') {
+                        // Delta Pressure showing net buying vs selling shifts
+                        if (Math.abs(strike - price) < 2.5) {
+                            intensity = Math.sin(tIdx / 15) * 45;
+                        }
+                    } else {
+                        // Charm pressure (EOD pinning focus)
+                        const decayProgress = tIdx / 120;
+                        if (Math.abs(strike - callWall) < 1) {
+                            intensity = 60 * decayProgress;
+                        } else if (Math.abs(strike - putWall) < 1) {
+                            intensity = -60 * decayProgress;
+                        }
                     }
 
+                    if (invertPos) intensity = -intensity;
                     zMatrix[sIdx][tIdx] = intensity;
                 }
             });
 
-            // 3. Right GEX Profile bar chart data
-            const profileValues = strikesRange.map(s => strikeTotals[s] || 0);
-
-            // 4. Bottom Line Indicators (GEX & LIQ lines)
-            const liqLine = [];
-            const gexLine = [];
-            for (let i = 0; i < numBars; i++) {
-                liqLine.push(0.4 * Math.sin(i / 10) + 0.1 * Math.random() + (close[i] > gFlip ? 0.3 : -0.2));
-                gexLine.push(0.5 * Math.cos(i / 14) + 0.15 * Math.sin(i / 4) + (close[i] > callWall ? 0.4 : -0.3));
+            // Set Heatmap colorscale based on model/lens type
+            let colorscale;
+            if (modelLens === 'gamma') {
+                // Blue (Positive Gamma) / Dark / Red (Negative Gamma)
+                colorscale = [
+                    [0.0, '#7f1d1d'], // Dark Red
+                    [0.2, '#ef4444'], // Red
+                    [0.45, '#1e293b'], // Zero point transition
+                    [0.5, '#060a0f'],  // Neutral dark
+                    [0.55, '#1e293b'],
+                    [0.8, '#3b82f6'], // Light Blue
+                    [1.0, '#1d4ed8']  // Dark Blue
+                ];
+            } else if (modelLens === 'delta_pressure') {
+                // High contrast cyan to amber
+                colorscale = [
+                    [0, '#d97706'], // Amber
+                    [0.5, '#0f172a'],
+                    [1, '#06b6d4'] // Cyan
+                ];
+            } else {
+                // Magenta to Green for Charm
+                colorscale = [
+                    [0, '#d946ef'],
+                    [0.5, '#0b0f17'],
+                    [1, '#22c55e']
+                ];
             }
 
-            // Signal Diamond markers
-            const sigTimes = [];
-            const sigVals = [];
-            const sigColors = [];
-            for (let i = 10; i < numBars; i += 12) {
-                sigTimes.push(times[i]);
-                sigVals.push(1.0);
-                sigColors.push(Math.random() > 0.5 ? '#10b981' : '#ef4444');
+            // Left Strike Plot values selection
+            let strikeXValues = [];
+            let strikeColors = [];
+
+            strikesInRange.forEach(s => {
+                let val = 0;
+                if (strikeLens === 'gex') {
+                    val = traceData.totals[s] || 0;
+                    strikeColors.push(val >= 0 ? '#3b82f6' : '#ef4444');
+                } else if (strikeLens === 'oi') {
+                    val = (traceData.calls[s] || 0) + (traceData.puts[s] || 0);
+                    strikeColors.push('#f97316');
+                } else {
+                    val = (traceData.calls[s] || 0) - (traceData.puts[s] || 0);
+                    strikeColors.push(val >= 0 ? '#f97316' : '#3b82f6');
+                }
+                strikeXValues.push(val);
+            });
+
+            // HIRO Flow line (cumulative index flow)
+            const hiroLine = [];
+            let cumulativeHiro = 0;
+            for (let i = 0; i <= indexIndex; i++) {
+                cumulativeHiro += (close[i] > close[Math.max(0, i-1)] ? 4.5 : -3.8) + (Math.random() - 0.48) * 1.5;
+                hiroLine.push(cumulativeHiro);
             }
 
-            // 5. Build Subplot Layout with Plotly.js
-            const fig = {
-                data: [
-                    // Main Heatmap background
-                    {
-                        z: zMatrix,
-                        x: times,
-                        y: strikesRange,
-                        type: 'heatmap',
-                        colorscale: [
-                            [0, '#7c2d12'],   // Dark brown/rust
-                            [0.4, '#1c1917'],  // Very dark slate
-                            [0.5, '#0f172a'],  // Background zero point
-                            [0.6, '#1e293b'],  // Slate
-                            [1, '#0369a1']     // Bright blue
-                        ],
-                        showscale: false,
-                        xaxis: 'x',
-                        yaxis: 'y',
-                        opacity: 0.75
-                    },
-                    // Candlestick price overlay
-                    {
-                        x: times,
-                        open: open,
-                        high: high,
-                        low: low,
-                        close: close,
-                        type: 'candlestick',
-                        xaxis: 'x',
-                        yaxis: 'y',
-                        increasing: { line: { color: '#10b981', width: 1.5 } },
-                        decreasing: { line: { color: '#ef4444', width: 1.5 } }
-                    },
-                    // Horizontal Levels
+            // Key levels horizontal overlay lines
+            const overlayLines = [];
+            if (showKeyLevels) {
+                overlayLines.push(
                     {
                         x: [times[0], times[times.length - 1]],
                         y: [callWall, callWall],
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#0ea5e9', width: 1.5, dash: 'solid' },
+                        line: { color: '#3b82f6', width: 2, dash: 'solid' },
                         name: `CALL ${callWall.toFixed(0)}`,
-                        xaxis: 'x',
-                        yaxis: 'y'
+                        xaxis: 'x2',
+                        yaxis: 'y2'
                     },
                     {
                         x: [times[0], times[times.length - 1]],
@@ -418,144 +491,166 @@
                         mode: 'lines',
                         line: { color: '#fbbf24', width: 1.5, dash: 'dash' },
                         name: `γ-FLIP ${gFlip.toFixed(1)}`,
-                        xaxis: 'x',
-                        yaxis: 'y'
+                        xaxis: 'x2',
+                        yaxis: 'y2'
                     },
                     {
                         x: [times[0], times[times.length - 1]],
                         y: [putWall, putWall],
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#f97316', width: 1.5, dash: 'solid' },
+                        line: { color: '#f97316', width: 2, dash: 'solid' },
                         name: `PUT ${putWall.toFixed(0)}`,
-                        xaxis: 'x',
-                        yaxis: 'y'
-                    },
-                    // Right Side Profile (GEX)
+                        xaxis: 'x2',
+                        yaxis: 'y2'
+                    }
+                );
+            }
+
+            // Build Plotly layout
+            const fig = {
+                data: [
+                    // 1a. Left Strike Plot
                     {
-                        x: profileValues,
-                        y: strikesRange,
+                        x: strikeXValues,
+                        y: strikesInRange,
                         type: 'bar',
                         orientation: 'h',
-                        marker: {
-                            color: profileValues.map(v => v >= 0 ? '#0ea5e9' : '#b45309')
-                        },
-                        xaxis: 'x2',
-                        yaxis: 'y2',
+                        marker: { color: strikeColors },
+                        xaxis: 'x',
+                        yaxis: 'y',
                         showlegend: false
                     },
-                    // Bottom LIQ Line Chart
+                    // 1b. Heatmap background
+                    {
+                        z: zMatrix,
+                        x: times,
+                        y: strikesInRange,
+                        type: 'heatmap',
+                        colorscale: colorscale,
+                        showscale: false,
+                        xaxis: 'x2',
+                        yaxis: 'y2',
+                        opacity: 0.85
+                    },
+                    // Price overlay candles
                     {
                         x: times,
-                        y: liqLine,
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#a855f7', width: 1.5 },
-                        name: 'LIQ',
-                        xaxis: 'x3',
-                        yaxis: 'y3'
+                        open: open,
+                        high: high,
+                        low: low,
+                        close: close,
+                        type: 'candlestick',
+                        xaxis: 'x2',
+                        yaxis: 'y2',
+                        increasing: { line: { color: '#10b981', width: 1.5 } },
+                        decreasing: { line: { color: '#ef4444', width: 1.5 } }
                     },
-                    // Bottom GEX Line Chart
+                    // HIRO cumulative line
                     {
                         x: times,
-                        y: gexLine,
+                        y: hiroLine,
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#ffffff', width: 1.2 },
-                        name: 'GEX',
-                        xaxis: 'x3',
-                        yaxis: 'y3'
+                        line: { color: '#d946ef', width: 2 },
+                        name: 'HIRO',
+                        xaxis: 'x2',
+                        yaxis: 'y2_hiro' // Matches right secondary Y-axis!
                     },
-                    // Signal Diamond Markers
-                    {
-                        x: sigTimes,
-                        y: sigVals,
-                        type: 'scatter',
-                        mode: 'markers',
-                        marker: {
-                            symbol: 'diamond',
-                            size: 8,
-                            color: sigColors
-                        },
-                        name: 'Signals',
-                        xaxis: 'x3',
-                        yaxis: 'y3'
-                    }
+                    ...overlayLines
                 ],
                 layout: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
-                    margin: { l: 50, r: 50, b: 50, t: 20 },
+                    margin: { l: 50, r: 60, b: 30, t: 20 },
                     showlegend: false,
-                    grid: { rows: 2, columns: 2, pattern: 'independent' },
+                    grid: { rows: 1, columns: 2, pattern: 'independent' },
                     
-                    // Main Candlestick Subplot
+                    // Left Strike Plot axes
                     xaxis: {
-                        domain: [0, 0.85],
+                        domain: [0, 0.18],
+                        showgrid: true,
+                        gridcolor: '#1e293b',
+                        tickfont: { color: '#9ca3af', size: 9 },
+                        title: { text: strikeLens.toUpperCase(), font: { size: 9, color: '#9ca3af' } }
+                    },
+                    yaxis: {
+                        domain: [0, 1],
+                        showgrid: true,
+                        gridcolor: '#1e293b',
+                        tickfont: { color: '#9ca3af', size: 10 }
+                    },
+
+                    // Main Heatmap subplot axes
+                    xaxis2: {
+                        domain: [0.20, 1.0],
                         showgrid: true,
                         gridcolor: '#1e293b',
                         tickcolor: '#1e293b',
                         rangeslider: { visible: false },
-                        showticklabels: false,
+                        tickfont: { color: '#9ca3af', size: 10 },
                         type: 'date'
                     },
-                    yaxis: {
-                        domain: [0.35, 1],
+                    yaxis2: {
+                        domain: [0, 1],
                         showgrid: true,
                         gridcolor: '#1e293b',
                         tickcolor: '#1e293b',
-                        tickfont: { color: '#9ca3af' },
-                        anchor: 'x'
-                    },
-                    
-                    // Right Profile Subplot (Shares Y axis with Main Chart!)
-                    xaxis2: {
-                        domain: [0.87, 1],
-                        showgrid: true,
-                        gridcolor: '#1e293b',
-                        tickfont: { color: '#9ca3af' },
-                        title: { text: 'net GEX', font: { size: 10, color: '#9ca3af' } }
-                    },
-                    yaxis2: {
-                        domain: [0.35, 1],
                         anchor: 'x2',
-                        matches: 'y', // Lock zoom/pan to main yaxis!
+                        matches: 'y', // Locked vertical zoom/scroll!
                         showticklabels: false
                     },
 
-                    // Bottom Timeline Subplot (Shares X axis with Main Chart!)
-                    xaxis3: {
-                        domain: [0, 0.85],
-                        showgrid: true,
-                        gridcolor: '#1e293b',
-                        tickcolor: '#1e293b',
-                        tickfont: { color: '#9ca3af' },
-                        matches: 'x', // Lock zoom/pan to main xaxis!
-                        type: 'date'
-                    },
-                    yaxis3: {
-                        domain: [0, 0.28],
-                        showgrid: true,
-                        gridcolor: '#1e293b',
-                        tickcolor: '#1e293b',
-                        tickfont: { color: '#9ca3af' },
-                        anchor: 'x3',
-                        range: [-1.2, 1.2]
+                    // Secondary Y-axis for HIRO Flow on the right
+                    yaxis2_hiro: {
+                        overlaying: 'y2',
+                        side: 'right',
+                        showgrid: false,
+                        tickfont: { color: '#d946ef', size: 10 },
+                        title: { text: 'HIRO', font: { color: '#d946ef', size: 10 } }
                     }
                 }
             };
 
-            Plotly.newPlot('mainDashboardPlot', fig.data, fig.layout, { responsive: true, displayModeBar: false });
+            Plotly.newPlot('traceDashboardPlot', fig.data, fig.layout, { responsive: true, displayModeBar: false });
         }
 
-        document.getElementById('loadBtn').addEventListener('click', loadDashboard);
+        // Timeline Scrubbing Event
+        document.getElementById('timelineSlider').addEventListener('input', renderTrace);
+
+        // Playback Autoplay
+        let isPlaying = false;
+        document.getElementById('playBtn').addEventListener('click', () => {
+            const btn = document.getElementById('playBtn');
+            const slider = document.getElementById('timelineSlider');
+
+            if (isPlaying) {
+                clearInterval(timerId);
+                btn.innerText = "▶ Play";
+                isPlaying = false;
+            } else {
+                btn.innerText = "⏸ Pause";
+                isPlaying = true;
+                timerId = setInterval(() => {
+                    let val = parseInt(slider.value);
+                    if (val >= 119) {
+                        slider.value = 0;
+                    } else {
+                        slider.value = val + 1;
+                    }
+                    renderTrace();
+                }, 250);
+            }
+        });
+
+        document.getElementById('loadBtn').addEventListener('click', initDashboard);
         
-        ['symbolInput', 'tfSelect', 'daysSelect', 'expirySelect', 'aggSelect', 'rangeSelect', 'metricSelect', 'windowSelect', 'heatmapSelect', 'strikesSelect', 'wallsSelect', 'lsRegimeSelect'].forEach(id => {
-            document.getElementById(id).addEventListener('change', renderDashboard);
+        ['symbolInput', 'participantSelect', 'modelSelect', 'lensSelect', 'invertToggle', 'keyLevelsToggle', 'candleInterval'].forEach(id => {
+            document.getElementById(id).addEventListener('change', renderTrace);
         });
 
         // Initial Load
-        loadDashboard();
+        initDashboard();
     </script>
 </body>
 </html>
