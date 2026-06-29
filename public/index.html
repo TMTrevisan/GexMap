@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpotGamma Terminal - Ultimate Options suite</title>
+    <title>SpotGamma Terminal - Ultimate Options Suite</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Plotly.js for multi-subplot charting -->
@@ -58,63 +58,100 @@
         </div>
     </div>
 
-    <!-- ==================== TRACE DASHBOARD VIEW ==================== -->
-    <div id="traceView" class="block">
-        <!-- TRACE Control Bar -->
-        <div class="control-panel px-6 py-3 flex flex-wrap justify-between items-center gap-4">
-            <div class="flex items-center gap-4">
-                <select id="traceSymbolInput" class="bg-[#0f172a] border border-[#334155] text-white text-xs font-bold px-3 py-1.5 rounded focus:outline-none">
-                    <option value="SPY" selected>SPY (S&P 500 ETF)</option>
-                    <option value="I:SPX">SPX (S&P 500 Index)</option>
-                    <option value="QQQ">QQQ (Nasdaq 100)</option>
-                </select>
-            </div>
-
-            <!-- Toolbar Options -->
-            <div class="flex flex-wrap items-center gap-3 text-xs">
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Participant</span>
-                    <select id="traceParticipantSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
-                        <option value="market_makers" selected>Market Makers (Hedging)</option>
-                        <option value="customers">Customers (Retail)</option>
-                    </select>
-                </div>
-
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Model / Lens</span>
-                    <select id="traceModelSelect" class="bg-[#0f172a] border border-[#334155] text-emerald-400 font-bold px-3 py-1.5 rounded focus:outline-none">
-                        <option value="gamma" selected>Gamma Exposure (Volatility)</option>
-                        <option value="delta_pressure">Delta Pressure (Hedging)</option>
-                    </select>
-                </div>
-
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Strike View</span>
-                    <select id="traceLensSelect" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
-                        <option value="gex" selected>GEX by Strike</option>
-                        <option value="oi">OI by Strike</option>
-                    </select>
-                </div>
-
-                <div class="flex items-center gap-2 self-end h-[34px] px-3 bg-[#0f172a] border border-[#334155] rounded">
-                    <input type="checkbox" id="traceKeyLevelsToggle" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
-                    <label for="traceKeyLevelsToggle" class="text-[10px] text-gray-300 font-bold tracking-wider uppercase cursor-pointer select-none">Key Levels</label>
-                </div>
-
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Candles</span>
-                    <select id="traceCandleInterval" class="bg-[#0f172a] border border-[#334155] text-white font-bold px-3 py-1.5 rounded focus:outline-none">
-                        <option value="1m">1 min</option>
-                        <option value="5m" selected>5 min</option>
-                    </select>
-                </div>
-
-                <button id="traceLoadBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[34px] rounded transition-colors self-end uppercase tracking-wider">
-                    Refresh
-                </button>
-            </div>
+    <!-- ==================== UNIVERSAL SHAPED CONTROL BAR (Visible on all tabs) ==================== -->
+    <div class="control-panel px-6 py-3 flex flex-wrap items-center gap-3.5 text-xs font-semibold text-gray-300">
+        <div class="flex items-center gap-1.5">
+            <span>Symbol</span>
+            <select id="globalSymbolInput" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="SPY" selected>SPY</option>
+                <option value="QQQ">QQQ</option>
+                <option value="I:SPX">SPX</option>
+            </select>
         </div>
 
+        <div class="flex items-center gap-1.5">
+            <span>TF</span>
+            <select id="globalTfSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="5m" selected>5m</option>
+                <option value="15m">15m</option>
+                <option value="1h">1h</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <span>Days</span>
+            <select id="globalDaysSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <span>Expiry</span>
+            <select id="globalExpirySelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="nearest" selected>nearest</option>
+                <option value="next">next</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <span>Aggregate</span>
+            <select id="globalAggSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="nearest2" selected>nearest 2</option>
+                <option value="nearest5">nearest 5</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <span>Range ±%</span>
+            <select id="globalRangeSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="1.5" selected>1.5</option>
+                <option value="3.0">3.0</option>
+                <option value="5.0">5.0</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <span>Metric</span>
+            <select id="globalMetricSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="gex" selected>GEX (volxγ)</option>
+                <option value="dex">DEX (volxδ)</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <span>Participant</span>
+            <select id="globalParticipantSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="market_makers" selected>Market Makers</option>
+                <option value="customers">Customers</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <span>Strikes</span>
+            <select id="globalStrikesSelect" class="bg-[#0f172a] border border-[#334155] text-white px-2 py-1.5 rounded focus:outline-none">
+                <option value="21" selected>21</option>
+                <option value="41">41</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-2 px-3 bg-[#0f172a] border border-[#334155] rounded h-[32px]">
+            <input type="checkbox" id="globalKeyLevelsToggle" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
+            <label for="globalKeyLevelsToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Key Levels</label>
+        </div>
+
+        <div class="flex items-center gap-2 px-3 bg-[#0f172a] border border-[#334155] rounded h-[32px]">
+            <input type="checkbox" id="globalInvertToggle" class="accent-emerald-500 cursor-pointer w-4 h-4">
+            <label for="globalInvertToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Invert Pos</label>
+        </div>
+
+        <button id="globalRefreshBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[32px] rounded transition-colors uppercase tracking-wider">
+            ↻ Refresh
+        </button>
+    </div>
+
+    <!-- ==================== TRACE DASHBOARD VIEW ==================== -->
+    <div id="traceView" class="block">
         <!-- Workspace Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
             <!-- Sidebar -->
@@ -184,7 +221,6 @@
                     <h2 class="text-lg font-black text-white uppercase tracking-wider">📋 S&P 500 Options Profile - Bobby Style</h2>
                     <p class="text-xs text-gray-400 mt-1">Color highlights: Yellow for Peak Positive, Purple for Peak Negative, Emerald for positive, and Violet/Blue for negative. White pointer denotes Spot Price.</p>
                 </div>
-                <button id="bobbyRefreshBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 py-1.5 rounded text-xs uppercase tracking-wider">Refresh Chain</button>
             </div>
 
             <div class="overflow-x-auto">
@@ -210,11 +246,6 @@
 
     <!-- ==================== CANVAS VIEW ==================== -->
     <div id="canvasView" class="hidden p-4">
-        <div class="bg-[#0b0f17] border border-gray-800 p-3 rounded-lg flex flex-wrap justify-between items-center gap-3 mb-4">
-            <button id="addEmptyContainerBtn" class="bg-slate-800 hover:bg-slate-700 border border-gray-700 text-xs font-bold text-gray-300 px-3.5 py-1.5 rounded">
-                + Add Container
-            </button>
-        </div>
         <div id="canvasGrid" class="canvas-grid"></div>
     </div>
 
@@ -222,7 +253,7 @@
     <!-- ==================== HELP & GUIDE VIEW ==================== -->
     <div id="helpView" class="hidden p-6 max-w-[900px] mx-auto space-y-6">
         <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-6">
-            <h2 class="text-lg font-black text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2 flex items-center gap-2">
+            <h2 class="text-lg font-black text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">
                 ❓ SpotGamma Terminal Guide
             </h2>
             
@@ -245,18 +276,6 @@
                         <li><strong>Call Wall (Sky Blue Solid Line)</strong>: The strike containing the largest positive gamma concentration. Represents major overhead options resistance.</li>
                         <li><strong>Put Wall (Orange Solid Line)</strong>: The strike containing the largest negative gamma concentration. Represents a key downside support boundary.</li>
                         <li><strong>Gamma Flip (Yellow Dashed Line)</strong>: The inflection point where dealer hedging flips from supportive (stabilizing volatility) to aggressive (accelerating volatility).</li>
-                    </ul>
-                </div>
-
-                <!-- HIRO Guide -->
-                <div>
-                    <h3 class="font-bold text-purple-400 text-sm mb-2">🎯 How to Read HIRO Flow Lines</h3>
-                    <p class="text-gray-400 mb-2">
-                        HIRO monitors real-time options trades and computes their cumulative hedging impact on the S&P 500 index.
-                    </p>
-                    <ul class="list-disc pl-5 space-y-1.5 text-gray-400">
-                        <li><strong>Rising Flow Line</strong>: Signals aggressive customer call buying or put selling, forcing options market makers to buy stock to hedge (bullish pressure).</li>
-                        <li><strong>Falling Flow Line</strong>: Signals aggressive customer put buying or call selling, forcing options market makers to sell stock to hedge (bearish pressure).</li>
                     </ul>
                 </div>
             </div>
@@ -307,7 +326,7 @@
 
         // Fetch options chain
         async function loadOptionsData() {
-            const symbol = document.getElementById('traceSymbolInput').value;
+            const symbol = document.getElementById('globalSymbolInput').value;
             try {
                 const response = await fetch(`/api/data?symbol=${symbol}`);
                 const data = await response.json();
@@ -367,7 +386,10 @@
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
             const idx = parseInt(document.getElementById('traceSlider').value);
-            const showKeyLevels = document.getElementById('traceKeyLevelsToggle').checked;
+            const showKeyLevels = document.getElementById('globalKeyLevelsToggle').checked;
+            const invertPos = document.getElementById('globalInvertToggle').checked;
+            const rangePct = parseFloat(document.getElementById('globalRangeSelect').value) / 100;
+            const numStrikes = parseInt(document.getElementById('globalStrikesSelect').value);
 
             const currentPrices = prices.slice(0, idx + 1);
             const times = currentPrices.map(p => p.time);
@@ -376,8 +398,7 @@
             const high = currentPrices.map(p => p.high);
             const low = currentPrices.map(p => p.low);
 
-            const range = spot * 0.02; 
-            const strikesInRange = traceData.strikes.filter(s => s >= spot - range && s <= spot + range);
+            const strikesInRange = traceData.strikes.filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).slice(0, numStrikes);
 
             let maxCallGex = -Infinity;
             let callWall = spot;
@@ -392,10 +413,6 @@
 
             let gFlip = (callWall + putWall) / 2;
 
-            document.getElementById('traceSpotVal').innerText = `$${close[close.length - 1].toFixed(2)}`;
-            document.getElementById('traceCallWallVal').innerText = `$${callWall.toFixed(0)}`;
-            document.getElementById('tracePutWallVal').innerText = `$${putWall.toFixed(0)}`;
-            document.getElementById('traceGFlipVal').innerText = `$${gFlip.toFixed(1)}`;
             const timeVal = times[times.length - 1];
             document.getElementById('traceTimeLabel').innerText = timeVal ? timeVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : "09:30 AM";
 
@@ -411,6 +428,7 @@
                     if (Math.abs(strike - callWall) < 1.5) intensity = 50 + Math.sin(tIdx / 8) * 10;
                     else if (Math.abs(strike - putWall) < 1.5) intensity = -50 + Math.cos(tIdx / 6) * 10;
                     else if (Math.abs(strike - price) < 2) intensity = (strike > gFlip) ? 20 : -25;
+                    if (invertPos) intensity = -intensity;
                     zMatrix[sIdx][tIdx] = intensity;
                 }
             });
@@ -427,11 +445,48 @@
                 strikeColors.push(val >= 0 ? '#3b82f6' : '#ef4444');
             });
 
+            const overlayLines = [];
+            if (showKeyLevels) {
+                overlayLines.push(
+                    {
+                        x: [times[0], times[times.length - 1]],
+                        y: [callWall, callWall],
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#3b82f6', width: 2 },
+                        name: `CALL ${callWall.toFixed(0)}`,
+                        xaxis: 'x2',
+                        yaxis: 'y2'
+                    },
+                    {
+                        x: [times[0], times[times.length - 1]],
+                        y: [gFlip, gFlip],
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#fbbf24', width: 1.5, dash: 'dash' },
+                        name: `γ-FLIP ${gFlip.toFixed(1)}`,
+                        xaxis: 'x2',
+                        yaxis: 'y2'
+                    },
+                    {
+                        x: [times[0], times[times.length - 1]],
+                        y: [putWall, putWall],
+                        type: 'scatter',
+                        mode: 'lines',
+                        line: { color: '#f97316', width: 2 },
+                        name: `PUT ${putWall.toFixed(0)}`,
+                        xaxis: 'x2',
+                        yaxis: 'y2'
+                    }
+                );
+            }
+
             const fig = {
                 data: [
                     { x: strikeXValues, y: strikesInRange, type: 'bar', orientation: 'h', marker: { color: strikeColors }, xaxis: 'x', yaxis: 'y', showlegend: false },
                     { z: zMatrix, x: times, y: strikesInRange, type: 'heatmap', colorscale: colorscale, showscale: false, xaxis: 'x2', yaxis: 'y2', opacity: 0.85 },
-                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', xaxis: 'x2', yaxis: 'y2', increasing: { line: { color: '#10b981', width: 1.5 } }, decreasing: { line: { color: '#ef4444', width: 1.5 } } }
+                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', xaxis: 'x2', yaxis: 'y2', increasing: { line: { color: '#10b981', width: 1.5 } }, decreasing: { line: { color: '#ef4444', width: 1.5 } } },
+                    ...overlayLines
                 ],
                 layout: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
@@ -446,7 +501,6 @@
                 }
             };
             
-            // Enable scroll zoom configuration!
             Plotly.newPlot('traceDashboardPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
         }
 
@@ -472,6 +526,8 @@
         function renderBobbyView() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
+            const rangePct = parseFloat(document.getElementById('globalRangeSelect').value) / 100;
+            const numStrikes = parseInt(document.getElementById('globalStrikesSelect').value);
 
             // Find peak metrics for highlights
             let peakPosGex = -Infinity;
@@ -493,10 +549,10 @@
                 rowMap[d.strike].oi += d.open_interest;
             });
 
-            const sortedStrikes = Object.keys(rowMap).map(Number).sort((a, b) => b - a); // Higher strike on top
+            const filteredStrikes = Object.keys(rowMap).map(Number).filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).sort((a, b) => b - a).slice(0, numStrikes);
             let html = "";
 
-            sortedStrikes.forEach(strike => {
+            filteredStrikes.forEach(strike => {
                 const node = rowMap[strike];
                 const isSpot = Math.abs(strike - spot) < 2;
 
@@ -513,15 +569,37 @@
                     <tr class="${rowClass}">
                         <td class="py-3 px-4 font-bold">${spotBubble}</td>
                         <td class="py-3 px-4 font-bold text-white">${strike}</td>
-                        <td class="py-3 px-4">${(node.gex / 1000000).toFixed(2)}M</td>
+                        <td class="py-3 px-4">${(node.gex / 1000).toFixed(2)}K</td>
                         <td class="py-3 px-4 text-emerald-400">+${(Math.random() * 5).toFixed(1)}%</td>
-                        <td class="py-3 px-4">${(node.dex / 1000000).toFixed(2)}M</td>
+                        <td class="py-3 px-4">${(node.dex / 100).toFixed(2)}K</td>
                         <td class="py-3 px-4 font-semibold">${(node.oi / 1000).toFixed(0)}K</td>
                     </tr>
                 `;
             });
 
             document.getElementById('bobbyChainBody').innerHTML = html;
+        }
+
+        // Render Canvas layout
+        function renderCanvas() {
+            const grid = document.getElementById('canvasGrid');
+            grid.innerHTML = `
+                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4 min-h-[350px]">
+                    <div class="text-xs font-bold text-gray-400 mb-2">Canvas Component: TRACE</div>
+                    <div id="canvas-trace-plot" class="w-full h-[280px]"></div>
+                </div>
+                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4 min-h-[350px]">
+                    <div class="text-xs font-bold text-gray-400 mb-2">Canvas Component: HIRO</div>
+                    <div id="canvas-hiro-plot" class="w-full h-[280px]"></div>
+                </div>
+            `;
+            setTimeout(() => {
+                const times = prices.map(p => p.time);
+                const close = prices.map(p => p.close);
+                
+                Plotly.newPlot('canvas-trace-plot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#3b82f6' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
+                Plotly.newPlot('canvas-hiro-plot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#10b981' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
+            }, 50);
         }
 
         // Timeline Scrubbing Event
@@ -549,15 +627,16 @@
             }
         });
 
-        // Initialize Options Data
-        document.getElementById('traceSymbolInput').addEventListener('change', loadOptionsData);
-        document.getElementById('traceParticipantSelect').addEventListener('change', renderTrace);
-        document.getElementById('traceModelSelect').addEventListener('change', renderTrace);
-        document.getElementById('traceLensSelect').addEventListener('change', renderTrace);
-        document.getElementById('traceKeyLevelsToggle').addEventListener('change', renderTrace);
-        document.getElementById('traceCandleInterval').addEventListener('change', renderTrace);
-        document.getElementById('traceLoadBtn').addEventListener('click', loadOptionsData);
-        document.getElementById('bobbyRefreshBtn').addEventListener('click', loadOptionsData);
+        // Global Refresh & change filters listeners
+        document.getElementById('globalRefreshBtn').addEventListener('click', loadOptionsData);
+        
+        ['globalSymbolInput', 'globalTfSelect', 'globalDaysSelect', 'globalExpirySelect', 'globalAggSelect', 'globalRangeSelect', 'globalMetricSelect', 'globalParticipantSelect', 'globalStrikesSelect', 'globalKeyLevelsToggle', 'globalInvertToggle'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                generateDashboardSynthetics();
+                renderTrace();
+                renderBobbyView();
+            });
+        });
 
         // Initial Load
         loadOptionsData();
