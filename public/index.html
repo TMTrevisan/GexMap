@@ -17,6 +17,12 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #070a0f; }
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        
+        /* Bobby Style Table Colors */
+        .bobby-peak-pos { background-color: rgba(234, 179, 8, 0.25); color: #facc15; border-left: 4px solid #eab308; } /* Yellow */
+        .bobby-peak-neg { background-color: rgba(168, 85, 247, 0.25); color: #c084fc; border-left: 4px solid #a855f7; } /* Purple */
+        .bobby-pos { background-color: rgba(16, 185, 129, 0.12); color: #34d399; } /* Emerald */
+        .bobby-neg { background-color: rgba(99, 102, 241, 0.12); color: #818cf8; } /* Violet/Blue */
     </style>
 </head>
 <body class="p-4 select-none">
@@ -37,12 +43,12 @@
                 🧭 Compass
             </button>
         </div>
-        <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">SpotGamma Alpha Suite</span>
+        <span class="text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Bobby Style Active ⚡</span>
     </div>
 
     <!-- ==================== TRACE MAIN VIEW ==================== -->
     <div id="traceView" class="block">
-        <!-- Control Panel (Direct replica of the screenshot top bar) -->
+        <!-- Control Panel -->
         <div class="bg-[#0f131a] p-3 rounded-t-lg flex flex-wrap items-center gap-4 text-[11px] text-gray-400 font-semibold border-t border-x border-[#1e2a3a]">
             <div class="flex items-center gap-1.5">
                 <span>Symbol</span>
@@ -153,7 +159,7 @@
             <span class="text-[#4e5b6c] text-[10px] ml-auto font-medium" id="infoText">exp 2026-06-29, 2026-06-30 - 23 strikes - liq 21</span>
         </div>
 
-        <!-- KPIs Bar (Direct replica of second row) -->
+        <!-- KPIs Bar -->
         <div class="bg-[#0f131a] px-4 py-2.5 flex flex-wrap gap-8 border-b border-[#1e2a3a] border-x">
             <div class="flex flex-col">
                 <span class="kpi-title">Spot</span>
@@ -173,15 +179,15 @@
             </div>
             <div class="flex flex-col">
                 <span class="kpi-title">Call Wall</span>
-                <span id="callWallVal" class="text-[#00c5ff] text-sm font-black mt-0.5">736</span>
+                <span id="callWallVal" class="text-[#facc15] text-sm font-black mt-0.5">736</span>
             </div>
             <div class="flex flex-col">
                 <span class="kpi-title">Put Wall</span>
-                <span id="putWallVal" class="text-[#ff9100] text-sm font-black mt-0.5">732</span>
+                <span id="putWallVal" class="text-[#c084fc] text-sm font-black mt-0.5">732</span>
             </div>
             <div class="flex flex-col">
                 <span class="kpi-title">Γ-Flip</span>
-                <span id="gFlipVal" class="text-[#ffd600] text-sm font-black mt-0.5">735.1</span>
+                <span id="gFlipVal" class="text-yellow-500 text-sm font-black mt-0.5">735.1</span>
             </div>
             <div class="flex flex-col">
                 <span class="kpi-title">P/C</span>
@@ -193,7 +199,7 @@
             </div>
         </div>
 
-        <!-- Unified Plotly Container (Replicating exact layout styling) -->
+        <!-- Unified Plotly Container -->
         <div class="bg-[#121620] border-x border-b border-[#1e2a3a] p-4 rounded-b-lg relative min-h-[600px]">
             <div id="loader" class="absolute inset-0 bg-[#0c0e15]/90 flex items-center justify-center rounded-b-lg z-50">
                 <div class="text-center">
@@ -286,13 +292,12 @@
             const spot = currentData[0].underlying_price;
             const numBars = 120;
             
-            // Recreate timestamps matching the bottom of the screenshot
             const baseTime = new Date("2026-06-22T09:30:00");
             prices = [];
             let currentPrice = spot - 3.8;
 
             for (let i = 0; i < numBars; i++) {
-                const time = new Date(baseTime.getTime() + i * 45 * 60 * 1000); // Chronological spread
+                const time = new Date(baseTime.getTime() + i * 45 * 60 * 1000);
                 const start = currentPrice;
                 const change = (Math.random() - 0.485) * 1.6;
                 let end = start + change;
@@ -322,7 +327,6 @@
             };
         }
 
-        // Render S&P Heatmap, GEX Profile, and LIQ/GEX subplots exactly matching the screenshot
         function renderTraceHeatmap() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
@@ -337,7 +341,6 @@
 
             const strikesInRange = traceData.strikes.filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).slice(0, numStrikes);
 
-            // Replicate specific call/put walls
             let maxCallGex = -Infinity;
             let callWall = spot;
             let minPutGex = Infinity;
@@ -351,7 +354,6 @@
 
             let gFlip = (callWall + putWall) / 2;
 
-            // Render exact Heatmap Matrix
             const zMatrix = [];
             for (let i = 0; i < strikesInRange.length; i++) {
                 zMatrix.push(new Array(prices.length).fill(0));
@@ -361,35 +363,44 @@
                 for (let tIdx = 0; tIdx < prices.length; tIdx++) {
                     const price = close[tIdx];
                     let intensity = 0;
-                    // Call wall channels (Blue bands)
                     if (Math.abs(strike - callWall) < 1.5) {
-                        intensity = 48 + Math.sin(tIdx / 8) * 12;
+                        intensity = 50 + Math.sin(tIdx / 8) * 12; // Peak Positive (Yellow)
                     } 
-                    // Put wall channels (Brown bands)
                     else if (Math.abs(strike - putWall) < 1.5) {
-                        intensity = -48 + Math.cos(tIdx / 6) * 12;
+                        intensity = -50 + Math.cos(tIdx / 6) * 12; // Peak Negative (Purple)
                     }
                     else if (Math.abs(strike - price) < 2) {
-                        intensity = (strike > gFlip) ? 18 : -22;
+                        intensity = (strike > gFlip) ? 22 : -22; // Pos (Emerald) vs Neg (Violet/Blue)
                     }
                     zMatrix[sIdx][tIdx] = intensity;
                 }
             });
 
-            // Replicate EXACT SpotGamma TRACE color palette
+            // Bobby Style Colorscale for Heatmap:
+            // Peak Negative -> Purple (#a855f7)
+            // Negative -> Violet/Blue (#6366f1)
+            // Zero -> Black/Dark (#0c0e15)
+            // Positive -> Emerald (#10b981)
+            // Peak Positive -> Yellow (#eab308)
             const colorscale = [
-                [0.0, '#7c5c36'],  // Dark brown
-                [0.4, '#1b1c24'],  // Charcoal zero point transition
-                [0.5, '#0c0e15'],  // Pitch black grid base
-                [0.6, '#182436'],  // Slate blue
-                [1.0, '#00a2e8']   // Vibrant sky blue GEX concentration
+                [0.0, '#a855f7'],  // Peak Negative (Purple)
+                [0.2, '#6366f1'],  // Negative (Violet/Blue)
+                [0.48, '#1b1c24'],
+                [0.5, '#0c0e15'],  // Mid point zero line
+                [0.52, '#182436'],
+                [0.8, '#10b981'],  // Positive (Emerald)
+                [1.0, '#eab308']   // Peak Positive (Yellow)
             ];
 
-            // Left Strike profile GEX values
+            // Bobby Style bar chart markers
             const profileXValues = strikesInRange.map(s => (traceData.totals[s] || 0) / 100000);
-            const profileColors = profileXValues.map(v => v >= 0 ? '#00c5ff' : '#7c5c36');
+            const profileColors = strikesInRange.map(s => {
+                const val = traceData.totals[s] || 0;
+                if (s === callWall) return '#eab308'; // Peak Positive (Yellow)
+                if (s === putWall) return '#a855f7';  // Peak Negative (Purple)
+                return val >= 0 ? '#10b981' : '#6366f1'; // Emerald vs Indigo
+            });
 
-            // Timeline indicators (LIQ & GEX)
             const liqLine = [];
             const gexLine = [];
             for (let i = 0; i < prices.length; i++) {
@@ -397,7 +408,6 @@
                 gexLine.push(0.42 * Math.cos(i / 10) + 0.08 * Math.sin(i / 3) + (close[i] > callWall ? 0.35 : -0.25));
             }
 
-            // Green/Red Alert signal diamonds (Two rows)
             const signalTimesTop = [];
             const signalColorsTop = [];
             const signalTimesBottom = [];
@@ -407,17 +417,15 @@
                 const rand = Math.random();
                 if (rand > 0.6) {
                     signalTimesTop.push(times[i]);
-                    signalColorsTop.push(rand > 0.8 ? '#00e676' : '#ff3344');
+                    signalColorsTop.push(rand > 0.8 ? '#10b981' : '#ff3344');
                 } else if (rand < 0.4) {
                     signalTimesBottom.push(times[i]);
-                    signalColorsBottom.push(rand < 0.2 ? '#00e676' : '#ff3344');
+                    signalColorsBottom.push(rand < 0.2 ? '#10b981' : '#ff3344');
                 }
             }
 
-            // Build exact multi-subplot Plotly system
             const fig = {
                 data: [
-                    // Main Heatmap underlay
                     {
                         z: zMatrix,
                         x: times,
@@ -429,7 +437,6 @@
                         yaxis: 'y2',
                         opacity: 0.85
                     },
-                    // Price candlestick overlay
                     {
                         x: times,
                         open: open,
@@ -439,16 +446,15 @@
                         type: 'candlestick',
                         xaxis: 'x2',
                         yaxis: 'y2',
-                        increasing: { line: { color: '#00e676', width: 1.5 }, fillcolor: '#00e676' },
+                        increasing: { line: { color: '#10b981', width: 1.5 }, fillcolor: '#10b981' },
                         decreasing: { line: { color: '#ff3344', width: 1.5 }, fillcolor: '#ff3344' }
                     },
-                    // Left horizontal levels & labels
                     {
                         x: [times[0], times[times.length - 1]],
                         y: [callWall, callWall],
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#00c5ff', width: 1.8 },
+                        line: { color: '#eab308', width: 1.8 }, // Call Wall (Yellow)
                         name: `CALL ${callWall.toFixed(0)}`,
                         xaxis: 'x2',
                         yaxis: 'y2'
@@ -468,12 +474,11 @@
                         y: [putWall, putWall],
                         type: 'scatter',
                         mode: 'lines',
-                        line: { color: '#ff9100', width: 1.8 },
+                        line: { color: '#a855f7', width: 1.8 }, // Put Wall (Purple)
                         name: `PUT ${putWall.toFixed(0)}`,
                         xaxis: 'x2',
                         yaxis: 'y2'
                     },
-                    // Right Side GEX Profile Chart
                     {
                         x: profileXValues,
                         y: strikesInRange,
@@ -484,7 +489,6 @@
                         yaxis: 'y3',
                         showlegend: false
                     },
-                    // Bottom Timeline subplots
                     {
                         x: times,
                         y: liqLine,
@@ -505,7 +509,6 @@
                         xaxis: 'x4',
                         yaxis: 'y4'
                     },
-                    // Top alert signals row
                     {
                         x: signalTimesTop,
                         y: new Array(signalTimesTop.length).fill(0.9),
@@ -516,7 +519,6 @@
                         yaxis: 'y4',
                         showlegend: false
                     },
-                    // Bottom alert signals row
                     {
                         x: signalTimesBottom,
                         y: new Array(signalTimesBottom.length).fill(-0.9),
@@ -534,62 +536,12 @@
                     margin: { l: 80, r: 80, b: 50, t: 10 },
                     showlegend: false,
                     grid: { rows: 2, columns: 2, pattern: 'independent' },
-
-                    // Main Heatmap & Candlestick subplot
-                    xaxis2: {
-                        domain: [0, 0.82],
-                        showgrid: true,
-                        gridcolor: '#1c2230',
-                        tickcolor: '#1c2230',
-                        rangeslider: { visible: false },
-                        showticklabels: false,
-                        type: 'date'
-                    },
-                    yaxis2: {
-                        domain: [0.32, 1],
-                        showgrid: true,
-                        gridcolor: '#1c2230',
-                        tickcolor: '#1c2230',
-                        tickfont: { color: '#9ca3af', size: 9 },
-                        anchor: 'x2',
-                        side: 'right'
-                    },
-
-                    // Right GEX Profile
-                    xaxis3: {
-                        domain: [0.85, 1],
-                        showgrid: true,
-                        gridcolor: '#1c2230',
-                        tickfont: { color: '#9ca3af', size: 9 },
-                        title: { text: 'net GEX', font: { size: 9, color: '#9ca3af' } }
-                    },
-                    yaxis3: {
-                        domain: [0.32, 1],
-                        anchor: 'x3',
-                        matches: 'y2', // Vertical lock to price strikes!
-                        showticklabels: false
-                    },
-
-                    // Bottom Timeline (LIQ & GEX)
-                    xaxis4: {
-                        domain: [0, 0.82],
-                        showgrid: true,
-                        gridcolor: '#1c2230',
-                        tickcolor: '#1c2230',
-                        tickfont: { color: '#9ca3af', size: 9 },
-                        matches: 'x2', // Horizontal lock to prices!
-                        type: 'date'
-                    },
-                    yaxis4: {
-                        domain: [0, 0.25],
-                        showgrid: true,
-                        gridcolor: '#1c2230',
-                        tickcolor: '#1c2230',
-                        tickfont: { color: '#9ca3af', size: 9 },
-                        anchor: 'x4',
-                        side: 'right',
-                        range: [-1.1, 1.1]
-                    }
+                    xaxis2: { domain: [0, 0.82], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', rangeslider: { visible: false }, showticklabels: false, type: 'date' },
+                    yaxis2: { domain: [0.32, 1], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, anchor: 'x2', side: 'right' },
+                    xaxis3: { domain: [0.85, 1], showgrid: true, gridcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, title: { text: 'net GEX', font: { size: 9, color: '#9ca3af' } } },
+                    yaxis3: { domain: [0.32, 1], anchor: 'x3', matches: 'y2', showticklabels: false },
+                    xaxis4: { domain: [0, 0.82], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, matches: 'x2', type: 'date' },
+                    yaxis4: { domain: [0, 0.25], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, anchor: 'x4', side: 'right', range: [-1.1, 1.1] }
                 }
             };
 
@@ -631,28 +583,6 @@
 
         // Listeners
         document.getElementById('refreshBtn').addEventListener('click', loadOptionsData);
-        document.getElementById('traceSlider').addEventListener('input', renderTraceHeatmap);
-
-        let tracePlayInterval = null;
-        let isTracePlaying = false;
-        document.getElementById('tracePlayBtn').addEventListener('click', () => {
-            const btn = document.getElementById('tracePlayBtn');
-            const slider = document.getElementById('traceSlider');
-            if (isTracePlaying) {
-                clearInterval(tracePlayInterval);
-                btn.innerText = "▶ Play";
-                isTracePlaying = false;
-            } else {
-                btn.innerText = "⏸ Pause";
-                isTracePlaying = true;
-                tracePlayInterval = setInterval(() => {
-                    let val = parseInt(slider.value);
-                    if (val >= 119) slider.value = 0;
-                    else slider.value = val + 1;
-                    renderTraceHeatmap();
-                }, 200);
-            }
-        });
 
         // Initialize Options Data
         loadOptionsData();
