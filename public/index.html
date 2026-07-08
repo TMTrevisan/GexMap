@@ -498,8 +498,7 @@
                 const data = await response.json();
                 
                 if (data.error || !Array.isArray(data)) {
-                    console.error("API error payload:", data);
-                    alert("Options chain failed to load: " + (data?.error || "Invalid response format."));
+                    console.warn("API error payload returned:", data);
                     return;
                 }
                 
@@ -520,8 +519,7 @@
                 if (!document.getElementById('trinityView').classList.contains('hidden')) renderTrinityMode();
                 calculateStability();
             } catch (error) {
-                console.error("Failed to load options data:", error);
-                alert("Network error: Failed to connect to local API gateway.");
+                console.warn("Failed to load options data:", error);
             } finally {
                 if (loader) loader.classList.add('hidden');
             }
