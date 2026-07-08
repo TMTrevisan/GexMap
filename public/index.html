@@ -677,16 +677,16 @@
             const overlayLines = [];
             if (isKeyLevels) {
                 overlayLines.push(
-                    { x: [times[0], times[times.length - 1]], y: [callWall, callWall], type: 'scatter', mode: 'lines', line: { color: '#eab308', width: 1.8 }, name: `CALL ${callWall.toFixed(0)}`, xaxis: 'x2', yaxis: 'y2' },
-                    { x: [times[0], times[times.length - 1]], y: [gFlip, gFlip], type: 'scatter', mode: 'lines', line: { color: '#ffd600', width: 1.8, dash: 'dash' }, name: `γ-FLIP ${gFlip.toFixed(1)}`, xaxis: 'x2', yaxis: 'y2' },
-                    { x: [times[0], times[times.length - 1]], y: [putWall, putWall], type: 'scatter', mode: 'lines', line: { color: '#a855f7', width: 1.8 }, name: `PUT ${putWall.toFixed(0)}`, xaxis: 'x2', yaxis: 'y2' }
+                    { x: [times[0], times[times.length - 1]], y: [callWall, callWall], type: 'scatter', mode: 'lines', line: { color: '#eab308', width: 1.8 }, name: `CALL ${callWall.toFixed(0)}` },
+                    { x: [times[0], times[times.length - 1]], y: [gFlip, gFlip], type: 'scatter', mode: 'lines', line: { color: '#ffd600', width: 1.8, dash: 'dash' }, name: `γ-FLIP ${gFlip.toFixed(1)}` },
+                    { x: [times[0], times[times.length - 1]], y: [putWall, putWall], type: 'scatter', mode: 'lines', line: { color: '#a855f7', width: 1.8 }, name: `PUT ${putWall.toFixed(0)}` }
                 );
             }
 
             const fig = {
                 data: [
-                    { z: zMatrix, x: times, y: strikesInRange, type: 'heatmap', colorscale: colorscale, showscale: false, xaxis: 'x2', yaxis: 'y2', opacity: 0.85 },
-                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', xaxis: 'x2', yaxis: 'y2', increasing: { line: { color: '#10b981', width: 1.5 }, fillcolor: '#10b981' }, decreasing: { line: { color: '#ff3344', width: 1.5 }, fillcolor: '#ff3344' } },
+                    { z: zMatrix, x: times, y: strikesInRange, type: 'heatmap', colorscale: colorscale, showscale: false, opacity: 0.85 },
+                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', increasing: { line: { color: '#10b981', width: 1.5 }, fillcolor: '#10b981' }, decreasing: { line: { color: '#ff3344', width: 1.5 }, fillcolor: '#ff3344' } },
                     ...overlayLines
                 ],
                 layout: {
@@ -694,8 +694,8 @@
                     plot_bgcolor: '#04060b',
                     margin: { l: 40, r: 40, b: 35, t: 10 },
                     showlegend: false,
-                    xaxis2: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', rangeslider: { visible: false }, type: 'date', tickfont: { color: '#94a3b8', size: 9 } },
-                    yaxis2: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, side: 'right' }
+                    xaxis: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', rangeslider: { visible: false }, type: 'date', tickfont: { color: '#94a3b8', size: 9 } },
+                    yaxis: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, side: 'right' }
                 }
             };
 
