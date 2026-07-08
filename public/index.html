@@ -3,51 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpotGamma TRACE - Options Heatmap & Levels</title>
+    <title>GEX Edge Terminal - Institutional Options Analytics</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Plotly.js for multi-subplot advanced charting -->
+    <!-- Plotly.js for charting -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { background-color: #0c0e15; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
-        .control-dropdown { background-color: #121620; border: 1px solid #1f293d; color: #e2e8f0; font-size: 11px; padding: 4px 8px; border-radius: 4px; outline: none; }
-        .kpi-title { color: #5a6e85; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
-        .kpi-value { font-size: 14px; font-weight: 900; color: #ffffff; margin-top: 2px; }
+        body { background-color: #060913; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+        .control-dropdown { background-color: #121826; border: 1px solid #1f2d47; color: #e2e8f0; font-size: 11px; padding: 5px 10px; border-radius: 6px; outline: none; transition: border-color 0.2s; }
+        .control-dropdown:focus { border-color: #eab308; }
+        .card-panel { background-color: #0b0f19; border: 1px solid #1c263c; border-radius: 12px; }
+        .kpi-card { background-color: #0d1322; border: 1px solid #1e2b48; border-radius: 8px; padding: 10px; text-align: center; }
+        .kpi-title { color: #5c7290; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .kpi-value { font-size: 15px; font-weight: 900; color: #ffffff; margin-top: 2px; }
         /* Custom scrollbars */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #070a0f; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-        
-        /* Bobby Style Table Colors */
-        .bobby-peak-pos { background-color: rgba(234, 179, 8, 0.25); color: #facc15; border-left: 4px solid #eab308; } /* Yellow */
-        .bobby-peak-neg { background-color: rgba(168, 85, 247, 0.25); color: #c084fc; border-left: 4px solid #a855f7; } /* Purple */
-        .bobby-pos { background-color: rgba(16, 185, 129, 0.12); color: #34d399; } /* Emerald */
-        .bobby-neg { background-color: rgba(99, 102, 241, 0.12); color: #818cf8; } /* Violet/Blue */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #070a10; }
+        ::-webkit-scrollbar-thumb { background: #1c263c; border-radius: 3px; }
     </style>
 </head>
 <body class="p-4 select-none">
 
-    <!-- Top Navigation -->
-    <div class="flex justify-between items-center mb-3">
+    <!-- Top Navigation Bar -->
+    <div class="flex justify-between items-center mb-4">
+        <div class="flex items-center gap-3">
+            <span class="text-xl font-black tracking-tight text-white flex items-center">
+                <span class="text-yellow-400 font-extrabold mr-1">⚡</span> GEX <span class="text-yellow-400">EDGE</span>
+            </span>
+            <span class="bg-[#121826] text-gray-400 border border-gray-800 text-[9px] font-bold px-2 py-0.5 rounded">LEARN INTEGRATED</span>
+        </div>
+        
         <div class="flex bg-[#0f131c] p-0.5 rounded border border-gray-800">
-            <button id="navTraceBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-white bg-[#222a3a]">
-                📊 TRACE Heatmap
+            <button id="navTraceBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-white bg-[#222a3a]">
+                📊 Playbook & Heatmap
             </button>
-            <button id="navHiroBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+            <button id="navBobbyBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+                📋 Bobby Option Chain
+            </button>
+            <button id="navHiroBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
                 🎯 HIRO Flow Tape
             </button>
-            <button id="navBobbyBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
-                📋 Bobby View
-            </button>
-            <button id="navCompassBtn" class="px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
-                🧭 Compass
+            <button id="navCompassBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+                🧭 Compass Grid
             </button>
         </div>
-        <span class="text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Bobby Style Terminal ⚡</span>
     </div>
 
-    <!-- ==================== UNIVERSAL CONTROL BAR ==================== -->
-    <div class="control-panel px-6 py-3 flex flex-wrap items-center gap-3.5 text-xs font-semibold text-gray-300 bg-[#0f131a] rounded-t-lg border-t border-x border-[#1e2a3a]">
+    <!-- ==================== UNIVERSAL FILTER CONTROL BAR ==================== -->
+    <div class="bg-[#0b0f19] px-6 py-3 flex flex-wrap items-center gap-3.5 text-xs font-semibold text-gray-300 rounded-lg border border-[#1e2a3a] mb-4">
         <div class="flex items-center gap-1.5">
             <span>Symbol</span>
             <select id="globalSymbolInput" class="control-dropdown font-bold">
@@ -62,7 +65,6 @@
             <select id="globalTfSelect" class="control-dropdown">
                 <option value="5m" selected>5m</option>
                 <option value="15m">15m</option>
-                <option value="1h">1h</option>
             </select>
         </div>
 
@@ -75,27 +77,10 @@
         </div>
 
         <div class="flex items-center gap-1.5">
-            <span>Expiry</span>
-            <select id="globalExpirySelect" class="control-dropdown">
-                <option value="nearest" selected>nearest</option>
-                <option value="next">next</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
-            <span>Aggregate</span>
-            <select id="globalAggSelect" class="control-dropdown">
-                <option value="nearest2" selected>nearest 2</option>
-                <option value="nearest5">nearest 5</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
             <span>Range ±%</span>
             <select id="globalRangeSelect" class="control-dropdown font-bold">
                 <option value="1.5" selected>1.5</option>
                 <option value="3.0">3.0</option>
-                <option value="5.0">5.0</option>
             </select>
         </div>
 
@@ -108,14 +93,6 @@
         </div>
 
         <div class="flex items-center gap-1.5">
-            <span>Participant</span>
-            <select id="globalParticipantSelect" class="control-dropdown">
-                <option value="market_makers" selected>Market Makers</option>
-                <option value="customers">Customers</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-1.5">
             <span>Strikes</span>
             <select id="globalStrikesSelect" class="control-dropdown">
                 <option value="21" selected>21</option>
@@ -123,88 +100,153 @@
             </select>
         </div>
 
-        <div class="flex items-center gap-2 px-3 bg-[#0f172a] border border-[#334155] rounded h-[32px]">
-            <input type="checkbox" id="globalKeyLevelsToggle" checked class="accent-emerald-500 cursor-pointer w-4 h-4">
+        <div class="flex items-center gap-2 px-3 bg-[#121826] border border-[#1f2d47] rounded h-[32px]">
+            <input type="checkbox" id="globalKeyLevelsToggle" checked class="accent-yellow-400 cursor-pointer w-4 h-4">
             <label for="globalKeyLevelsToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Key Levels</label>
         </div>
 
-        <div class="flex items-center gap-2 px-3 bg-[#0f172a] border border-[#334155] rounded h-[32px]">
-            <input type="checkbox" id="globalInvertToggle" class="accent-emerald-500 cursor-pointer w-4 h-4">
+        <div class="flex items-center gap-2 px-3 bg-[#121826] border border-[#1f2d47] rounded h-[32px]">
+            <input type="checkbox" id="globalInvertToggle" class="accent-yellow-400 cursor-pointer w-4 h-4">
             <label for="globalInvertToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Invert Pos</label>
         </div>
 
         <!-- Dynamic Stability Gauge -->
         <div class="flex items-center gap-2 bg-[#0d1527] border border-[#1e293b] px-3 py-1 rounded">
             <span class="text-[10px] text-gray-400 block font-bold uppercase">Stability</span>
-            <span id="globalStabilityVal" class="text-emerald-400 font-black">--%</span>
+            <span id="globalStabilityVal" class="text-yellow-400 font-black">--%</span>
         </div>
 
-        <button id="globalRefreshBtn" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-4 h-[32px] rounded transition-colors uppercase tracking-wider">
+        <button id="globalRefreshBtn" class="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-4 h-[32px] rounded transition-colors uppercase tracking-wider">
             ↻ Refresh
         </button>
     </div>
 
-    <!-- KPIs Bar (Second row) -->
-    <div class="bg-[#0f131a] px-6 py-2.5 flex flex-wrap gap-8 border-b border-[#1e2a3a] border-x">
-        <div class="flex flex-col">
-            <span class="kpi-title">Spot</span>
-            <span id="spotVal" class="kpi-value">--</span>
+    <!-- KPIs Banner -->
+    <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3 mb-4">
+        <div class="kpi-card">
+            <span class="kpi-title">Spot Price</span>
+            <span id="spotVal" class="kpi-value text-white">--</span>
         </div>
-        <div class="flex flex-col">
+        <div class="kpi-card">
             <span class="kpi-title">LS Regime</span>
             <span id="regimeVal" class="text-emerald-400 text-sm font-black mt-0.5">Weak Bull</span>
         </div>
-        <div class="flex flex-col">
+        <div class="kpi-card">
             <span class="kpi-title" id="kpiNetGexLabel">Net GEX</span>
             <div class="mt-1"><span id="netGexVal" class="bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2 py-0.5 rounded">CALL</span></div>
         </div>
-        <div class="flex flex-col">
+        <div class="kpi-card">
             <span class="kpi-title" id="kpiNetDexLabel">Net DEX</span>
             <div class="mt-1"><span id="netDexVal" class="bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2 py-0.5 rounded">BEAR</span></div>
         </div>
-        <div class="flex flex-col">
+        <div class="kpi-card">
             <span class="kpi-title" id="kpiCallWallLabel">Call Wall</span>
-            <span id="callWallVal" class="text-[#eab308] text-sm font-black mt-0.5">--</span>
+            <span id="callWallVal" class="text-yellow-400 text-sm font-black mt-0.5">--</span>
         </div>
-        <div class="flex flex-col">
+        <div class="kpi-card">
             <span class="kpi-title" id="kpiPutWallLabel">Put Wall</span>
-            <span id="putWallVal" class="text-[#a855f7] text-sm font-black mt-0.5">--</span>
+            <span id="putWallVal" class="text-purple-400 text-sm font-black mt-0.5">--</span>
         </div>
-        <div class="flex flex-col">
+        <div class="kpi-card">
             <span class="kpi-title">Γ-Flip</span>
             <span id="gFlipVal" class="text-yellow-500 text-sm font-black mt-0.5">--</span>
         </div>
-        <div class="flex flex-col">
-            <span class="kpi-title">P/C</span>
+        <div class="kpi-card">
+            <span class="kpi-title">P/C Ratio</span>
             <span id="pcRatioVal" class="kpi-value">--</span>
         </div>
-        <div class="flex flex-col">
+        <div class="kpi-card">
             <span class="kpi-title">ATM IV</span>
             <span id="atmIvVal" class="kpi-value">9.3%</span>
         </div>
     </div>
 
-    <!-- ==================== TRACE MAIN VIEW ==================== -->
-    <div id="traceView" class="block bg-[#121620] border-x border-b border-[#1e2a3a] p-4 rounded-b-lg relative min-h-[600px]">
-        <div id="loader" class="absolute inset-0 bg-[#0c0e15]/90 flex items-center justify-center rounded-b-lg z-50">
-            <div class="text-center">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-400 mx-auto mb-3"></div>
-                <p class="text-xs text-gray-400 font-semibold">Calculating options timeline & liquidity levels...</p>
+    <!-- ==================== TRACE MAIN VIEW (PLAYBOOK + HEATMAP) ==================== -->
+    <div id="traceView" class="block">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <!-- Left Column: Plain-English Playbook Guide (4 Columns) -->
+            <div class="lg:col-span-4 flex flex-col gap-4">
+                
+                <!-- Daily Playbook -->
+                <div class="card-panel p-4 flex flex-col gap-3">
+                    <h2 class="text-xs font-black uppercase text-yellow-400 tracking-wider mb-1">📋 Today's Trading Playbook</h2>
+                    
+                    <div class="space-y-3.5 text-xs">
+                        <div class="bg-[#121826] p-3 rounded-lg border border-gray-800">
+                            <span class="text-[9px] text-gray-500 font-bold block uppercase mb-1">The One-Line Read</span>
+                            <p id="playbookOneLine" class="text-gray-200 font-medium leading-relaxed">
+                                Spot is above the flip, dips may get bought more easily, and breakouts can stall due to positive gamma friction.
+                            </p>
+                        </div>
+
+                        <div class="bg-[#121826] p-3 rounded-lg border border-gray-850">
+                            <span class="text-[9px] text-rose-400 font-bold block uppercase mb-1">⚠️ Dumb Trade to Avoid</span>
+                            <p id="playbookAvoid" class="text-rose-300 font-medium">
+                                Do not chase late upside breakouts near the Call Wall without clean consolidation and acceptance above.
+                            </p>
+                        </div>
+
+                        <div>
+                            <span class="text-[9px] text-gray-500 font-bold block uppercase mb-1.5">Actionable Instructions</span>
+                            <ul id="playbookList" class="list-disc pl-5 space-y-1.5 text-gray-400">
+                                <li>Wait for expectation high/low levels before sizing up entries.</li>
+                                <li>Take profits faster on directional runs as hedging dampens expansion.</li>
+                                <li>Be suspicious of wicks breaching the key walls; look for true holds.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Novice Explainer Dictionary -->
+                <div class="card-panel p-4 flex-grow">
+                    <h2 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">📖 Learn GEX Edge</h2>
+                    <div class="flex gap-2 border-b border-gray-800 pb-2 mb-3">
+                        <button onclick="showExplainer('hedging')" class="text-[10px] font-bold text-yellow-400 hover:text-yellow-300 mr-2">Dealer Hedging</button>
+                        <button onclick="showExplainer('flip')" class="text-[10px] font-bold text-gray-400 hover:text-yellow-300 mr-2">Gamma Flip</button>
+                        <button onclick="showExplainer('walls')" class="text-[10px] font-bold text-gray-400 hover:text-yellow-300">Walls</button>
+                    </div>
+                    
+                    <div id="explainerContent" class="text-xs text-gray-400 leading-relaxed space-y-2">
+                        <p class="font-bold text-white">Dealer Delta Hedging:</p>
+                        <p>Options trades create directional risk. When you buy a call option, a market maker sells it to you, leaving them short exposure. To hedge, they buy shares of stock. As stock price moves, they continuously adjust this hedge, creating real buying/selling pressure on the S&P 500.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Heatmap and Timeline Chart (8 Columns) -->
+            <div class="lg:col-span-8 card-panel p-4 flex flex-col relative min-h-[580px]">
+                <div id="loader" class="absolute inset-0 bg-[#0c0e15]/90 flex items-center justify-center rounded-xl z-50">
+                    <div class="text-center">
+                        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-400 mx-auto mb-3"></div>
+                        <p class="text-xs text-gray-400 font-semibold">Calculating options timeline & liquidity levels...</p>
+                    </div>
+                </div>
+                
+                <div id="mainDashboardPlot" class="w-full h-[480px]"></div>
+
+                <!-- Timeline Slider -->
+                <div class="border-t border-gray-800/80 pt-4 mt-auto flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs text-gray-500 px-1">
+                        <span class="font-bold uppercase tracking-wider text-yellow-400">🕒 Timeline Scrub</span>
+                        <span id="traceTimeLabel" class="font-black text-gray-300 bg-slate-900 px-2 py-0.5 rounded border border-gray-800">09:30 AM</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="traceSlider" min="0" max="119" value="119" class="flex-grow accent-yellow-400 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
+                        <button id="tracePlayBtn" class="bg-[#1a2333] hover:bg-[#253248] text-white border border-[#2b3952] font-bold px-4 py-1.5 rounded text-xs transition-colors shrink-0">▶ Play</button>
+                    </div>
+                </div>
             </div>
         </div>
-        <div id="mainDashboardPlot" class="w-full h-[600px]"></div>
     </div>
 
     <!-- ==================== HIRO FLOW VIEW ==================== -->
-    <div id="hiroView" class="hidden p-4 bg-[#0f131a] rounded-b-lg border-x border-b border-[#1e2a3a]">
-        <!-- Live Tape + Chart Grid -->
+    <div id="hiroView" class="hidden p-4 card-panel">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div class="lg:col-span-8 flex flex-col gap-4">
                 <div class="bg-[#080c10] border border-gray-800 rounded-xl p-4">
                     <div id="hiroChartPlot" class="w-full h-[400px]"></div>
                 </div>
-                
-                <!-- Live Order Tape (Flow Data) -->
                 <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
                     <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">🌊 Live Options Flow Tape</h3>
                     <div class="overflow-y-auto max-h-[220px]">
@@ -226,7 +268,6 @@
                     </div>
                 </div>
             </div>
-            
             <div class="lg:col-span-4 space-y-4">
                 <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
                     <h3 class="text-xs font-black text-white uppercase tracking-wider mb-2">🔥 Trending Flow Tickers</h3>
@@ -235,14 +276,6 @@
                             <span class="font-bold text-white">TSLA</span>
                             <span class="text-emerald-400 font-bold">+$22.5M Call Buying</span>
                         </div>
-                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded">
-                            <span class="font-bold text-white">NVDA</span>
-                            <span class="text-emerald-400 font-bold">+$48.1M Call Buying</span>
-                        </div>
-                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded">
-                            <span class="font-bold text-white">AAPL</span>
-                            <span class="text-rose-500 font-bold">-$12.4M Put Buying</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -250,7 +283,7 @@
     </div>
 
     <!-- ==================== BOBBY VIEW ==================== -->
-    <div id="bobbyView" class="hidden p-4 bg-[#0f131a] rounded-b-lg border-x border-b border-[#1e2a3a]">
+    <div id="bobbyView" class="hidden p-4 card-panel">
         <div class="overflow-x-auto">
             <table class="w-full text-xs text-left text-gray-300">
                 <thead class="bg-slate-950 text-gray-400 font-bold uppercase sticky top-0 border-b border-gray-850">
@@ -270,36 +303,10 @@
     </div>
 
     <!-- ==================== COMPASS VIEW ==================== -->
-    <div id="compassView" class="hidden p-4 bg-[#0f131a] rounded-b-lg border-x border-b border-[#1e2a3a]">
+    <div id="compassView" class="hidden p-4 card-panel">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-800 rounded-xl p-4 flex flex-col">
                 <div id="compassGridPlot" class="w-full h-[450px]"></div>
-            </div>
-            <div class="lg:col-span-4 bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
-                <h3 class="text-xs font-black text-white uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">🎯 Compass Scanner</h3>
-                <div class="overflow-y-auto max-h-[420px] text-xs">
-                    <table class="w-full text-left text-gray-300">
-                        <thead class="bg-slate-950 text-gray-400 uppercase text-[9px] border-b border-gray-850">
-                            <tr>
-                                <th class="py-2 px-2">Ticker</th>
-                                <th class="py-2 px-2 text-right">Vol Rank</th>
-                                <th class="py-2 px-2 text-right">Delta Bias</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-850" id="compassTableBody">
-                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('SPY')">
-                                <td class="py-2.5 px-2 font-bold text-white">SPY</td>
-                                <td class="py-2.5 px-2 text-right text-gray-400">42% (Cheap)</td>
-                                <td class="py-2.5 px-2 text-right text-emerald-400">+72% (Bullish)</td>
-                            </tr>
-                            <tr class="hover:bg-slate-900/60 cursor-pointer" onclick="highlightCompassTrail('QQQ')">
-                                <td class="py-2.5 px-2 font-bold text-white">QQQ</td>
-                                <td class="py-2.5 px-2 text-right text-gray-400">38% (Cheap)</td>
-                                <td class="py-2.5 px-2 text-right text-emerald-400">+65% (Bullish)</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
             </div>
         </div>
     </div>
@@ -317,11 +324,11 @@
         function setView(target) {
             Object.keys(views).forEach(k => {
                 document.getElementById(views[k]).classList.add('hidden');
-                document.getElementById(navBtns[k]).className = "px-4 py-1 rounded text-xs font-bold transition-all text-gray-400 hover:text-white";
+                document.getElementById(navBtns[k]).className = "px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white";
             });
 
             document.getElementById(views[target]).classList.remove('hidden');
-            document.getElementById(navBtns[target]).className = "px-4 py-1 rounded text-xs font-bold transition-all text-white bg-[#222a3a]";
+            document.getElementById(navBtns[target]).className = "px-4 py-1.5 rounded text-xs font-bold transition-all text-white bg-[#222a3a]";
 
             if (target === 'trace') renderTraceHeatmap();
             else if (target === 'hiro') renderHiro();
@@ -333,7 +340,7 @@
             document.getElementById(navBtns[k]).addEventListener('click', () => setView(k));
         });
 
-        // Seedable Pseudo-Random Number Generator ( Mulberry32 ) to prevent changing price walk on refresh
+        // Seedable PRNG
         function seedRandom(str) {
             let h = 1779033703 ^ str.length;
             for (let i = 0; i < str.length; i++) {
@@ -353,7 +360,6 @@
             if (!body) return;
             
             const symbol = document.getElementById('globalSymbolInput').value;
-            // Use standard Math.random here since the tape is a real-time stream
             const side = Math.random() > 0.55 ? "CALL" : "PUT";
             const sideColor = side === "CALL" ? "text-emerald-400 font-bold" : "text-rose-500 font-bold";
             const type = Math.random() > 0.5 ? "BUY" : "SELL";
@@ -381,7 +387,7 @@
         }
         setInterval(updateLiveTape, 2000);
 
-        // Fetch options chain and connect to global filters
+        // Fetch options chain
         async function loadOptionsData() {
             const symbol = document.getElementById('globalSymbolInput').value;
             const loader = document.getElementById('loader');
@@ -411,9 +417,7 @@
             let totalGex = 0;
             currentData.forEach(d => {
                 totalGex += Math.abs(d.gex);
-                if (Math.abs(d.strike - spot) < 3) {
-                    atmGex += Math.abs(d.gex);
-                }
+                if (Math.abs(d.strike - spot) < 3) atmGex += Math.abs(d.gex);
             });
             const ratio = (atmGex / (totalGex || 1)) * 100;
             document.getElementById('globalStabilityVal').innerText = `${Math.min(95, Math.max(10, ratio * 20)).toFixed(0)}%`;
@@ -425,8 +429,7 @@
             const symbol = document.getElementById('globalSymbolInput').value;
             const numBars = 120;
             
-            // Seed the generator deterministically with the symbol name
-            const rand = seedRandom(symbol + "-static-path-v1");
+            const rand = seedRandom(symbol + "-static-path-v2");
 
             const baseTime = new Date("2026-06-22T09:30:00");
             prices = [];
@@ -463,7 +466,6 @@
             };
         }
 
-        // Render S&P Heatmap, GEX Profile, and LIQ/GEX subplots exactly matching the screenshot
         function renderTraceHeatmap() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
@@ -474,8 +476,7 @@
             const isInvert = document.getElementById('globalInvertToggle').checked;
             const metric = document.getElementById('globalMetricSelect').value;
 
-            // Seed generator for colorscale shifts and timeline signals
-            const rand = seedRandom(symbol + "-heatmap-seeds-v1");
+            const rand = seedRandom(symbol + "-heatmap-v2");
 
             const times = prices.map(p => p.time);
             const close = prices.map(p => p.close);
@@ -485,7 +486,6 @@
 
             const strikesInRange = traceData.strikes.filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).slice(0, numStrikes);
 
-            // Recompute Walls dynamically based on Metric (GEX vs DEX)
             let maxCallVal = -Infinity;
             let callWall = spot;
             let minPutVal = Infinity;
@@ -494,31 +494,45 @@
             strikesInRange.forEach(s => {
                 let strikeSum = 0;
                 currentData.forEach(d => {
-                    if (d.strike === s) {
-                        strikeSum += (metric === 'gex' ? d.gex : d.dex);
-                    }
+                    if (d.strike === s) strikeSum += (metric === 'gex' ? d.gex : d.dex);
                 });
-
                 if (strikeSum > maxCallVal) { maxCallVal = strikeSum; callWall = s; }
                 if (strikeSum < minPutVal) { minPutVal = strikeSum; putWall = s; }
             });
 
             let gFlip = (callWall + putWall) / 2;
+            const currentSpotPrice = close[close.length - 1];
 
-            // Update KPI row
-            document.getElementById('spotVal').innerText = `$${close[close.length - 1].toFixed(2)}`;
+            // Update Dynamic Playbook content based on spot relative to flip
+            const isAboveFlip = currentSpotPrice > gFlip;
+            if (isAboveFlip) {
+                document.getElementById('regimeVal').innerText = "Positive Gamma";
+                document.getElementById('regimeVal').className = "text-[#10b981] text-sm font-black mt-0.5";
+                document.getElementById('playbookOneLine').innerText = "Spot is above the flip. Dealer hedging acts like a brake—dips are structurally supported and get bought easily, but late momentum chases face friction.";
+                document.getElementById('playbookAvoid').innerText = "Do not chase late breakouts near the Call Wall. Take profits faster as price runs into overhead resistance.";
+                document.getElementById('playbookList').innerHTML = `
+                    <li>Expect mean reversion toward crowded strike nodes.</li>
+                    <li>Wait for expectation levels (Put Wall) to go long premium.</li>
+                    <li>Reduce position sizing if spot coils near the flip boundary.</li>
+                `;
+            } else {
+                document.getElementById('regimeVal').innerText = "Negative Gamma";
+                document.getElementById('regimeVal').className = "text-[#a855f7] text-sm font-black mt-0.5";
+                document.getElementById('playbookOneLine').innerText = "Spot is below the flip. Dealer hedging acts like a gas pedal—dealers chase direction, expanding volatility. Breaks can run fast and far.";
+                document.getElementById('playbookAvoid').innerText = "Do not fade momentum blindly. A support level that held yesterday can collapse like a trapdoor in this regime.";
+                document.getElementById('playbookList').innerHTML = `
+                    <li>Respect the first clean downside break below the put wall.</li>
+                    <li>Use tight, defined risk structures (e.g. put spreads) for momentum runs.</li>
+                    <li>Volatility is expected to expand; stand aside if stops get blown out.</li>
+                `;
+            }
+
+            document.getElementById('spotVal').innerText = `$${currentSpotPrice.toFixed(2)}`;
             document.getElementById('callWallVal').innerText = `$${callWall.toFixed(0)}`;
             document.getElementById('putWallVal').innerText = `$${putWall.toFixed(0)}`;
             document.getElementById('gFlipVal').innerText = `$${gFlip.toFixed(1)}`;
-            // Seeded P/C ratio
             document.getElementById('pcRatioVal').innerText = (1.1 - rand() * 0.4).toFixed(2);
 
-            // Update label headers for DEX vs GEX
-            document.getElementById('kpiNetGexLabel').innerText = metric === 'gex' ? 'Net GEX' : 'Net DEX';
-            document.getElementById('kpiCallWallLabel').innerText = metric === 'gex' ? 'Call Wall' : 'Delta Wall';
-            document.getElementById('kpiPutWallLabel').innerText = metric === 'gex' ? 'Put Wall' : 'Delta Floor';
-
-            // Render exact Heatmap Matrix
             const zMatrix = [];
             for (let i = 0; i < strikesInRange.length; i++) {
                 zMatrix.push(new Array(prices.length).fill(0));
@@ -531,13 +545,12 @@
                     if (Math.abs(strike - callWall) < 1.5) intensity = 50 + Math.sin(tIdx / 8) * 12;
                     else if (Math.abs(strike - putWall) < 1.5) intensity = -50 + Math.cos(tIdx / 6) * 12;
                     else if (Math.abs(strike - price) < 2) intensity = (strike > gFlip) ? 22 : -22;
-                    
                     if (isInvert) intensity = -intensity;
                     zMatrix[sIdx][tIdx] = intensity;
                 }
             });
 
-            // Bobby Style Colorscale for Heatmap:
+            // Bobby Style Colorscale
             const colorscale = [
                 [0.0, '#a855f7'],  // Peak Negative (Purple)
                 [0.2, '#6366f1'],  // Negative (Violet/Blue)
@@ -548,19 +561,15 @@
                 [1.0, '#eab308']   // Peak Positive (Yellow)
             ];
 
-            // Bobby Style bar chart markers
             const profileXValues = strikesInRange.map(s => {
                 let sum = 0;
-                currentData.forEach(d => {
-                    if (d.strike === s) sum += (metric === 'gex' ? d.gex : d.dex);
-                });
+                currentData.forEach(d => { if (d.strike === s) sum += (metric === 'gex' ? d.gex : d.dex); });
                 return sum / 100000;
             });
 
             const profileColors = strikesInRange.map(s => {
-                if (s === callWall) return '#eab308'; // Peak Positive (Yellow)
-                if (s === putWall) return '#a855f7';  // Peak Negative (Purple)
-                
+                if (s === callWall) return '#eab308';
+                if (s === putWall) return '#a855f7';
                 let sum = 0;
                 currentData.forEach(d => { if (d.strike === s) sum += (metric === 'gex' ? d.gex : d.dex); });
                 return sum >= 0 ? '#10b981' : '#6366f1';
@@ -573,55 +582,12 @@
                 gexLine.push(0.42 * Math.cos(i / 10) + 0.08 * Math.sin(i / 3) + (close[i] > callWall ? 0.35 : -0.25));
             }
 
-            const signalTimesTop = [];
-            const signalColorsTop = [];
-            const signalTimesBottom = [];
-            const signalColorsBottom = [];
-
-            for (let i = 8; i < prices.length; i += 10) {
-                const stepRand = rand();
-                if (stepRand > 0.6) {
-                    signalTimesTop.push(times[i]);
-                    signalColorsTop.push(stepRand > 0.8 ? '#10b981' : '#ff3344');
-                } else if (stepRand < 0.4) {
-                    signalTimesBottom.push(times[i]);
-                    signalColorsBottom.push(stepRand < 0.2 ? '#10b981' : '#ff3344');
-                }
-            }
-
             const overlayLines = [];
             if (isKeyLevels) {
                 overlayLines.push(
-                    {
-                        x: [times[0], times[times.length - 1]],
-                        y: [callWall, callWall],
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#eab308', width: 1.8 },
-                        name: `CALL ${callWall.toFixed(0)}`,
-                        xaxis: 'x2',
-                        yaxis: 'y2'
-                    },
-                    {
-                        x: [times[0], times[times.length - 1]],
-                        y: [gFlip, gFlip],
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#ffd600', width: 1.8, dash: 'dash' },
-                        name: `γ-FLIP ${gFlip.toFixed(1)}`,
-                        xaxis: 'x2',
-                        yaxis: 'y2'
-                    },
-                    {
-                        x: [times[0], times[times.length - 1]],
-                        y: [putWall, putWall],
-                        type: 'scatter',
-                        mode: 'lines',
-                        line: { color: '#a855f7', width: 1.8 },
-                        name: `PUT ${putWall.toFixed(0)}`,
-                        xaxis: 'x2',
-                        yaxis: 'y2'
-                    }
+                    { x: [times[0], times[times.length - 1]], y: [callWall, callWall], type: 'scatter', mode: 'lines', line: { color: '#eab308', width: 1.8 }, name: `CALL ${callWall.toFixed(0)}`, xaxis: 'x2', yaxis: 'y2' },
+                    { x: [times[0], times[times.length - 1]], y: [gFlip, gFlip], type: 'scatter', mode: 'lines', line: { color: '#ffd600', width: 1.8, dash: 'dash' }, name: `γ-FLIP ${gFlip.toFixed(1)}`, xaxis: 'x2', yaxis: 'y2' },
+                    { x: [times[0], times[times.length - 1]], y: [putWall, putWall], type: 'scatter', mode: 'lines', line: { color: '#a855f7', width: 1.8 }, name: `PUT ${putWall.toFixed(0)}`, xaxis: 'x2', yaxis: 'y2' }
                 );
             }
 
@@ -632,19 +598,17 @@
                     { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', xaxis: 'x2', yaxis: 'y2', increasing: { line: { color: '#10b981', width: 1.5 }, fillcolor: '#10b981' }, decreasing: { line: { color: '#ff3344', width: 1.5 }, fillcolor: '#ff3344' } },
                     { x: times, y: liqLine, type: 'scatter', mode: 'lines', line: { color: '#c084fc', width: 1.8 }, name: 'LIQ', xaxis: 'x4', yaxis: 'y4' },
                     { x: times, y: gexLine, type: 'scatter', mode: 'lines', line: { color: '#ffffff', width: 1.4 }, name: 'GEX', xaxis: 'x4', yaxis: 'y4' },
-                    { x: signalTimesTop, y: new Array(signalTimesTop.length).fill(0.9), type: 'scatter', mode: 'markers', marker: { symbol: 'diamond', size: 6, color: signalColorsTop }, xaxis: 'x4', yaxis: 'y4', showlegend: false },
-                    { x: signalTimesBottom, y: new Array(signalTimesBottom.length).fill(-0.9), type: 'scatter', mode: 'markers', marker: { symbol: 'diamond', size: 6, color: signalColorsBottom }, xaxis: 'x4', yaxis: 'y4', showlegend: false },
                     ...overlayLines
                 ],
                 layout: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: '#0c0e15',
-                    margin: { l: 80, r: 80, b: 50, t: 10 },
+                    margin: { l: 40, r: 40, b: 35, t: 10 },
                     showlegend: false,
                     grid: { rows: 2, columns: 2, pattern: 'independent' },
                     xaxis2: { domain: [0, 0.82], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', rangeslider: { visible: false }, showticklabels: false, type: 'date' },
                     yaxis2: { domain: [0.32, 1], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, anchor: 'x2', side: 'right' },
-                    xaxis3: { domain: [0.85, 1], showgrid: true, gridcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, title: { text: metric === 'gex' ? 'net GEX' : 'net DEX', font: { size: 9, color: '#9ca3af' } } },
+                    xaxis3: { domain: [0.85, 1], showgrid: true, gridcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 } },
                     yaxis3: { domain: [0.32, 1], anchor: 'x3', matches: 'y2', showticklabels: false },
                     xaxis4: { domain: [0, 0.82], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, matches: 'x2', type: 'date' },
                     yaxis4: { domain: [0, 0.25], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, anchor: 'x4', side: 'right', range: [-1.1, 1.1] }
@@ -652,6 +616,26 @@
             };
 
             Plotly.newPlot('mainDashboardPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
+        }
+
+        // Explainer switcher logic
+        const explainers = {
+            hedging: `
+                <p class="font-bold text-white mb-1">Dealer Delta Hedging:</p>
+                <p>Options trades create directional risk. When you buy a call option, a market maker sells it to you, leaving them short exposure. To hedge, they buy shares of stock. As stock price moves, they continuously adjust this hedge, creating real buying/selling pressure on the S&P 500.</p>
+            `,
+            flip: `
+                <p class="font-bold text-yellow-400 mb-1">Gamma Flip Inflection:</p>
+                <p>The boundary line deciding behavior. Above the flip, dealer hedging acts like a brake (dampening ranges). Below the flip, dealer hedging acts like a gas pedal (accelerating expansions and selling flushes).</p>
+            `,
+            walls: `
+                <p class="font-bold text-purple-400 mb-1">Call & Put Walls:</p>
+                <p>Crowded options strikes that act as ceilings (Call Wall) or support boundaries (Put Wall). In positive gamma, wicks reject them; but in negative gamma, breaks beyond walls can become acceleration trapdoors.</p>
+            `
+        };
+
+        function showExplainer(key) {
+            document.getElementById('explainerContent').innerHTML = explainers[key];
         }
 
         // Render HIRO
@@ -662,7 +646,7 @@
             Plotly.newPlot('hiroChartPlot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#ffffff' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
         }
 
-        // Render Bobby View Option Chain
+        // Render Bobby View
         function renderBobbyView() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
@@ -707,8 +691,6 @@
                 else if (node.val < 0) rowClass = "bobby-neg";
 
                 const spotBubble = isSpot ? `<span class="bg-white text-black font-black px-1.5 py-0.5 rounded-full text-[9px] animate-pulse">●</span>` : "";
-
-                // Seed generator for randomized percentages
                 const rand = seedRandom(strike + "-bobby-row-seed");
 
                 html += `
@@ -734,7 +716,7 @@
         // Listeners for global inputs to trigger rebuild on change
         document.getElementById('globalRefreshBtn').addEventListener('click', loadOptionsData);
         
-        ['globalSymbolInput', 'globalTfSelect', 'globalDaysSelect', 'globalExpirySelect', 'globalAggSelect', 'globalRangeSelect', 'globalMetricSelect', 'globalParticipantSelect', 'globalStrikesSelect', 'globalKeyLevelsToggle', 'globalInvertToggle'].forEach(id => {
+        ['globalSymbolInput', 'globalTfSelect', 'globalDaysSelect', 'globalRangeSelect', 'globalMetricSelect', 'globalStrikesSelect', 'globalKeyLevelsToggle', 'globalInvertToggle'].forEach(id => {
             document.getElementById(id).addEventListener('change', () => {
                 generateSynthetics();
                 renderTraceHeatmap();
