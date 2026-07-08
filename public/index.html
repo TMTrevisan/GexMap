@@ -544,7 +544,7 @@
             const symbol = document.getElementById('globalSymbolInput').value;
             const numBars = 120;
             
-            const rand = seedRandom(symbol + "-static-path-v2");
+            const rand = seedRandom(symbol + "-" + Date.now());
 
             const baseTime = new Date();
             baseTime.setHours(9, 30, 0, 0);

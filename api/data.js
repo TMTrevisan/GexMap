@@ -79,6 +79,9 @@ function generateFallbackData(symbol) {
   else if (symbol === 'AMD') { spot = 162.30; interval = 1.0; }
   else if (symbol === 'AMZN') { spot = 185.40; interval = 1.0; }
 
+  // Add a small live fluctuation to spot price on every refresh
+  spot = spot + (Math.random() - 0.5) * (interval * 3.5);
+
   // Generate 8 expirations starting from today
   const expDates = [];
   const startDay = new Date();
@@ -109,6 +112,9 @@ function generateFallbackData(symbol) {
     const expiryFactor = Math.exp(-expIdx * 0.3);
 
     strikes.forEach(strike => {
+      // Use dynamic noise based on current timestamp
+      const randVal = Math.sin(strike * 13 + Math.random() * 5);
+      
       // Calculate realistic GEX
       let gex = 0;
       if (strike > spot) {
@@ -133,9 +139,8 @@ function generateFallbackData(symbol) {
         gex -= 1800000 * expiryFactor;
       }
 
-      // Add random noise
-      const noise = (Math.sin(strike * 13) * Math.cos(expIdx * 7)) * 120000;
-      gex += noise;
+      // Add dynamic noise fluctuation
+      gex += randVal * 250000 * expiryFactor;
 
       const oi = Math.round((Math.abs(gex) / 10) + 100);
       const volume = Math.round(oi * 0.15 * (Math.sin(strike) + 1.2));
