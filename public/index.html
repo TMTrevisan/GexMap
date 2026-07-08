@@ -496,6 +496,13 @@
             try {
                 const response = await fetch(`/api/data?symbol=${symbol}`);
                 const data = await response.json();
+                
+                if (data.error || !Array.isArray(data)) {
+                    console.error("API error payload:", data);
+                    alert("Options chain failed to load: " + (data?.error || "Invalid response format."));
+                    return;
+                }
+                
                 currentData = data;
                 
                 expirationsList = [...new Set(currentData.map(d => d.expiration))].sort().slice(0, 10);
@@ -514,6 +521,7 @@
                 calculateStability();
             } catch (error) {
                 console.error("Failed to load options data:", error);
+                alert("Network error: Failed to connect to local API gateway.");
             } finally {
                 if (loader) loader.classList.add('hidden');
             }
@@ -576,7 +584,7 @@
         }
 
         function renderTraceHeatmap() {
-            if (!currentData || currentData.length === 0) return;
+            if (!currentData || currentData.length === 0 || prices.length === 0) return;
             const spot = currentData[0].underlying_price;
             const symbol = document.getElementById('globalSymbolInput').value;
             const rangePct = parseFloat(document.getElementById('globalRangeSelect').value) / 100;
