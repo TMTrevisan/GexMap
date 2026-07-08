@@ -9,50 +9,60 @@
     <!-- Plotly.js for charting -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { background-color: #060913; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
-        .control-dropdown { background-color: #121826; border: 1px solid #1f2d47; color: #e2e8f0; font-size: 11px; padding: 5px 10px; border-radius: 6px; outline: none; transition: border-color 0.2s; }
-        .control-dropdown:focus { border-color: #eab308; }
-        .card-panel { background-color: #0b0f19; border: 1px solid #1c263c; border-radius: 12px; }
-        .kpi-card { background-color: #0d1322; border: 1px solid #1e2b48; border-radius: 8px; padding: 10px; text-align: center; }
-        .kpi-title { color: #5c7290; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
-        .kpi-value { font-size: 15px; font-weight: 900; color: #ffffff; margin-top: 2px; }
+        body { background-color: #04060b; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+        .glow-border { border: 1px solid #1a233a; box-shadow: 0 0 15px rgba(234, 179, 8, 0.03); }
+        .glass-panel { background: rgba(11, 15, 26, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(30, 41, 59, 0.5); }
+        .control-dropdown { background-color: #0a0d16; border: 1px solid #1e293b; color: #cbd5e1; font-size: 11px; padding: 6px 12px; border-radius: 8px; outline: none; transition: all 0.2s; }
+        .control-dropdown:hover { border-color: #ffd600; }
+        .control-dropdown:focus { border-color: #ffd600; box-shadow: 0 0 8px rgba(253, 224, 71, 0.15); }
+        
+        /* Bobby Style Table Styles */
+        .bobby-peak-pos { background-color: rgba(234, 179, 8, 0.15); color: #ffd600; border-left: 4px solid #ffd600; }
+        .bobby-peak-neg { background-color: rgba(168, 85, 247, 0.15); color: #c084fc; border-left: 4px solid #a855f7; }
+        .bobby-pos { background-color: rgba(16, 185, 129, 0.06); color: #34d399; }
+        .bobby-neg { background-color: rgba(99, 102, 241, 0.06); color: #818cf8; }
+        
+        .kpi-card { background: linear-gradient(135deg, #090d16 0%, #06090f 100%); border: 1px solid rgba(30, 41, 59, 0.6); border-radius: 10px; padding: 12px; text-align: center; }
+        .kpi-title { color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+        .kpi-value { font-size: 16px; font-weight: 900; color: #ffffff; margin-top: 3px; }
+        
         /* Custom scrollbars */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: #070a10; }
-        ::-webkit-scrollbar-thumb { background: #1c263c; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: #04060b; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
     </style>
 </head>
-<body class="p-4 select-none">
+<body class="p-6 select-none">
 
     <!-- Top Navigation Bar -->
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex justify-between items-center mb-5">
         <div class="flex items-center gap-3">
-            <span class="text-xl font-black tracking-tight text-white flex items-center">
-                <span class="text-yellow-400 font-extrabold mr-1">⚡</span> GEX <span class="text-yellow-400">EDGE</span>
+            <span class="text-2xl font-black tracking-tight text-white flex items-center">
+                <span class="text-yellow-400 font-extrabold mr-1.5">⚡</span> GEX <span class="text-yellow-400">EDGE</span>
             </span>
-            <span class="bg-[#121826] text-gray-400 border border-gray-800 text-[9px] font-bold px-2 py-0.5 rounded">LEARN INTEGRATED</span>
+            <span class="bg-[#1e1b4b] text-[#c084fc] border border-[#581c87] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Premium Cockpit</span>
         </div>
         
-        <div class="flex bg-[#0f131c] p-0.5 rounded border border-gray-800">
-            <button id="navTraceBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-white bg-[#222a3a]">
+        <div class="flex bg-[#0a0d16] p-1 rounded-lg border border-gray-800/80">
+            <button id="navTraceBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]">
                 📊 Playbook & Heatmap
             </button>
-            <button id="navBobbyBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+            <button id="navBobbyBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                 📋 Bobby Option Chain
             </button>
-            <button id="navHiroBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+            <button id="navHiroBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                 🎯 HIRO Flow Tape
             </button>
-            <button id="navCompassBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+            <button id="navCompassBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                 🧭 Compass Grid
             </button>
         </div>
     </div>
 
-    <!-- ==================== UNIVERSAL FILTER CONTROL BAR ==================== -->
-    <div class="bg-[#0b0f19] px-6 py-3 flex flex-wrap items-center gap-3.5 text-xs font-semibold text-gray-300 rounded-lg border border-[#1e2a3a] mb-4">
-        <div class="flex items-center gap-1.5">
-            <span>Symbol</span>
+    <!-- ==================== FILTER CONTROL BAR ==================== -->
+    <div class="glass-panel px-6 py-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-gray-300 rounded-xl mb-5">
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Symbol</span>
             <select id="globalSymbolInput" class="control-dropdown font-bold">
                 <option value="SPY" selected>SPY</option>
                 <option value="QQQ">QQQ</option>
@@ -60,69 +70,69 @@
             </select>
         </div>
 
-        <div class="flex items-center gap-1.5">
-            <span>TF</span>
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Timeframe</span>
             <select id="globalTfSelect" class="control-dropdown">
                 <option value="5m" selected>5m</option>
                 <option value="15m">15m</option>
             </select>
         </div>
 
-        <div class="flex items-center gap-1.5">
-            <span>Days</span>
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Days</span>
             <select id="globalDaysSelect" class="control-dropdown">
                 <option value="5" selected>5</option>
                 <option value="10">10</option>
             </select>
         </div>
 
-        <div class="flex items-center gap-1.5">
-            <span>Range ±%</span>
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Range ±%</span>
             <select id="globalRangeSelect" class="control-dropdown font-bold">
                 <option value="1.5" selected>1.5</option>
                 <option value="3.0">3.0</option>
             </select>
         </div>
 
-        <div class="flex items-center gap-1.5">
-            <span>Metric</span>
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Metric</span>
             <select id="globalMetricSelect" class="control-dropdown">
                 <option value="gex" selected>GEX (volxγ)</option>
                 <option value="dex">DEX (volxδ)</option>
             </select>
         </div>
 
-        <div class="flex items-center gap-1.5">
-            <span>Strikes</span>
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Strikes</span>
             <select id="globalStrikesSelect" class="control-dropdown">
                 <option value="21" selected>21</option>
                 <option value="41">41</option>
             </select>
         </div>
 
-        <div class="flex items-center gap-2 px-3 bg-[#121826] border border-[#1f2d47] rounded h-[32px]">
+        <div class="flex items-center gap-2 px-3 bg-[#0a0d16] border border-[#1e293b] rounded-lg h-[36px] mt-4">
             <input type="checkbox" id="globalKeyLevelsToggle" checked class="accent-yellow-400 cursor-pointer w-4 h-4">
             <label for="globalKeyLevelsToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Key Levels</label>
         </div>
 
-        <div class="flex items-center gap-2 px-3 bg-[#121826] border border-[#1f2d47] rounded h-[32px]">
+        <div class="flex items-center gap-2 px-3 bg-[#0a0d16] border border-[#1e293b] rounded-lg h-[36px] mt-4">
             <input type="checkbox" id="globalInvertToggle" class="accent-yellow-400 cursor-pointer w-4 h-4">
             <label for="globalInvertToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Invert Pos</label>
         </div>
 
         <!-- Dynamic Stability Gauge -->
-        <div class="flex items-center gap-2 bg-[#0d1527] border border-[#1e293b] px-3 py-1 rounded">
+        <div class="flex items-center gap-2.5 bg-[#081225] border border-[#1d2d47] px-4 py-1.5 rounded-lg mt-4 h-[36px]">
             <span class="text-[10px] text-gray-400 block font-bold uppercase">Stability</span>
             <span id="globalStabilityVal" class="text-yellow-400 font-black">--%</span>
         </div>
 
-        <button id="globalRefreshBtn" class="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-4 h-[32px] rounded transition-colors uppercase tracking-wider">
+        <button id="globalRefreshBtn" class="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-5 h-[36px] rounded-lg transition-all uppercase tracking-wider mt-4">
             ↻ Refresh
         </button>
     </div>
 
     <!-- KPIs Banner -->
-    <div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-3 mb-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-9 gap-4 mb-5">
         <div class="kpi-card">
             <span class="kpi-title">Spot Price</span>
             <span id="spotVal" class="kpi-value text-white">--</span>
@@ -133,11 +143,11 @@
         </div>
         <div class="kpi-card">
             <span class="kpi-title" id="kpiNetGexLabel">Net GEX</span>
-            <div class="mt-1"><span id="netGexVal" class="bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2 py-0.5 rounded">CALL</span></div>
+            <div class="mt-1"><span id="netGexVal" class="bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded">CALL</span></div>
         </div>
         <div class="kpi-card">
             <span class="kpi-title" id="kpiNetDexLabel">Net DEX</span>
-            <div class="mt-1"><span id="netDexVal" class="bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2 py-0.5 rounded">BEAR</span></div>
+            <div class="mt-1"><span id="netDexVal" class="bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded">BEAR</span></div>
         </div>
         <div class="kpi-card">
             <span class="kpi-title" id="kpiCallWallLabel">Call Wall</span>
@@ -161,28 +171,30 @@
         </div>
     </div>
 
-    <!-- ==================== TRACE MAIN VIEW (PLAYBOOK + HEATMAP) ==================== -->
+    <!-- ==================== TRACE MAIN VIEW ==================== -->
     <div id="traceView" class="block">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             
             <!-- Left Column: Plain-English Playbook Guide (4 Columns) -->
             <div class="lg:col-span-4 flex flex-col gap-4">
                 
                 <!-- Daily Playbook -->
-                <div class="card-panel p-4 flex flex-col gap-3">
-                    <h2 class="text-xs font-black uppercase text-yellow-400 tracking-wider mb-1">📋 Today's Trading Playbook</h2>
+                <div class="glass-panel p-5 rounded-xl glow-border">
+                    <h2 class="text-xs font-black uppercase text-yellow-400 tracking-wider mb-2.5 flex items-center gap-1.5">
+                        <span>📋</span> Daily Trading Playbook
+                    </h2>
                     
                     <div class="space-y-3.5 text-xs">
-                        <div class="bg-[#121826] p-3 rounded-lg border border-gray-800">
+                        <div class="bg-[#0a0d16] p-3 rounded-lg border border-gray-800/80">
                             <span class="text-[9px] text-gray-500 font-bold block uppercase mb-1">The One-Line Read</span>
                             <p id="playbookOneLine" class="text-gray-200 font-medium leading-relaxed">
                                 Spot is above the flip, dips may get bought more easily, and breakouts can stall due to positive gamma friction.
                             </p>
                         </div>
 
-                        <div class="bg-[#121826] p-3 rounded-lg border border-gray-850">
-                            <span class="text-[9px] text-rose-400 font-bold block uppercase mb-1">⚠️ Dumb Trade to Avoid</span>
-                            <p id="playbookAvoid" class="text-rose-300 font-medium">
+                        <div class="bg-[#181120] p-3 rounded-lg border border-[#3b134a]">
+                            <span class="text-[9px] text-purple-400 font-bold block uppercase mb-1">⚠️ Dumb Trade to Avoid</span>
+                            <p id="playbookAvoid" class="text-[#d8b4fe] font-medium">
                                 Do not chase late upside breakouts near the Call Wall without clean consolidation and acceptance above.
                             </p>
                         </div>
@@ -199,12 +211,14 @@
                 </div>
 
                 <!-- Novice Explainer Dictionary -->
-                <div class="card-panel p-4 flex-grow">
-                    <h2 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">📖 Learn GEX Edge</h2>
-                    <div class="flex gap-2 border-b border-gray-800 pb-2 mb-3">
-                        <button onclick="showExplainer('hedging')" class="text-[10px] font-bold text-yellow-400 hover:text-yellow-300 mr-2">Dealer Hedging</button>
-                        <button onclick="showExplainer('flip')" class="text-[10px] font-bold text-gray-400 hover:text-yellow-300 mr-2">Gamma Flip</button>
-                        <button onclick="showExplainer('walls')" class="text-[10px] font-bold text-gray-400 hover:text-yellow-300">Walls</button>
+                <div class="glass-panel p-5 rounded-xl glow-border flex-grow">
+                    <h2 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3.5 flex items-center gap-1.5">
+                        <span>📖</span> Learn GEX Edge
+                    </h2>
+                    <div class="flex gap-2 border-b border-gray-850 pb-2 mb-3.5">
+                        <button onclick="showExplainer('hedging')" class="text-[10px] font-bold text-yellow-400 hover:text-yellow-300 mr-3 transition-colors">Dealer Hedging</button>
+                        <button onclick="showExplainer('flip')" class="text-[10px] font-bold text-gray-450 hover:text-yellow-300 mr-3 transition-colors">Gamma Flip</button>
+                        <button onclick="showExplainer('walls')" class="text-[10px] font-bold text-gray-450 hover:text-yellow-300 transition-colors">Walls</button>
                     </div>
                     
                     <div id="explainerContent" class="text-xs text-gray-400 leading-relaxed space-y-2">
@@ -215,10 +229,10 @@
             </div>
 
             <!-- Right Column: Heatmap and Timeline Chart (8 Columns) -->
-            <div class="lg:col-span-8 card-panel p-4 flex flex-col relative min-h-[580px]">
-                <div id="loader" class="absolute inset-0 bg-[#0c0e15]/90 flex items-center justify-center rounded-xl z-50">
+            <div class="lg:col-span-8 glass-panel p-5 rounded-xl glow-border flex flex-col relative min-h-[580px]">
+                <div id="loader" class="absolute inset-0 bg-[#04060b]/90 flex items-center justify-center rounded-xl z-50">
                     <div class="text-center">
-                        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-400 mx-auto mb-3"></div>
+                        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400 mx-auto mb-3"></div>
                         <p class="text-xs text-gray-400 font-semibold">Calculating options timeline & liquidity levels...</p>
                     </div>
                 </div>
@@ -226,10 +240,10 @@
                 <div id="mainDashboardPlot" class="w-full h-[480px]"></div>
 
                 <!-- Timeline Slider -->
-                <div class="border-t border-gray-800/80 pt-4 mt-auto flex flex-col gap-2">
-                    <div class="flex justify-between items-center text-xs text-gray-500 px-1">
+                <div class="border-t border-gray-850 pt-4 mt-auto flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs text-gray-550 px-1">
                         <span class="font-bold uppercase tracking-wider text-yellow-400">🕒 Timeline Scrub</span>
-                        <span id="traceTimeLabel" class="font-black text-gray-300 bg-slate-900 px-2 py-0.5 rounded border border-gray-800">09:30 AM</span>
+                        <span id="traceTimeLabel" class="font-black text-gray-300 bg-[#0a0d16] px-2.5 py-0.5 rounded border border-gray-800">09:30 AM</span>
                     </div>
                     <div class="flex items-center gap-4">
                         <input type="range" id="traceSlider" min="0" max="119" value="119" class="flex-grow accent-yellow-400 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
@@ -241,25 +255,25 @@
     </div>
 
     <!-- ==================== HIRO FLOW VIEW ==================== -->
-    <div id="hiroView" class="hidden p-4 card-panel">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <div id="hiroView" class="hidden p-5 glass-panel rounded-xl glow-border">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <div class="lg:col-span-8 flex flex-col gap-4">
-                <div class="bg-[#080c10] border border-gray-800 rounded-xl p-4">
+                <div class="bg-[#080c10] border border-gray-850 rounded-xl p-4">
                     <div id="hiroChartPlot" class="w-full h-[400px]"></div>
                 </div>
-                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
-                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-3">🌊 Live Options Flow Tape</h3>
+                <div class="bg-[#0b0f17] border border-gray-850 rounded-xl p-4">
+                    <h3 class="text-xs font-bold text-emerald-450 uppercase tracking-wider mb-3">🌊 Live Options Flow Tape</h3>
                     <div class="overflow-y-auto max-h-[220px]">
                         <table class="w-full text-[11px] text-left text-gray-300">
-                            <thead class="bg-slate-950 text-gray-400 uppercase border-b border-gray-800">
+                            <thead class="bg-[#0a0d16] text-gray-405 uppercase border-b border-gray-800">
                                 <tr>
-                                    <th class="py-2 px-3">Time</th>
-                                    <th class="py-2 px-3">Symbol</th>
-                                    <th class="py-2 px-3">Side</th>
-                                    <th class="py-2 px-3">Type</th>
-                                    <th class="py-2 px-3">Strike</th>
-                                    <th class="py-2 px-3">Size</th>
-                                    <th class="py-2 px-3">Premium</th>
+                                    <th class="py-2.5 px-3">Time</th>
+                                    <th class="py-2.5 px-3">Symbol</th>
+                                    <th class="py-2.5 px-3">Side</th>
+                                    <th class="py-2.5 px-3">Type</th>
+                                    <th class="py-2.5 px-3">Strike</th>
+                                    <th class="py-2.5 px-3">Size</th>
+                                    <th class="py-2.5 px-3">Premium</th>
                                 </tr>
                             </thead>
                             <tbody id="liveTapeBody" class="divide-y divide-gray-850">
@@ -269,12 +283,12 @@
                 </div>
             </div>
             <div class="lg:col-span-4 space-y-4">
-                <div class="bg-[#0b0f17] border border-gray-800 rounded-xl p-4">
+                <div class="bg-[#0b0f17] border border-gray-850 rounded-xl p-4">
                     <h3 class="text-xs font-black text-white uppercase tracking-wider mb-2">🔥 Trending Flow Tickers</h3>
                     <div class="space-y-2 text-xs">
-                        <div class="flex justify-between items-center bg-slate-900 p-2 rounded">
+                        <div class="flex justify-between items-center bg-slate-900 p-2.5 rounded-lg">
                             <span class="font-bold text-white">TSLA</span>
-                            <span class="text-emerald-400 font-bold">+$22.5M Call Buying</span>
+                            <span class="text-emerald-450 font-bold">+$22.5M Call Buying</span>
                         </div>
                     </div>
                 </div>
@@ -283,10 +297,10 @@
     </div>
 
     <!-- ==================== BOBBY VIEW ==================== -->
-    <div id="bobbyView" class="hidden p-4 card-panel">
+    <div id="bobbyView" class="hidden p-5 glass-panel rounded-xl glow-border">
         <div class="overflow-x-auto">
             <table class="w-full text-xs text-left text-gray-300">
-                <thead class="bg-slate-950 text-gray-400 font-bold uppercase sticky top-0 border-b border-gray-850">
+                <thead class="bg-[#0a0d16] text-gray-400 font-bold uppercase sticky top-0 border-b border-gray-850">
                     <tr>
                         <th class="py-3 px-4 w-12">Spot</th>
                         <th class="py-3 px-4">Strike</th>
@@ -303,9 +317,9 @@
     </div>
 
     <!-- ==================== COMPASS VIEW ==================== -->
-    <div id="compassView" class="hidden p-4 card-panel">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-800 rounded-xl p-4 flex flex-col">
+    <div id="compassView" class="hidden p-5 glass-panel rounded-xl glow-border">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-850 rounded-xl p-4 flex flex-col">
                 <div id="compassGridPlot" class="w-full h-[450px]"></div>
             </div>
         </div>
@@ -324,11 +338,11 @@
         function setView(target) {
             Object.keys(views).forEach(k => {
                 document.getElementById(views[k]).classList.add('hidden');
-                document.getElementById(navBtns[k]).className = "px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white";
+                document.getElementById(navBtns[k]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
             });
 
             document.getElementById(views[target]).classList.remove('hidden');
-            document.getElementById(navBtns[target]).className = "px-4 py-1.5 rounded text-xs font-bold transition-all text-white bg-[#222a3a]";
+            document.getElementById(navBtns[target]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
 
             if (target === 'trace') renderTraceHeatmap();
             else if (target === 'hiro') renderHiro();
@@ -371,13 +385,13 @@
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="py-2 px-3 text-gray-500">${timeStr}</td>
-                <td class="py-2 px-3 font-bold text-white">${symbol}</td>
-                <td class="py-2 px-3 ${sideColor}">${side}</td>
-                <td class="py-2 px-3"><span class="${typeClass}">${type}</span></td>
-                <td class="py-2 px-3 font-bold text-white">$${strike}</td>
-                <td class="py-2 px-3">${size}K</td>
-                <td class="py-2 px-3 text-emerald-400 font-semibold">$${premium}</td>
+                <td class="py-2.5 px-3 text-gray-500">${timeStr}</td>
+                <td class="py-2.5 px-3 font-bold text-white">${symbol}</td>
+                <td class="py-2.5 px-3 ${sideColor}">${side}</td>
+                <td class="py-2.5 px-3"><span class="${typeClass}">${type}</span></td>
+                <td class="py-2.5 px-3 font-bold text-white">$${strike}</td>
+                <td class="py-2.5 px-3">${size}K</td>
+                <td class="py-2.5 px-3 text-emerald-400 font-semibold">$${premium}</td>
             `;
 
             body.insertBefore(row, body.firstChild);
@@ -602,16 +616,16 @@
                 ],
                 layout: {
                     paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: '#0c0e15',
+                    plot_bgcolor: '#04060b',
                     margin: { l: 40, r: 40, b: 35, t: 10 },
                     showlegend: false,
                     grid: { rows: 2, columns: 2, pattern: 'independent' },
-                    xaxis2: { domain: [0, 0.82], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', rangeslider: { visible: false }, showticklabels: false, type: 'date' },
-                    yaxis2: { domain: [0.32, 1], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, anchor: 'x2', side: 'right' },
-                    xaxis3: { domain: [0.85, 1], showgrid: true, gridcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 } },
+                    xaxis2: { domain: [0, 0.82], showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', rangeslider: { visible: false }, showticklabels: false, type: 'date' },
+                    yaxis2: { domain: [0.32, 1], showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, anchor: 'x2', side: 'right' },
+                    xaxis3: { domain: [0.85, 1], showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
                     yaxis3: { domain: [0.32, 1], anchor: 'x3', matches: 'y2', showticklabels: false },
-                    xaxis4: { domain: [0, 0.82], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, matches: 'x2', type: 'date' },
-                    yaxis4: { domain: [0, 0.25], showgrid: true, gridcolor: '#1c2230', tickcolor: '#1c2230', tickfont: { color: '#9ca3af', size: 9 }, anchor: 'x4', side: 'right', range: [-1.1, 1.1] }
+                    xaxis4: { domain: [0, 0.82], showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, matches: 'x2', type: 'date' },
+                    yaxis4: { domain: [0, 0.25], showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, anchor: 'x4', side: 'right', range: [-1.1, 1.1] }
                 }
             };
 
@@ -621,16 +635,16 @@
         // Explainer switcher logic
         const explainers = {
             hedging: `
-                <p class="font-bold text-white mb-1">Dealer Delta Hedging:</p>
-                <p>Options trades create directional risk. When you buy a call option, a market maker sells it to you, leaving them short exposure. To hedge, they buy shares of stock. As stock price moves, they continuously adjust this hedge, creating real buying/selling pressure on the S&P 500.</p>
+                <p class="font-bold text-white mb-1.5">Dealer Delta Hedging:</p>
+                <p class="text-gray-400">Options trades create directional risk. When you buy a call option, a market maker sells it to you, leaving them short exposure. To hedge, they buy shares of stock. As stock price moves, they continuously adjust this hedge, creating real buying/selling pressure on the S&P 500.</p>
             `,
             flip: `
-                <p class="font-bold text-yellow-400 mb-1">Gamma Flip Inflection:</p>
-                <p>The boundary line deciding behavior. Above the flip, dealer hedging acts like a brake (dampening ranges). Below the flip, dealer hedging acts like a gas pedal (accelerating expansions and selling flushes).</p>
+                <p class="font-bold text-yellow-400 mb-1.5">Gamma Flip Inflection:</p>
+                <p class="text-gray-400">The boundary line deciding behavior. Above the flip, dealer hedging acts like a brake (dampening ranges). Below the flip, dealer hedging acts like a gas pedal (accelerating expansions and selling flushes).</p>
             `,
             walls: `
-                <p class="font-bold text-purple-400 mb-1">Call & Put Walls:</p>
-                <p>Crowded options strikes that act as ceilings (Call Wall) or support boundaries (Put Wall). In positive gamma, wicks reject them; but in negative gamma, breaks beyond walls can become acceleration trapdoors.</p>
+                <p class="font-bold text-purple-400 mb-1.5">Call & Put Walls:</p>
+                <p class="text-gray-400">Crowded options strikes that act as ceilings (Call Wall) or support boundaries (Put Wall). In positive gamma, wicks reject them; but in negative gamma, breaks beyond walls can become acceleration trapdoors.</p>
             `
         };
 
@@ -695,10 +709,10 @@
 
                 html += `
                     <tr class="${rowClass}">
-                        <td class="py-3 px-4 font-bold">${spotBubble}</td>
+                        <td class="py-3 px-4 font-bold text-center">${spotBubble}</td>
                         <td class="py-3 px-4 font-bold text-white">${strike}</td>
                         <td class="py-3 px-4">${(node.val / 1000).toFixed(2)}K</td>
-                        <td class="py-3 px-4 text-emerald-400">+${(rand() * 5).toFixed(1)}%</td>
+                        <td class="py-3 px-4 text-emerald-450 font-semibold">+${(rand() * 5).toFixed(1)}%</td>
                         <td class="py-3 px-4">${(node.dex / 100).toFixed(2)}K</td>
                         <td class="py-3 px-4 font-semibold">${(node.oi / 1000).toFixed(0)}K</td>
                     </tr>
