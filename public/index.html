@@ -546,7 +546,8 @@
             
             const rand = seedRandom(symbol + "-static-path-v2");
 
-            const baseTime = new Date("2026-06-22T09:30:00");
+            const baseTime = new Date();
+            baseTime.setHours(9, 30, 0, 0);
             prices = [];
             let currentPrice = spot - 3.8;
 

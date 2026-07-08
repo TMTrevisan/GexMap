@@ -81,7 +81,8 @@ function generateFallbackData(symbol) {
 
   // Generate 8 expirations starting from today
   const expDates = [];
-  const startDay = new Date("2026-07-08");
+  const startDay = new Date();
+  startDay.setDate(startDay.getDate() + 1);
   for (let i = 0; i < 8; i++) {
     const d = new Date(startDay.getTime() + i * 24 * 60 * 60 * 1000);
     // skip weekends
