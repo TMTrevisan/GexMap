@@ -3,24 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voltick Terminal - Institutional Gamma Maps</title>
+    <title>GEX Edge Terminal - Premium Options Analytics</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Plotly.js for charting -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { background-color: #040608; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-        .voltick-header { background-color: #080c10; border-bottom: 1px solid #141b2b; }
-        .btn-toggle { background-color: #0d121f; border: 1px solid #1e293b; color: #94a3b8; font-size: 10px; font-weight: bold; border-radius: 4px; padding: 4px 10px; transition: all 0.15s; }
-        .btn-toggle.active { background-color: #1d4ed8; color: #ffffff; border-color: #3b82f6; }
-        .btn-toggle:hover:not(.active) { border-color: #94a3b8; color: #ffffff; }
-        
-        .kpi-card { background-color: #080c10; border: 1px solid #141b2b; border-radius: 8px; padding: 12px; }
-        .kpi-title { color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
-        .kpi-value { font-size: 15px; font-weight: 900; color: #ffffff; margin-top: 3px; }
-        
-        /* Grid styling */
-        .voltick-grid { width: 100%; border-collapse: collapse; }
-        .voltick-grid th { background-color: #080c10; border: 1px solid #141b2b; color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 6px 4px; text-align: center; }
-        .voltick-grid td { border: 1px solid #141b2b; padding: 5px 6px; text-align: center; font-size: 10px; font-weight: bold; }
+        body { background-color: #04060b; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+        .glow-border { border: 1px solid #1a233a; box-shadow: 0 0 15px rgba(234, 179, 8, 0.03); }
+        .glass-panel { background: rgba(11, 15, 26, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(30, 41, 59, 0.5); }
+        .control-dropdown { background-color: #0a0d16; border: 1px solid #1e293b; color: #cbd5e1; font-size: 11px; padding: 6px 12px; border-radius: 8px; outline: none; transition: all 0.2s; }
+        .control-dropdown:hover { border-color: #ffd600; }
+        .control-dropdown:focus { border-color: #ffd600; box-shadow: 0 0 8px rgba(253, 224, 71, 0.15); }
         
         /* Voltick Cell States */
         .cell-sticky-green { background-color: rgba(16, 185, 129, 0.12); color: #34d399; }
@@ -30,85 +24,284 @@
         .cell-peak-call { background-color: rgba(234, 179, 8, 0.25); color: #ffd600; border: 1px solid #ffd600; }
         .cell-peak-put { background-color: rgba(168, 85, 247, 0.25); color: #c084fc; border: 1px solid #a855f7; }
         .cell-zero { color: #475569; }
+
+        .kpi-card { background: linear-gradient(135deg, #090d16 0%, #06090f 100%); border: 1px solid rgba(30, 41, 59, 0.6); border-radius: 10px; padding: 12px; text-align: center; }
+        .kpi-title { color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+        .kpi-value { font-size: 16px; font-weight: 900; color: #ffffff; margin-top: 3px; }
         
-        /* Badge styling */
-        .em-badge { background-color: #1e293b; color: #94a3b8; font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 3px; margin-left: 4px; }
-        .level-icon { font-size: 11px; margin-right: 3px; }
+        /* Voltick Grid Table Styles */
+        .voltick-grid { width: 100%; border-collapse: collapse; }
+        .voltick-grid th { background-color: #080c10; border: 1px solid #141b2b; color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 8px 4px; text-align: center; }
+        .voltick-grid td { border: 1px solid #141b2b; padding: 6px; text-align: center; font-size: 10px; font-weight: bold; }
         
-        /* Tooltip details drawer */
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #04060b; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+
+        /* Drawer Overlay */
         .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
         .drawer-content { background: #080c10; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; max-width: 450px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
     </style>
 </head>
-<body class="p-4">
+<body class="p-6 select-none">
 
-    <!-- Top Navigation Tabs (Includes GEX Edge, Trinity, etc.) -->
-    <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-800">
+    <!-- Top Navigation Bar -->
+    <div class="flex justify-between items-center mb-5">
         <div class="flex items-center gap-3">
-            <span class="text-xl font-black text-white tracking-wider flex items-center">
-                <span class="text-yellow-400 mr-1.5">⚡</span> VOLTICK
+            <span class="text-2xl font-black tracking-tight text-white flex items-center">
+                <span class="text-yellow-400 font-extrabold mr-1.5">⚡</span> GEX <span class="text-yellow-400">EDGE</span>
             </span>
-            <span class="bg-[#1e1b4b] text-[#c084fc] border border-[#581c87] text-[8px] font-bold px-2 py-0.5 rounded uppercase">Institutional GEX Map</span>
+            <span class="bg-[#1e1b4b] text-[#c084fc] border border-[#581c87] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Premium Cockpit</span>
         </div>
         
-        <div class="flex bg-[#080c10] p-0.5 rounded border border-gray-800">
-            <button id="navVoltickBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-white bg-[#1e293b]">
-                ⚡ Voltick Board
+        <div class="flex bg-[#0a0d16] p-1 rounded-lg border border-gray-800/80">
+            <button id="navTraceBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]">
+                📊 Cockpit & Levels (GEX Edge)
             </button>
-            <button id="navGexEdgeBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
-                📊 GEX Edge Cockpit
+            <button id="navSwingBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                📋 Swing & Voltick Mode
             </button>
-            <button id="navTrinityBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+            <button id="navTrinityBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                 📈 Trinity Mode
             </button>
-            <button id="navHiroBtn" class="px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white">
+            <button id="navHiroBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                 🎯 HIRO Flow Tape
+            </button>
+            <button id="navCompassBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
+                🧭 Compass Grid
             </button>
         </div>
     </div>
 
-    <!-- ==================== VOLTICK MAIN INTERFACE ==================== -->
-    <div id="voltickView" class="block">
+    <!-- ==================== UNIVERSAL FILTER CONTROL BAR ==================== -->
+    <div class="glass-panel px-6 py-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-gray-300 rounded-xl mb-5">
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Symbol</span>
+            <select id="globalSymbolInput" class="control-dropdown font-bold">
+                <option value="SPY" selected>SPY</option>
+                <option value="QQQ">QQQ</option>
+                <option value="I:SPX">SPX</option>
+                <option value="I:NDX">NDX</option>
+                <option value="NVDA">NVDA</option>
+                <option value="TSLA">TSLA</option>
+                <option value="AAPL">AAPL</option>
+                <option value="META">META</option>
+                <option value="AMD">AMD</option>
+                <option value="AMZN">AMZN</option>
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Timeframe</span>
+            <select id="globalTfSelect" class="control-dropdown">
+                <option value="5m" selected>5m</option>
+                <option value="15m">15m</option>
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Days</span>
+            <select id="globalDaysSelect" class="control-dropdown">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Range ±%</span>
+            <select id="globalRangeSelect" class="control-dropdown font-bold">
+                <option value="1.5" selected>1.5</option>
+                <option value="3.0">3.0</option>
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Metric</span>
+            <select id="globalMetricSelect" class="control-dropdown">
+                <option value="gex" selected>GEX (volxγ)</option>
+                <option value="dex">DEX (volxδ)</option>
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-[9px] text-gray-500 uppercase font-black">Strikes</span>
+            <select id="globalStrikesSelect" class="control-dropdown">
+                <option value="21" selected>21</option>
+                <option value="41">41</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-2 px-3 bg-[#0a0d16] border border-[#1e293b] rounded-lg h-[36px] mt-4">
+            <input type="checkbox" id="globalKeyLevelsToggle" checked class="accent-yellow-400 cursor-pointer w-4 h-4">
+            <label for="globalKeyLevelsToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Key Levels</label>
+        </div>
+
+        <div class="flex items-center gap-2 px-3 bg-[#0a0d16] border border-[#1e293b] rounded-lg h-[36px] mt-4">
+            <input type="checkbox" id="globalInvertToggle" class="accent-yellow-400 cursor-pointer w-4 h-4">
+            <label for="globalInvertToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Invert Pos</label>
+        </div>
+
+        <!-- Dynamic Stability Gauge -->
+        <div class="flex items-center gap-2.5 bg-[#081225] border border-[#1d2d47] px-4 py-1.5 rounded-lg mt-4 h-[36px]">
+            <span class="text-[10px] text-gray-400 block font-bold uppercase">Stability</span>
+            <span id="globalStabilityVal" class="text-yellow-400 font-black">--%</span>
+        </div>
+
+        <!-- Reresh button -->
+        <button id="globalRefreshBtn" class="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-5 h-[36px] rounded-lg transition-all uppercase tracking-wider mt-4">
+            ↻ Refresh
+        </button>
+    </div>
+
+    <!-- KPIs Banner -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-9 gap-4 mb-5">
+        <div class="kpi-card">
+            <span class="kpi-title">Spot Price</span>
+            <span id="spotVal" class="kpi-value text-white">--</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">LS Regime</span>
+            <span id="regimeVal" class="text-emerald-400 text-sm font-black mt-0.5">Weak Bull</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpiNetGexLabel">Net GEX</span>
+            <div class="mt-1"><span id="netGexVal" class="bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded">CALL</span></div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpiNetDexLabel">Net DEX</span>
+            <div class="mt-1"><span id="netDexVal" class="bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded">BEAR</span></div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpiCallWallLabel">Call Wall</span>
+            <span id="callWallVal" class="text-yellow-400 text-sm font-black mt-0.5">--</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title" id="kpiPutWallLabel">Put Wall</span>
+            <span id="putWallVal" class="text-purple-400 text-sm font-black mt-0.5">--</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Γ-Flip</span>
+            <span id="gFlipVal" class="text-yellow-500 text-sm font-black mt-0.5">--</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">P/C Ratio</span>
+            <span id="pcRatioVal" class="kpi-value">--</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">ATM IV</span>
+            <span id="atmIvVal" class="kpi-value">9.3%</span>
+        </div>
+    </div>
+
+    <!-- ==================== COCKPIT VIEW (GEX EDGE CLONE) ==================== -->
+    <div id="traceView" class="block">
         
-        <!-- Voltick Control Bar -->
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-4 bg-[#080c10] p-3 rounded-lg border border-[#141b2b]">
-            <div class="flex items-center gap-3">
-                <select id="voltickSymbol" class="bg-black border border-gray-800 text-white font-bold text-xs p-1.5 rounded">
-                    <option value="SPY" selected>SPY</option>
-                    <option value="QQQ">QQQ</option>
-                    <option value="I:SPX">SPX</option>
-                    <option value="NVDA">NVDA</option>
-                    <option value="TSLA">TSLA</option>
-                </select>
-
-                <div class="flex flex-col text-left">
-                    <span id="voltickSpotPrice" class="text-sm font-extrabold text-white">$746.24</span>
-                    <span id="voltickSpotChange" class="text-[9px] text-red-500 font-bold">-5.56 (-0.74%) • BEARISH</span>
-                </div>
-
-                <div class="h-6 w-px bg-gray-800 mx-1"></div>
-
-                <div class="flex rounded bg-black p-0.5 border border-gray-800">
-                    <button id="metricGexBtn" class="px-3 py-1 text-[10px] font-bold rounded text-white bg-[#1e293b]">GEX</button>
-                    <button id="metricVexBtn" class="px-3 py-1 text-[10px] font-bold rounded text-gray-450">VEX</button>
-                </div>
-
-                <div class="flex rounded bg-black p-0.5 border border-gray-800">
-                    <button class="px-3 py-1 text-[10px] font-bold rounded text-white bg-[#1e293b]">Single</button>
-                    <button class="px-3 py-1 text-[10px] font-bold rounded text-gray-450">Multi</button>
-                    <button class="px-3 py-1 text-[10px] font-bold rounded text-gray-450">Chart</button>
-                </div>
+        <!-- Large GEX Edge Regime Statement Banner -->
+        <div class="glass-panel p-5 rounded-xl glow-border mb-5 flex flex-wrap justify-between items-center gap-4">
+            <div>
+                <span class="text-[9px] bg-purple-900/60 text-purple-300 font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider mr-2">REGIME STATUS</span>
+                <span id="regimeBannerText" class="text-lg font-black text-white">MAGNET / BRACKET tape — dips get bought. Mean reversion is supported. Play ranges off walls.</span>
             </div>
-
-            <div class="flex items-center gap-3">
-                <span class="bg-yellow-950/60 text-yellow-500 border border-yellow-800/80 text-[8px] font-black px-2 py-0.5 rounded">● DELAYED</span>
-                <button class="text-xs text-gray-450 hover:text-white font-bold">✦ Intel</button>
-                <button class="text-xs text-gray-405 font-bold">...</button>
+            <div class="flex items-center gap-4 text-xs">
+                <div><span class="text-gray-550 font-bold mr-1">VIX:</span> <span class="font-extrabold text-white">16.0 ▲ 0.2</span></div>
+                <div><span class="text-gray-550 font-bold mr-1">TIDE:</span> <span class="font-extrabold text-emerald-400">Bullish Tide 0</span></div>
             </div>
         </div>
 
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- Left Column: 0DTE Net GEX (3 Columns) -->
+            <div class="lg:col-span-3 glass-panel p-4 rounded-xl glow-border">
+                <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2 flex justify-between">
+                    <span>⚡ 0DTE Net GEX</span>
+                    <span class="text-yellow-400">Peak GEX</span>
+                </h3>
+                <div id="zeroDteGexPlot" class="w-full h-[400px]"></div>
+            </div>
+
+            <!-- Center Column: Price & GEX Levels timeline (6 Columns) -->
+            <div class="lg:col-span-6 glass-panel p-5 rounded-xl glow-border flex flex-col relative min-h-[480px]">
+                <div id="loader" class="absolute inset-0 bg-[#04060b]/90 flex items-center justify-center rounded-xl z-50">
+                    <div class="text-center">
+                        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400 mx-auto mb-3"></div>
+                        <p class="text-xs text-gray-400 font-semibold">Calculating options timeline & liquidity levels...</p>
+                    </div>
+                </div>
+                
+                <div id="mainDashboardPlot" class="w-full h-[380px]"></div>
+
+                <!-- Timeline Slider -->
+                <div class="border-t border-gray-850 pt-4 mt-auto flex flex-col gap-2">
+                    <div class="flex justify-between items-center text-xs text-gray-500 px-1">
+                        <span class="font-bold uppercase tracking-wider text-yellow-400">🕒 Interactive Timeline Scrub</span>
+                        <span id="traceTimeLabel" class="font-black text-gray-300 bg-[#0a0d16] px-2.5 py-0.5 rounded border border-gray-800">09:30 AM</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="traceSlider" min="0" max="119" value="119" class="flex-grow accent-yellow-400 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
+                        <button id="tracePlayBtn" class="bg-[#1e293b] hover:bg-[#2e3b50] text-white border border-[#2b3952] font-black px-5 py-2 rounded-lg text-xs transition-colors shrink-0">▶ Play Replay</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Scenarios (3 Columns) -->
+            <div class="lg:col-span-3 flex flex-col gap-4">
+                <div class="glass-panel p-4 rounded-xl glow-border flex-grow">
+                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2">🎯 Intraday Scenarios</h3>
+                    
+                    <div class="space-y-4">
+                        <!-- Bull Case -->
+                        <div class="bg-[#0c1a16] border border-[#0d3c2a] p-3 rounded-lg">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-black text-emerald-400">▲ BULL CASE</span>
+                                <span class="bg-[#052e16] text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded">20%</span>
+                            </div>
+                            <p class="text-[11px] text-gray-300 leading-relaxed">
+                                Spot reclaims the Gamma Flip line on volume and holds above. Target Call Wall.
+                            </p>
+                        </div>
+
+                        <!-- Base Case -->
+                        <div class="bg-[#121826] border border-[#1e293b] p-3 rounded-lg">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-black text-yellow-400">→ BASE CASE</span>
+                                <span class="bg-yellow-950/60 text-yellow-400 text-[10px] font-extrabold px-2 py-0.5 rounded">50%</span>
+                            </div>
+                            <p class="text-[11px] text-gray-300 leading-relaxed">
+                                Spot oscillates between the Put Wall and Call Wall through expiration close.
+                            </p>
+                        </div>
+
+                        <!-- Bear Case -->
+                        <div class="bg-[#241315] border border-[#4c1d21] p-3 rounded-lg">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-black text-rose-400">▼ BEAR CASE</span>
+                                <span class="bg-[#451a1d] text-rose-300 text-[10px] font-extrabold px-2 py-0.5 rounded">30%</span>
+                            </div>
+                            <p class="text-[11px] text-gray-300 leading-relaxed">
+                                Spot loses the Put Wall support and accepts below, triggering negative gamma acceleration.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-xl glow-border">
+                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-2 flex items-center gap-1">
+                        <span>📖</span> Learn GEX
+                    </h3>
+                    <div id="explainerContent" class="text-[11px] text-gray-405 leading-relaxed">
+                        <p class="font-bold text-white mb-1">Dealer Delta Hedging:</p>
+                        <p>Market makers hedge options by buying/selling stock. As price moves, they re-hedge dynamically, forming the technical levels seen here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SWING & VOLTICK MODE ==================== -->
+    <div id="swingView" class="hidden">
         <!-- Voltick Sub-Row (Filters and Toggles) -->
-        <div class="flex flex-wrap justify-between items-center gap-3 mb-4 bg-black/40 p-2 rounded border border-[#141b2b]">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-4 bg-black/45 p-2.5 rounded border border-[#141b2b]">
             <div class="flex items-center gap-2">
                 <button id="toggle0DteBtn" class="btn-toggle active">⚡ 0DTE</button>
                 <button class="btn-toggle">■ WEEK</button>
@@ -117,114 +310,47 @@
                 <button class="btn-toggle text-yellow-400">★ AI Analyst</button>
             </div>
 
-            <div class="flex items-center gap-4 text-[10px]">
-                <div class="flex items-center gap-1"><span class="text-yellow-400">★</span> <span class="text-gray-400">Volt</span></div>
-                <div class="flex items-center gap-1"><span class="text-yellow-400">⚡</span> <span class="text-gray-400">Surge</span></div>
-                <div class="flex items-center gap-1"><span class="text-white">●</span> <span class="text-gray-400">Spot</span></div>
+            <div class="flex items-center gap-4 text-[10px] text-gray-400 font-bold">
+                <div class="flex items-center gap-1"><span class="text-yellow-400">★</span> <span>Volt</span></div>
+                <div class="flex items-center gap-1"><span class="text-yellow-400">⚡</span> <span>Surge</span></div>
+                <div class="flex items-center gap-1"><span class="text-white">●</span> <span>Spot</span></div>
             </div>
         </div>
 
-        <!-- Plain-English Dynamic Read Alert Strip -->
-        <div class="glass-panel p-4 rounded-xl glow-border mb-4 text-xs leading-relaxed">
-            <div class="flex items-center gap-2 mb-2">
-                <button class="bg-[#1e293b] text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">▼ Plain-English Read</button>
-                <span class="text-[#a855f7] font-bold">☾ Overnight changes:</span>
-                <span class="bg-[#0c1a16] text-[#34d399] text-[9px] px-2 py-0.5 rounded">▲ Building - $746 +528%</span>
-                <span class="bg-[#241315] text-[#f87171] text-[9px] px-2 py-0.5 rounded">▼ Fading - $753 -82%</span>
-            </div>
-            
-            <!-- Dynamic Alert text -->
-            <p id="voltickAlertText" class="text-gray-300 font-medium">
-                Right now · SPY: Market is in NEGATIVE gamma; dealers chase moves, which can make swings bigger. Strongest brake: $760 (call wall). Strongest accelerant: $740 (put wall).
-            </p>
-        </div>
-
-        <!-- Main Voltick Grid Table -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            
-            <!-- The Big Board (9 Columns) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
             <div class="lg:col-span-9 bg-[#080c10] border border-[#141b2b] rounded-xl p-3">
-                <div class="flex justify-between items-center mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500 font-bold">Strike Range:</span>
-                        <select id="voltickRowLimit" class="bg-black border border-gray-800 text-[10px] text-gray-300 p-1 rounded font-bold">
-                            <option value="20">30</option>
-                            <option value="40" selected>50</option>
-                            <option value="80">100</option>
-                        </select>
-                    </div>
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Tap any level for explainer</span>
-                </div>
-
-                <div class="overflow-x-auto max-h-[600px]">
-                    <table class="voltick-grid">
-                        <thead id="voltickBoardHeader">
-                            <!-- Populated dynamically -->
+                <h3 class="text-xs font-black uppercase text-yellow-400 tracking-wider mb-3.5 flex justify-between items-center">
+                    <span>📋 Voltick Multi-Expiry Gamma Matrix</span>
+                </h3>
+                <div class="overflow-x-auto max-h-[500px]">
+                    <table class="w-full voltick-grid text-left text-gray-300 divide-y divide-gray-800">
+                        <thead id="voltickGridHeader" class="bg-[#070a10]">
+                            <!-- Generated dynamically -->
                         </thead>
-                        <tbody id="voltickBoardBody">
-                            <!-- Populated dynamically -->
+                        <tbody id="voltickGridBody" class="divide-y divide-gray-850">
+                            <!-- Generated dynamically -->
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            <!-- Side stats and controls (3 Columns) -->
+            
             <div class="lg:col-span-3 flex flex-col gap-4">
-                
-                <!-- Voltick Stats cards -->
-                <div class="grid grid-cols-1 gap-3">
-                    <div class="kpi-card">
-                        <span class="kpi-title">Net GEX</span>
-                        <span id="voltNetGex" class="kpi-value text-red-500 font-black block">-$2.6B</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span class="kpi-title">Call Wall</span>
-                        <span id="voltCallWall" class="kpi-value text-yellow-400 font-black block">$760</span>
-                        <span class="text-[9px] text-gray-500 font-bold mt-1 block">13.8 above price</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span class="kpi-title">Volt ★</span>
-                        <span id="voltVoltLevel" class="kpi-value text-yellow-400 font-black block">$748</span>
-                        <span class="text-[9px] text-gray-500 font-bold mt-1 block">$2.8 below price</span>
-                    </div>
-                    <div class="kpi-card">
-                        <span class="kpi-title">ATM IV</span>
-                        <span class="kpi-value text-white font-black block">13.2%</span>
-                    </div>
-                </div>
-
-                <!-- Interactive Legend Quick Help -->
-                <div class="glass-panel p-4 rounded-xl glow-border">
-                    <h4 class="text-xs font-black uppercase text-yellow-400 tracking-wider mb-3">Legend Quick Help</h4>
-                    <div class="space-y-3.5 text-[11px] leading-relaxed text-gray-400">
-                        <div>
-                            <span class="text-emerald-400 font-bold">🟢 Bright Green = Sticky</span>
-                            <p class="text-gray-500 mt-0.5">Speed bump (positive gamma). Automatic trading pushes against the move here, so price slows down and tends to hold.</p>
+                <!-- Single Name Playbook Summary -->
+                <div class="glass-panel p-5 rounded-xl glow-border">
+                    <h3 class="text-xs font-black uppercase text-white tracking-wider mb-3">Swing Positioning Read</h3>
+                    <div class="space-y-3 text-xs">
+                        <div class="bg-[#0c1a16] border border-[#0d3c2a] p-3 rounded-lg">
+                            <span class="font-bold text-emerald-400 block mb-1">Vanna (VEX) Outlook</span>
+                            <p class="text-gray-305">VEX is moderately negative; a 1-vol-point drop in IV would force ~$85M of dealer buying, acting as a mechanical bid.</p>
                         </div>
-                        <div>
-                            <span class="text-red-400 font-bold">🔴 Bright Red = Slippery</span>
-                            <p class="text-gray-500 mt-0.5">Ice (negative gamma). Trading pushes with the move here, so price slides through fast, either way.</p>
-                        </div>
-                        <div>
-                            <span class="text-[#a855f7] font-bold">⚡ The Flip</span>
-                            <p class="text-gray-500 mt-0.5">The mood line. Calm and sticky above it, wild and slippery below it.</p>
+                        <div class="bg-[#121826] border border-[#1e293b] p-3 rounded-lg">
+                            <span class="font-bold text-yellow-400 block mb-1">Charm (CHEX) Outlook</span>
+                            <p class="text-gray-305">CHEX is positive, adding a small time-driven tailwind as near-term short strikes decay.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- ==================== GEX EDGE COCKPIT ==================== -->
-    <div id="gexEdgeView" class="hidden">
-        <div class="glass-panel p-5 rounded-xl glow-border mb-5 flex flex-wrap justify-between items-center gap-4">
-            <div>
-                <span class="text-[9px] bg-purple-900/60 text-purple-300 font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider mr-2">REGIME STATUS</span>
-                <span id="regimeBannerText" class="text-lg font-black text-white">AMPLIFIER tape — moves accelerate both ways.</span>
-            </div>
-        </div>
-        <!-- Cockpit visuals ... -->
-        <div id="gexEdgePlot" class="w-full h-[400px] bg-slate-950 rounded-xl"></div>
     </div>
 
     <!-- ==================== TRINITY MODE ==================== -->
@@ -233,10 +359,38 @@
             <h2 class="text-lg font-black text-white flex items-center gap-2">
                 <span class="text-yellow-400">📈</span> Trinity Mode — Three-Panel Index Exposure View
             </h2>
+            <p class="text-xs text-gray-400 mt-1">
+                See where dealers are forced to buy and sell in real-time across SPX, SPY, and QQQ. Updated every minute.
+            </p>
         </div>
-        <!-- 3 plots side by side -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="trinityPlotsContainer">
-            <!-- Dynamically populated -->
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <!-- Panel 1: SPX -->
+            <div class="glass-panel p-4 rounded-xl glow-border">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="font-black text-sm text-white">I:SPX (S&P 500 Index)</span>
+                    <span id="trinitySpxRegime" class="text-xs font-extrabold text-emerald-450">Positive Gamma</span>
+                </div>
+                <div id="trinityPlotSpx" class="w-full h-[400px]"></div>
+            </div>
+
+            <!-- Panel 2: SPY -->
+            <div class="glass-panel p-4 rounded-xl glow-border">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="font-black text-sm text-white">SPY (S&P 500 ETF)</span>
+                    <span id="trinitySpyRegime" class="text-xs font-extrabold text-emerald-450">Positive Gamma</span>
+                </div>
+                <div id="trinityPlotSpy" class="w-full h-[400px]"></div>
+            </div>
+
+            <!-- Panel 3: QQQ -->
+            <div class="glass-panel p-4 rounded-xl glow-border">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="font-black text-sm text-white">QQQ (Nasdaq 100 ETF)</span>
+                    <span id="trinityQqqRegime" class="text-xs font-extrabold text-[#a855f7]">Negative Gamma</span>
+                </div>
+                <div id="trinityPlotQqq" class="w-full h-[400px]"></div>
+            </div>
         </div>
     </div>
 
@@ -244,6 +398,15 @@
     <div id="hiroView" class="hidden p-5 glass-panel rounded-xl glow-border">
         <div class="bg-[#080c10] border border-gray-850 rounded-xl p-4 mb-4">
             <div id="hiroChartPlot" class="w-full h-[400px]"></div>
+        </div>
+    </div>
+
+    <!-- ==================== COMPASS VIEW ==================== -->
+    <div id="compassView" class="hidden p-5 glass-panel rounded-xl glow-border">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-850 rounded-xl p-4 flex flex-col">
+                <div id="compassGridPlot" class="w-full h-[450px]"></div>
+            </div>
         </div>
     </div>
 
@@ -268,14 +431,6 @@
                     <span class="font-bold text-white block">⚡ The Flip</span>
                     <p class="text-gray-400">The mood line. Above it is calm positive gamma; below it is wild negative gamma.</p>
                 </div>
-                <div>
-                    <span class="font-bold text-white block">⚠ Rug</span>
-                    <p class="text-gray-400">A trapdoor. A key options level with no structural support below it. Breaking it leads to flushes.</p>
-                </div>
-                <div>
-                    <span class="font-bold text-white block">⤴ Squeeze</span>
-                    <p class="text-gray-400">A launch pad. A heavy overhead level with a spring under it. Breaking it leads to fast spikes.</p>
-                </div>
             </div>
             <button onclick="closeHelpDrawer()" class="bg-[#1e293b] hover:bg-[#2e3b50] text-white font-bold w-full py-2 rounded-lg text-xs mt-5 transition-colors">Close Guide</button>
         </div>
@@ -283,26 +438,30 @@
 
     <script>
         let currentData = [];
+        let prices = [];
+        let traceData = {};
+        let activeReplayInterval = null;
         let expirationsList = [];
-        let selectedDateFilter = "07/08"; // Default starting date (matching screenshot)
+        let selectedDateFilter = "";
 
-        // View Tabs Toggle
-        const views = { voltick: 'voltickView', gexEdge: 'gexEdgeView', trinity: 'trinityView', hiro: 'hiroView' };
-        const navBtns = { voltick: 'navVoltickBtn', gexEdge: 'navGexEdgeBtn', trinity: 'navTrinityBtn', hiro: 'navHiroBtn' };
+        // Tab Navigation
+        const views = { trace: 'traceView', swing: 'swingView', trinity: 'trinityView', hiro: 'hiroView', compass: 'compassView' };
+        const navBtns = { trace: 'navTraceBtn', swing: 'navSwingBtn', trinity: 'navTrinityBtn', hiro: 'navHiroBtn', compass: 'navCompassBtn' };
 
         function setView(target) {
             Object.keys(views).forEach(k => {
                 document.getElementById(views[k]).classList.add('hidden');
-                document.getElementById(navBtns[k]).className = "px-4 py-1.5 rounded text-xs font-bold transition-all text-gray-400 hover:text-white";
+                document.getElementById(navBtns[k]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
             });
 
             document.getElementById(views[target]).classList.remove('hidden');
-            document.getElementById(navBtns[target]).className = "px-4 py-1.5 rounded text-xs font-bold transition-all text-white bg-[#1e293b]";
+            document.getElementById(navBtns[target]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
 
-            if (target === 'voltick') renderVoltickBoard();
-            else if (target === 'gexEdge') renderGexEdgeCockpit();
-            else if (target === 'trinity') renderTrinityIndexPanel();
-            else if (target === 'hiro') renderHiroFlowPlot();
+            if (target === 'trace') renderTraceHeatmap();
+            else if (target === 'swing') renderSwingMode();
+            else if (target === 'trinity') renderTrinityMode();
+            else if (target === 'hiro') renderHiro();
+            else if (target === 'compass') renderCompass();
         }
 
         Object.keys(navBtns).forEach(k => {
@@ -323,39 +482,429 @@
             }
         }
 
-        // Fetch Options Data
-        async function fetchOptionsChain() {
-            const symbol = document.getElementById('voltickSymbol').value;
+        // Live tape generator
+        function updateLiveTape() {
+            // Live tape streaming
+        }
+
+        // Fetch options chain
+        async function loadOptionsData() {
+            const symbol = document.getElementById('globalSymbolInput').value;
+            const loader = document.getElementById('loader');
+            if (loader) loader.classList.remove('hidden');
+
             try {
                 const response = await fetch(`/api/data?symbol=${symbol}`);
                 const data = await response.json();
                 currentData = data;
-
-                // Extract unique expirations
+                
                 expirationsList = [...new Set(currentData.map(d => d.expiration))].sort().slice(0, 10);
                 if (expirationsList.length > 0) {
                     selectedDateFilter = expirationsList[0];
                 }
 
-                renderVoltickBoard();
-                calculateKPIs();
+                generateSynthetics();
+                
+                // Set default range limits on slider scrub
+                document.getElementById('traceSlider').value = 119;
+                
+                renderTraceHeatmap();
+                if (!document.getElementById('swingView').classList.contains('hidden')) renderSwingMode();
+                if (!document.getElementById('trinityView').classList.contains('hidden')) renderTrinityMode();
+                calculateStability();
             } catch (error) {
                 console.error("Failed to load options data:", error);
+            } finally {
+                if (loader) loader.classList.add('hidden');
             }
         }
 
-        function calculateKPIs() {
+        function calculateStability() {
             if (!currentData || currentData.length === 0) return;
             const spot = currentData[0].underlying_price;
-            document.getElementById('voltickSpotPrice').innerText = `$${spot.toFixed(2)}`;
-            
-            // Render specific KPI values based on data
-            document.getElementById('voltNetGex').innerText = "-$2.6B";
-            document.getElementById('voltCallWall').innerText = `$${(spot * 1.018).toFixed(0)}`;
-            document.getElementById('voltVoltLevel').innerText = `$${(spot * 0.982).toFixed(0)}`;
+            let atmGex = 0;
+            let totalGex = 0;
+            currentData.forEach(d => {
+                totalGex += Math.abs(d.gex);
+                if (Math.abs(d.strike - spot) < 3) atmGex += Math.abs(d.gex);
+            });
+            const ratio = (atmGex / (totalGex || 1)) * 100;
+            document.getElementById('globalStabilityVal').innerText = `${Math.min(95, Math.max(10, ratio * 20)).toFixed(0)}%`;
         }
 
-        // Help drawer handlers
+        function generateSynthetics() {
+            if (!currentData || currentData.length === 0) return;
+            const spot = currentData[0].underlying_price;
+            const symbol = document.getElementById('globalSymbolInput').value;
+            const numBars = 120;
+            
+            const rand = seedRandom(symbol + "-static-path-v2");
+
+            const baseTime = new Date("2026-06-22T09:30:00");
+            prices = [];
+            let currentPrice = spot - 3.8;
+
+            for (let i = 0; i < numBars; i++) {
+                const time = new Date(baseTime.getTime() + i * 4 * 60 * 1000); // 4 minute intervals
+                const start = currentPrice;
+                const change = (rand() - 0.485) * 1.6;
+                let end = start + change;
+                if (i === numBars - 1) end = spot;
+
+                const max = Math.max(start, end) + rand() * 0.4;
+                const min = Math.min(start, end) - rand() * 0.4;
+
+                prices.push({ time, open: start, high: max, low: min, close: end });
+                currentPrice = end;
+            }
+
+            const strikeTotals = {};
+            const callOI = {};
+            const putOI = {};
+            currentData.forEach(item => {
+                strikeTotals[item.strike] = (strikeTotals[item.strike] || 0) + item.gex;
+                callOI[item.strike] = (callOI[item.strike] || 0) + (item.gex > 0 ? item.open_interest : 0);
+                putOI[item.strike] = (putOI[item.strike] || 0) + (item.gex < 0 ? item.open_interest : 0);
+            });
+
+            traceData = {
+                strikes: Object.keys(strikeTotals).map(Number).sort((a, b) => a - b),
+                totals: strikeTotals,
+                calls: callOI,
+                puts: putOI
+            };
+        }
+
+        function renderTraceHeatmap() {
+            if (!currentData || currentData.length === 0) return;
+            const spot = currentData[0].underlying_price;
+            const symbol = document.getElementById('globalSymbolInput').value;
+            const rangePct = parseFloat(document.getElementById('globalRangeSelect').value) / 100;
+            const numStrikes = parseInt(document.getElementById('globalStrikesSelect').value);
+            const isKeyLevels = document.getElementById('globalKeyLevelsToggle').checked;
+            const isInvert = document.getElementById('globalInvertToggle').checked;
+            const metric = document.getElementById('globalMetricSelect').value;
+
+            const sliderVal = parseInt(document.getElementById('traceSlider').value);
+            const slicedPrices = prices.slice(0, sliderVal + 1);
+
+            const rand = seedRandom(symbol + "-heatmap-v2");
+
+            const times = slicedPrices.map(p => p.time);
+            const close = slicedPrices.map(p => p.close);
+            const open = slicedPrices.map(p => p.open);
+            const high = slicedPrices.map(p => p.high);
+            const low = slicedPrices.map(p => p.low);
+
+            const strikesInRange = traceData.strikes.filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).slice(0, numStrikes);
+
+            let maxCallVal = -Infinity;
+            let callWall = spot;
+            let minPutVal = Infinity;
+            let putWall = spot;
+
+            strikesInRange.forEach(s => {
+                let strikeSum = 0;
+                currentData.forEach(d => {
+                    if (d.strike === s) strikeSum += (metric === 'gex' ? d.gex : d.dex);
+                });
+                if (strikeSum > maxCallVal) { maxCallVal = strikeSum; callWall = s; }
+                if (strikeSum < minPutVal) { minPutVal = strikeSum; putWall = s; }
+            });
+
+            let gFlip = (callWall + putWall) / 2;
+            const currentSpotPrice = close[close.length - 1] || spot;
+
+            const timeLabel = new Date(times[times.length - 1]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('traceTimeLabel').innerText = timeLabel;
+
+            const isAboveFlip = currentSpotPrice > gFlip;
+            if (isAboveFlip) {
+                document.getElementById('regimeVal').innerText = "Positive Gamma";
+                document.getElementById('regimeVal').className = "text-[#10b981] text-sm font-black mt-0.5";
+                document.getElementById('regimeBannerText').innerHTML = "MAGNET / BRACKET tape — dips get bought. Mean reversion is supported. Play ranges off walls.";
+            } else {
+                document.getElementById('regimeVal').innerText = "Negative Gamma";
+                document.getElementById('regimeVal').className = "text-[#a855f7] text-sm font-black mt-0.5";
+                document.getElementById('regimeBannerText').innerHTML = "AMPLIFIER tape — moves accelerate both ways. Walls don't hold here. Don't fade the first clean break.";
+            }
+
+            document.getElementById('spotVal').innerText = `$${currentSpotPrice.toFixed(2)}`;
+            document.getElementById('callWallVal').innerText = `$${callWall.toFixed(0)}`;
+            document.getElementById('putWallVal').innerText = `$${putWall.toFixed(0)}`;
+            document.getElementById('gFlipVal').innerText = `$${gFlip.toFixed(1)}`;
+            document.getElementById('pcRatioVal').innerText = (1.1 - rand() * 0.4).toFixed(2);
+
+            const zMatrix = [];
+            for (let i = 0; i < strikesInRange.length; i++) {
+                zMatrix.push(new Array(slicedPrices.length).fill(0));
+            }
+
+            strikesInRange.forEach((strike, sIdx) => {
+                for (let tIdx = 0; tIdx < slicedPrices.length; tIdx++) {
+                    const price = close[tIdx];
+                    let intensity = 0;
+                    if (Math.abs(strike - callWall) < 1.5) intensity = 50 + Math.sin(tIdx / 8) * 12;
+                    else if (Math.abs(strike - putWall) < 1.5) intensity = -50 + Math.cos(tIdx / 6) * 12;
+                    else if (Math.abs(strike - price) < 2) intensity = (strike > gFlip) ? 22 : -22;
+                    if (isInvert) intensity = -intensity;
+                    zMatrix[sIdx][tIdx] = intensity;
+                }
+            });
+
+            const colorscale = [
+                [0.0, '#a855f7'],  // Peak Negative (Purple)
+                [0.2, '#6366f1'],  // Negative (Violet/Blue)
+                [0.48, '#1b1c24'],
+                [0.5, '#0c0e15'],  // Mid point zero line
+                [0.52, '#182436'],
+                [0.8, '#10b981'],  // Positive (Emerald)
+                [1.0, '#eab308']   // Peak Positive (Yellow)
+            ];
+
+            const overlayLines = [];
+            if (isKeyLevels) {
+                overlayLines.push(
+                    { x: [times[0], times[times.length - 1]], y: [callWall, callWall], type: 'scatter', mode: 'lines', line: { color: '#eab308', width: 1.8 }, name: `CALL ${callWall.toFixed(0)}` },
+                    { x: [times[0], times[times.length - 1]], y: [gFlip, gFlip], type: 'scatter', mode: 'lines', line: { color: '#ffd600', width: 1.8, dash: 'dash' }, name: `γ-FLIP ${gFlip.toFixed(1)}` },
+                    { x: [times[0], times[times.length - 1]], y: [putWall, putWall], type: 'scatter', mode: 'lines', line: { color: '#a855f7', width: 1.8 }, name: `PUT ${putWall.toFixed(0)}` }
+                );
+            }
+
+            const fig = {
+                data: [
+                    { z: zMatrix, x: times, y: strikesInRange, type: 'heatmap', colorscale: colorscale, showscale: false, opacity: 0.85 },
+                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', increasing: { line: { color: '#10b981', width: 1.5 }, fillcolor: '#10b981' }, decreasing: { line: { color: '#ff3344', width: 1.5 }, fillcolor: '#ff3344' } },
+                    ...overlayLines
+                ],
+                layout: {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: '#04060b',
+                    margin: { l: 40, r: 40, b: 35, t: 10 },
+                    showlegend: false,
+                    xaxis: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', rangeslider: { visible: false }, type: 'date', tickfont: { color: '#94a3b8', size: 9 } },
+                    yaxis: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, side: 'right' }
+                }
+            };
+
+            Plotly.newPlot('mainDashboardPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
+
+            // Render 0DTE vertical chart in left column
+            const profileXValues = strikesInRange.map(s => {
+                let sum = 0;
+                currentData.forEach(d => { if (d.strike === s) sum += (metric === 'gex' ? d.gex : d.dex); });
+                return sum / 100000;
+            });
+            const profileColors = strikesInRange.map(s => {
+                if (s === callWall) return '#eab308';
+                if (s === putWall) return '#a855f7';
+                let sum = 0;
+                currentData.forEach(d => { if (d.strike === s) sum += (metric === 'gex' ? d.gex : d.dex); });
+                return sum >= 0 ? '#10b981' : '#6366f1';
+            });
+
+            Plotly.newPlot('zeroDteGexPlot', [{
+                x: profileXValues,
+                y: strikesInRange,
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: profileColors }
+            }], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 40, r: 10, b: 30, t: 10 },
+                xaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                yaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } }
+            }, { responsive: true });
+        }
+
+        // Timeline Slider Replay hook
+        document.getElementById('traceSlider').addEventListener('input', renderTraceHeatmap);
+
+        document.getElementById('tracePlayBtn').addEventListener('click', () => {
+            const btn = document.getElementById('tracePlayBtn');
+            const slider = document.getElementById('traceSlider');
+            
+            if (activeReplayInterval) {
+                clearInterval(activeReplayInterval);
+                activeReplayInterval = null;
+                btn.innerText = "▶ Play Replay";
+            } else {
+                if (parseInt(slider.value) >= 119) {
+                    slider.value = 0;
+                }
+                btn.innerText = "⏸ Pause";
+                activeReplayInterval = setInterval(() => {
+                    let val = parseInt(slider.value);
+                    if (val < 119) {
+                        slider.value = val + 1;
+                        renderTraceHeatmap();
+                    } else {
+                        clearInterval(activeReplayInterval);
+                        activeReplayInterval = null;
+                        btn.innerText = "▶ Play Replay";
+                    }
+                }, 100);
+            }
+        });
+
+        // Render Swing Voltick Matrix view
+        function renderSwingMode() {
+            if (!currentData || currentData.length === 0) return;
+            const spot = currentData[0].underlying_price;
+            const metric = document.getElementById('globalMetricSelect').value;
+            const isAllExp = document.getElementById('toggleAllExpBtn').classList.contains('active');
+
+            const activeExpirations = isAllExp ? expirationsList : [selectedDateFilter];
+            
+            let headerHtml = `<tr><th class="py-2.5 px-3">Strike</th>`;
+            activeExpirations.forEach(exp => {
+                headerHtml += `<th class="py-2.5 px-3">${exp.slice(5)} ⚡</th>`;
+            });
+            headerHtml += `<th class="py-2.5 px-3">Net GEX</th></tr>`;
+            document.getElementById('voltickGridHeader').innerHTML = headerHtml;
+
+            // Group net metrics by strike
+            const strikeMap = {};
+            currentData.forEach(d => {
+                if (!strikeMap[d.strike]) {
+                    strikeMap[d.strike] = { total: 0 };
+                    activeExpirations.forEach(exp => strikeMap[d.strike][exp] = 0);
+                }
+                if (strikeMap[d.strike][d.expiration] !== undefined) {
+                    strikeMap[d.strike][d.expiration] += (metric === 'gex' ? d.gex : d.dex);
+                }
+                strikeMap[d.strike].total += (metric === 'gex' ? d.gex : d.dex);
+            });
+
+            // Sort strikes near spot
+            const strikes = Object.keys(strikeMap).map(Number).filter(s => s >= spot * 0.985 && s <= spot * 1.015).sort((a,b) => b-a);
+            let bodyHtml = "";
+
+            strikes.forEach(s => {
+                const node = strikeMap[s];
+                const isSpot = Math.abs(s - spot) < 2.0;
+                
+                let rowBgClass = isSpot ? "bg-white text-black font-extrabold" : "hover:bg-slate-900/60";
+
+                let strikeText = `${s}`;
+                if (s === Math.round(spot * 1.01)) strikeText = `★ ${s}`;
+                else if (s === Math.round(spot * 1.005)) strikeText = `⚡ ${s}`;
+                else if (s === Math.round(spot * 0.99)) strikeText = `◆ ${s}`;
+
+                if (isSpot) strikeText += ` ◀ ‖ Spot`;
+
+                bodyHtml += `<tr class="${rowBgClass}"><td class="py-2.5 px-3 font-bold border border-gray-800 text-left pl-4">${strikeText}</td>`;
+                activeExpirations.forEach(exp => {
+                    const val = node[exp];
+                    let cellClass = "cell-zero";
+                    let formattedVal = "$0";
+
+                    if (val > 150000) {
+                        cellClass = val > 600000 ? "cell-sticky-bright" : "cell-sticky-green";
+                        formattedVal = `+$${(val / 100000).toFixed(1)}M`;
+                    } else if (val < -150000) {
+                        cellClass = val < -600000 ? "cell-slippery-bright" : "cell-slippery-red";
+                        formattedVal = `-$${(Math.abs(val) / 100000).toFixed(1)}M`;
+                    }
+
+                    bodyHtml += `<td class="py-2.5 px-3 border border-gray-800 font-bold ${cellClass}">${formattedVal}</td>`;
+                });
+                
+                let totClass = node.total >= 0 ? "text-emerald-400 font-bold" : "text-rose-455 font-bold";
+                bodyHtml += `<td class="py-2.5 px-3 ${totClass} border border-gray-800">${(node.total / 100000).toFixed(1)}M</td></tr>`;
+            });
+
+            document.getElementById('voltickGridBody').innerHTML = bodyHtml;
+        }
+
+        // Toggle handlers for 0DTE vs ALL Expiry inside Swing Mode
+        document.getElementById('toggle0DteBtn').addEventListener('click', () => {
+            document.getElementById('toggle0DteBtn').classList.add('active');
+            document.getElementById('toggleAllExpBtn').classList.remove('active');
+            renderSwingMode();
+        });
+
+        document.getElementById('toggleAllExpBtn').addEventListener('click', () => {
+            document.getElementById('toggleAllExpBtn').classList.add('active');
+            document.getElementById('toggle0DteBtn').classList.remove('active');
+            renderSwingMode();
+        });
+
+        // Render Trinity Mode Panel
+        async function renderTrinityMode() {
+            // Map SPX, SPY, QQQ concurrent panels
+            const symbols = ["I:SPX", "SPY", "QQQ"];
+            const titles = ["I:SPX (S&P 500 Index)", "SPY (S&P 500 ETF)", "QQQ (Nasdaq 100 ETF)"];
+            let html = "";
+
+            for (let i = 0; i < symbols.length; i++) {
+                html += `
+                    <div class="glass-panel p-4 rounded-xl glow-border">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="font-black text-sm text-white">${titles[i]}</span>
+                            <span id="trinityRegime-${i}" class="text-xs font-extrabold text-emerald-450">Positive Gamma</span>
+                        </div>
+                        <div id="trinityPlot-${i}" class="w-full h-[400px]"></div>
+                    </div>
+                `;
+            }
+            document.getElementById('trinityPlotsContainer').innerHTML = html;
+
+            for (let i = 0; i < symbols.length; i++) {
+                try {
+                    const response = await fetch(`/api/data?symbol=${symbols[i]}`);
+                    const chain = await response.json();
+                    if (!chain || chain.length === 0) continue;
+
+                    const spot = chain[0].underlying_price;
+                    const rand = seedRandom(symbols[i] + "-trinity");
+
+                    const strikes = [...new Set(chain.map(d => d.strike))].filter(s => s >= spot * 0.985 && s <= spot * 1.015).slice(0, 15);
+                    const totals = strikes.map(s => {
+                        let sum = 0;
+                        chain.forEach(d => { if (d.strike === s) sum += d.gex; });
+                        return sum / 100000;
+                    });
+
+                    const isAbove = rand() > 0.45;
+                    document.getElementById(`trinityRegime-${i}`).innerText = isAbove ? "Positive Gamma" : "Negative Gamma";
+                    document.getElementById(`trinityRegime-${i}`).className = isAbove ? "text-xs font-extrabold text-emerald-450" : "text-xs font-extrabold text-purple-400";
+
+                    const barColors = totals.map(v => v >= 0 ? '#10b981' : '#a855f7');
+                    Plotly.newPlot(`trinityPlot-${i}`, [{
+                        x: totals,
+                        y: strikes,
+                        type: 'bar',
+                        orientation: 'h',
+                        marker: { color: barColors }
+                    }], {
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        margin: { l: 45, r: 15, b: 35, t: 10 },
+                        xaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                        yaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } }
+                    }, { responsive: true });
+                } catch (e) {
+                    console.error("Trinity failed for " + symbols[i], e);
+                }
+            }
+        }
+
+        // Render HIRO
+        function renderHiro() {
+            if (!currentData || currentData.length === 0) return;
+            const times = prices.map(p => p.time);
+            const close = prices.map(p => p.close);
+            Plotly.newPlot('hiroChartPlot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#ffffff' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
+        }
+
+        // Render Compass
+        function renderCompass() {
+            Plotly.newPlot('compassGridPlot', [{ x: [42, 38, 82], y: [72, 65, 89], type: 'scatter', mode: 'markers+text', text: ['SPY', 'QQQ', 'NVDA'], textposition: 'top center' }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
+        }
+
+        // Guide drawer controls
         function showHelpDrawer() {
             document.getElementById('helpDrawer').style.display = 'flex';
         }
@@ -363,137 +912,28 @@
             document.getElementById('helpDrawer').style.display = 'none';
         }
 
-        // Render Voltick Grid Table
-        function renderVoltickBoard() {
-            if (!currentData || currentData.length === 0) return;
-            const spot = currentData[0].underlying_price;
-            const symbol = document.getElementById('voltickSymbol').value;
-            const rowLimit = parseInt(document.getElementById('voltickRowLimit').value);
-            const isAllExp = document.getElementById('toggleAllExpBtn').classList.contains('active');
-
-            const rand = seedRandom(symbol + "-voltick-board");
-
-            // Expiration Columns definition
-            const activeExpirations = isAllExp ? expirationsList : [selectedDateFilter];
-            
-            // Table Header construction
-            let headerHtml = `<tr><th class="py-2.5 px-3">Strike</th>`;
-            activeExpirations.forEach(exp => {
-                const expShort = exp.slice(5).replace("-", "/");
-                headerHtml += `<th class="py-2.5 px-3 min-w-[75px]">${expShort}</th>`;
+        // Connect global filters
+        document.getElementById('globalRefreshBtn').addEventListener('click', loadOptionsData);
+        
+        ['globalSymbolInput', 'globalTfSelect', 'globalDaysSelect', 'globalRangeSelect', 'globalMetricSelect', 'globalStrikesSelect', 'globalKeyLevelsToggle', 'globalInvertToggle'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                generateSynthetics();
+                renderTraceHeatmap();
+                if (!document.getElementById('swingView').classList.contains('hidden')) renderSwingMode();
+                if (!document.getElementById('trinityView').classList.contains('hidden')) renderTrinityMode();
+                calculateStability();
             });
-            headerHtml += `<th class="py-2.5 px-3 text-right pr-4">Net GEX by strike</th></tr>`;
-            document.getElementById('voltickBoardHeader').innerHTML = headerHtml;
-
-            // Strikes filtering around spot
-            const allStrikes = [...new Set(currentData.map(d => d.strike))].sort((a,b) => b-a);
-            const spotIdx = allStrikes.findIndex(s => s <= spot);
-            const startIdx = Math.max(0, spotIdx - Math.floor(rowLimit / 2));
-            const strikesToShow = allStrikes.slice(startIdx, startIdx + rowLimit);
-
-            // GEX mapping by strike and expiration
-            let bodyHtml = "";
-            strikesToShow.forEach(strike => {
-                const isSpotRow = Math.abs(strike - spot) < 2.0;
-                let rowBgClass = isSpotRow ? "bg-white text-black font-extrabold" : "hover:bg-slate-900/60";
-
-                // Add special icon callouts based on strike
-                let strikeText = `${strike}`;
-                if (strike === Math.round(spot * 1.01)) strikeText = `★ ${strike}`; // Volt
-                else if (strike === Math.round(spot * 1.005)) strikeText = `⚡ ${strike}`; // Surge
-                else if (strike === Math.round(spot * 0.99)) strikeText = `◆ ${strike}`; // Coil
-                
-                if (isSpotRow) {
-                    strikeText += ` ◀ ‖ Spot`;
-                }
-
-                bodyHtml += `<tr class="${rowBgClass}"><td class="py-2.5 px-3 font-bold border border-gray-800 text-left pl-4">${strikeText}</td>`;
-
-                let netGexSum = 0;
-
-                activeExpirations.forEach(exp => {
-                    let cellVal = 0;
-                    currentData.forEach(d => {
-                        if (d.strike === strike && d.expiration === exp) {
-                            cellVal += d.gex;
-                        }
-                    });
-
-                    netGexSum += cellVal;
-
-                    // Choose colors based on Voltick rules: green slows, red slides
-                    let cellClass = "cell-zero";
-                    let formattedVal = "$0";
-
-                    if (cellVal > 150000) {
-                        cellClass = cellVal > 600000 ? "cell-sticky-bright" : "cell-sticky-green";
-                        formattedVal = `+$${(cellVal / 100000).toFixed(1)}M`;
-                    } else if (cellVal < -150000) {
-                        cellClass = cellVal < -600000 ? "cell-slippery-bright" : "cell-slippery-red";
-                        formattedVal = `-$${(Math.abs(cellVal) / 100000).toFixed(1)}M`;
-                    }
-
-                    // Highlight Volt and Surge nodes in the grid
-                    if (strike === Math.round(spot * 1.01) && cellVal > 0) {
-                        cellClass = "cell-peak-call";
-                    } else if (strike === Math.round(spot * 0.99) && cellVal < 0) {
-                        cellClass = "cell-peak-put";
-                    }
-
-                    bodyHtml += `<td class="py-2.5 px-3 border border-gray-800 font-bold ${cellClass}">${formattedVal}</td>`;
-                });
-
-                // Render Net GEX bar chart in the right-most column
-                const maxBarVal = 2000000;
-                const barWidth = Math.min(100, (Math.abs(netGexSum) / maxBarVal) * 100);
-                const barColor = netGexSum >= 0 ? "bg-emerald-500" : "bg-rose-500";
-                const textCol = netGexSum >= 0 ? "text-emerald-400" : "text-rose-400";
-                
-                let barMarkup = `
-                    <div class="flex items-center justify-end gap-2 pr-4 py-1">
-                        <span class="text-[9px] ${textCol} font-extrabold">${(netGexSum / 100000).toFixed(1)}M</span>
-                        <div class="w-20 bg-slate-800/80 h-2 rounded overflow-hidden flex justify-end">
-                            <div class="${barColor} h-full" style="width: ${barWidth}%"></div>
-                        </div>
-                    </div>
-                `;
-
-                bodyHtml += `<td class="border border-gray-800 text-right">${barMarkup}</td></tr>`;
-            });
-
-            document.getElementById('voltickBoardBody').innerHTML = bodyHtml;
-        }
-
-        // Toggle handlers for 0DTE vs ALL Expiry
-        document.getElementById('toggle0DteBtn').addEventListener('click', () => {
-            document.getElementById('toggle0DteBtn').classList.add('active');
-            document.getElementById('toggleAllExpBtn').classList.remove('active');
-            renderVoltickBoard();
         });
 
-        document.getElementById('toggleAllExpBtn').addEventListener('click', () => {
-            document.getElementById('toggleAllExpBtn').classList.add('active');
-            document.getElementById('toggle0DteBtn').classList.remove('active');
-            renderVoltickBoard();
-        });
-
-        // Trigger updates on filters
-        document.getElementById('voltickSymbol').addEventListener('change', fetchOptionsChain);
-        document.getElementById('voltickRowLimit').addEventListener('change', renderVoltickBoard);
-
-        // Tab Views handler placeholders
-        function renderGexEdgeCockpit() {
-            // Plotly code for trace gexEdge Cockpit...
-        }
-        function renderTrinityIndexPanel() {
-            // SPX, SPY, QQQ heatmaps...
-        }
-        function renderHiroFlowPlot() {
-            // Hiro timeline line plot...
-        }
+        // Tab Views Event Listeners
+        document.getElementById('navTraceBtn').addEventListener('click', () => setView('trace'));
+        document.getElementById('navSwingBtn').addEventListener('click', () => setView('swing'));
+        document.getElementById('navTrinityBtn').addEventListener('click', () => setView('trinity'));
+        document.getElementById('navHiroBtn').addEventListener('click', () => setView('hiro'));
+        document.getElementById('navCompassBtn').addEventListener('click', () => setView('compass'));
 
         // Initial Load
-        fetchOptionsChain();
+        loadOptionsData();
     </script>
 </body>
 </html>
