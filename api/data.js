@@ -14,7 +14,10 @@ export default async function handler(req, res) {
   }
 
   // Get symbol from query params (default SPY)
-  const symbol = (req.query.symbol || 'SPY').toUpperCase();
+  let symbol = (req.query.symbol || 'SPY').toUpperCase();
+  if (symbol === 'SPX') {
+    symbol = 'I:SPX';
+  }
   const apiKey = process.env.CV_API_KEY;
 
   if (!apiKey) {
@@ -116,10 +119,9 @@ function processChainData(chainData) {
       }
 
       if (underlyingPrice > 0) {
-        // GEX/DEX in Dollars = Gamma/Delta * OI * Spot (Matches FlowbyBobby's scale exactly)
-        // Note: strikeGex/strikeDex is scaled by 100, so we multiply by 0.01 to get the exact unit.
-        const dollarGex = strikeGex * underlyingPrice * 0.01;
-        const dollarDex = strikeDex * underlyingPrice * 0.01;
+        // GEX/DEX in Dollars = Gamma/Delta * OI * 100 * Spot
+        const dollarGex = strikeGex * underlyingPrice;
+        const dollarDex = strikeDex * underlyingPrice;
 
         processedRecords.push({
           expiration: expDate,
