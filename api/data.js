@@ -18,56 +18,72 @@ export default async function handler(req, res) {
   if (symbol === 'SPX') {
     symbol = 'I:SPX';
   }
+  const demoRequested = req.query.demo === '1';
   const apiKey = process.env.CV_API_KEY;
+  const fetchedAt = new Date().toISOString();
 
-  if (!apiKey) {
-    res.status(500).json({ error: "Missing CV_API_KEY environment variable in Vercel configuration." });
+  // Explicit demo mode: clearly-labeled synthetic data, never mistaken for live.
+  if (demoRequested) {
+    const records = generateDemoData(symbol);
+    const spot = records.length ? records[0].underlying_price : 0;
+    res.status(200).json({ records, demo: true, symbol, spot, fetchedAt });
     return;
   }
 
-  const apiUrl = "https://tap.convexvalue.com/api/data/chains";
+  if (!apiKey) {
+    res.status(503).json({ error: 'Options data unavailable: missing CV_API_KEY environment variable in Vercel configuration.' });
+    return;
+  }
+
+  const apiUrl = 'https://tap.convexvalue.com/api/data/chains';
   const payload = {
     params: [
-      "expiration_date", "strike_price", "contract_type", "implied_volatility",
-      "delta", "gamma", "theta", "vega", "bid", "ask", "midpoint", "open_interest",
-      "day_volume", "underlying_price"
+      'expiration_date', 'strike_price', 'contract_type', 'implied_volatility',
+      'delta', 'gamma', 'theta', 'vega', 'bid', 'ask', 'midpoint', 'open_interest',
+      'day_volume', 'underlying_price'
     ],
     symbol: symbol
   };
 
   try {
     const apiResponse = await fetch(apiUrl, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "User-Agent": "cv-mcp/0.1.0"
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'cv-mcp/0.1.0'
       },
       body: JSON.stringify(payload)
     });
 
     if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      console.warn(`Convex Value API rate limited or offline. Falling back to local data generator. Error: ${errorText}`);
-      const fallbackRecords = generateFallbackData(symbol);
-      res.status(200).json(fallbackRecords);
-      return;
+      const errorText = await apiResponse.text().catch(() => '');
+      throw new Error(`ConvexValue API responded ${apiResponse.status}: ${errorText.slice(0, 200)}`);
     }
 
     const chainData = await apiResponse.json();
-    const processedData = processChainData(chainData);
-    res.status(200).json(processedData);
+    const records = processChainData(chainData);
+
+    if (!records.length) {
+      throw new Error('ConvexValue API returned no usable chain records (unexpected response shape).');
+    }
+
+    const spot = records[0].underlying_price;
+    res.status(200).json({ records, demo: false, symbol, spot, fetchedAt });
   } catch (error) {
-    console.warn(`Server request failed. Falling back to local data generator. Error: ${error.message}`);
-    const fallbackRecords = generateFallbackData(symbol);
-    res.status(200).json(fallbackRecords);
+    console.warn(`Options chain fetch failed for ${symbol}: ${error.message}`);
+    res.status(503).json({
+      error: 'Options data temporarily unavailable. Upstream chain provider did not return usable data.',
+      detail: error.message
+    });
   }
 }
 
-function generateFallbackData(symbol) {
+function generateDemoData(symbol) {
+  // Synthetic data for demo mode ONLY. The frontend badges this as SIMULATED.
   let spot = 746.24;
   let interval = 1.0;
-  
+
   if (symbol === 'SPY') { spot = 746.24; interval = 1.0; }
   else if (symbol === 'QQQ') { spot = 502.40; interval = 1.0; }
   else if (symbol === 'I:SPX') { spot = 5625.0; interval = 5.0; }
@@ -91,7 +107,7 @@ function generateFallbackData(symbol) {
     // skip weekends
     if (d.getDay() === 0) d.setDate(d.getDate() + 1);
     if (d.getDay() === 6) d.setDate(d.getDate() + 2);
-    
+
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
@@ -101,20 +117,22 @@ function generateFallbackData(symbol) {
   const strikes = [];
   const minStrike = Math.round((spot * 0.97) / interval) * interval;
   const maxStrike = Math.round((spot * 1.03) / interval) * interval;
-  
+
   for (let s = minStrike; s <= maxStrike; s += interval) {
     strikes.push(parseFloat(s.toFixed(2)));
   }
 
   const records = [];
+  const today = new Date();
 
   expDates.forEach((exp, expIdx) => {
     const expiryFactor = Math.exp(-expIdx * 0.3);
+    const dte = Math.max(0, Math.round((new Date(exp + 'T00:00:00') - today) / 86400000));
 
     strikes.forEach(strike => {
       // Use dynamic noise based on current timestamp
       const randVal = Math.sin(strike * 13 + Math.random() * 5);
-      
+
       // Calculate realistic GEX
       let gex = 0;
       if (strike > spot) {
@@ -132,7 +150,7 @@ function generateFallbackData(symbol) {
       if (strike === callWallStrike) {
         gex += 1500000 * expiryFactor;
       }
-      
+
       // Add put wall peak
       const putWallStrike = Math.round((spot * 0.975) / interval) * interval;
       if (strike === putWallStrike) {
@@ -142,18 +160,26 @@ function generateFallbackData(symbol) {
       // Add dynamic noise fluctuation
       gex += randVal * 250000 * expiryFactor;
 
-      const oi = Math.round((Math.abs(gex) / 10) + 100);
+      const callOi = Math.round(Math.abs(Math.max(gex, 0)) / 10 + 60);
+      const putOi = Math.round(Math.abs(Math.min(gex, 0)) / 10 + 60);
+      const oi = callOi + putOi;
       const volume = Math.round(oi * 0.15 * (Math.sin(strike) + 1.2));
+      // Synthetic IV smile: higher away from the money
+      const iv = 0.18 + 0.35 * Math.pow(Math.abs(strike - spot) / (spot * 0.03), 1.5);
 
       records.push({
         expiration: exp,
+        dte,
         strike: strike,
         gex: Math.round(gex * 100) / 100,
         dex: Math.round(gex * 0.5 * 100) / 100,
         dollar_gex: Math.round(gex * spot * 100) / 100,
         dollar_dex: Math.round(gex * 0.5 * spot * 100) / 100,
+        call_oi: callOi,
+        put_oi: putOi,
         open_interest: oi,
         volume: volume,
+        iv: Math.round(iv * 10000) / 10000,
         underlying_price: spot
       });
     });
@@ -162,63 +188,65 @@ function generateFallbackData(symbol) {
   return records;
 }
 
+function num(v) {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function processChainData(chainData) {
-  if (!chainData || !chainData.chain) {
+  if (!chainData || !Array.isArray(chainData.chain) || chainData.chain.length === 0) {
     return [];
   }
 
   const processedRecords = [];
+  const today = new Date();
 
   for (const item of chainData.chain) {
     const expDate = item.expiration;
     const strikes = item.strikes || [];
+    if (!expDate || !Array.isArray(strikes)) continue;
+    const dte = Math.max(0, Math.round((new Date(expDate + 'T00:00:00') - today) / 86400000));
 
     for (const strikeInfo of strikes) {
-      if (strikeInfo.length < 3) continue;
+      if (!Array.isArray(strikeInfo) || strikeInfo.length < 3) continue;
 
       const strike = parseFloat(strikeInfo[0]);
+      if (!Number.isFinite(strike)) continue;
       const callContract = strikeInfo[1];
       const putContract = strikeInfo[2];
 
       let strikeGex = 0.0;
       let strikeDex = 0.0;
-      let strikeOi = 0;
+      let callOi = 0;
+      let putOi = 0;
       let strikeVol = 0;
       let underlyingPrice = 0.0;
+      let ivNum = 0;
+      let ivDen = 0;
 
-      // Call Contract Processing
-      if (callContract && callContract.length > 13) {
-        const oi = parseInt(callContract[11] || 0);
-        const vol = parseInt(callContract[12] || 0);
-        const delta = parseFloat(callContract[4] || 0.0);
-        const gamma = parseFloat(callContract[5] || 0.0);
-        const uPrice = parseFloat(callContract[13] || 0.0);
-        if (uPrice > 0) {
-          underlyingPrice = uPrice;
-        }
-
-        strikeOi += oi;
+      // Contract array layout follows the requested params order:
+      // [expiration_date, strike_price, contract_type, implied_volatility,
+      //  delta, gamma, theta, vega, bid, ask, midpoint,
+      //  open_interest, day_volume, underlying_price]
+      const readContract = (contract, sign) => {
+        if (!Array.isArray(contract) || contract.length <= 13) return;
+        const oi = parseInt(contract[11] || 0, 10) || 0;
+        const vol = parseInt(contract[12] || 0, 10) || 0;
+        const delta = num(contract[4]);
+        const gamma = num(contract[5]);
+        const iv = num(contract[3]);
+        const uPrice = num(contract[13]);
+        if (uPrice > 0) underlyingPrice = uPrice;
+        if (iv > 0 && iv < 5 && oi > 0) { ivNum += iv * oi; ivDen += oi; }
+        if (sign > 0) callOi += oi; else putOi += oi;
         strikeVol += vol;
-        strikeGex += gamma * oi * 100;
-        strikeDex += delta * oi * 100;
-      }
+        strikeGex += sign * gamma * oi * 100;
+        strikeDex += delta * oi * 100; // put delta is already negative
+      };
 
-      // Put Contract Processing
-      if (putContract && putContract.length > 13) {
-        const oi = parseInt(putContract[11] || 0);
-        const vol = parseInt(putContract[12] || 0);
-        const delta = parseFloat(putContract[4] || 0.0);
-        const gamma = parseFloat(putContract[5] || 0.0);
-        const uPrice = parseFloat(putContract[13] || 0.0);
-        if (uPrice > 0) {
-          underlyingPrice = uPrice;
-        }
-
-        strikeOi += oi;
-        strikeVol += vol;
-        strikeGex -= gamma * oi * 100;
-        strikeDex += delta * oi * 100; // Put delta is already negative
-      }
+      // Dealer positioning convention: long call gamma / short put gamma
+      readContract(callContract, +1);
+      readContract(putContract, -1);
 
       if (underlyingPrice > 0) {
         // GEX/DEX in Dollars = Gamma/Delta * OI * 100 * Spot
@@ -227,13 +255,17 @@ function processChainData(chainData) {
 
         processedRecords.push({
           expiration: expDate,
+          dte,
           strike: strike,
           gex: Math.round(strikeGex * 100) / 100,
           dex: Math.round(strikeDex * 100) / 100,
           dollar_gex: Math.round(dollarGex * 100) / 100,
           dollar_dex: Math.round(dollarDex * 100) / 100,
-          open_interest: strikeOi,
+          call_oi: callOi,
+          put_oi: putOi,
+          open_interest: callOi + putOi,
           volume: strikeVol,
+          iv: ivDen > 0 ? Math.round((ivNum / ivDen) * 10000) / 10000 : 0,
           underlying_price: underlyingPrice
         });
       }

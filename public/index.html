@@ -42,6 +42,11 @@
         /* Drawer Overlay */
         .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; }
         .drawer-content { background: #080c10; border: 1px solid #1e293b; border-radius: 12px; padding: 20px; max-width: 450px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+
+        /* Toggle buttons */
+        .btn-toggle { background-color: #0a0d16; border: 1px solid #1e293b; color: #94a3b8; font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .btn-toggle:hover { border-color: #ffd600; color: #fff; }
+        .btn-toggle.active { background-color: #1e293b; color: #fff; border-color: #ffd600; }
     </style>
 </head>
 <body class="p-6 select-none">
@@ -53,9 +58,10 @@
                 <span class="text-yellow-400 font-extrabold mr-1.5">⚡</span> GEX <span class="text-yellow-400">EDGE</span>
             </span>
             <span class="bg-[#1e1b4b] text-[#c084fc] border border-[#581c87] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Premium Cockpit</span>
+            <span id="dataModeBadge" class="bg-[#052e16] text-emerald-400 border border-[#166534] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">● Live</span>
         </div>
         
-        <div class="flex bg-[#0a0d16] p-1 rounded-lg border border-gray-800/80">
+        <div class="flex flex-wrap gap-1 bg-[#0a0d16] p-1 rounded-lg border border-gray-800/80">
             <button id="navTraceBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]">
                 📊 Cockpit & Levels (GEX Edge)
             </button>
@@ -66,13 +72,16 @@
                 📈 Trinity Mode
             </button>
             <button id="navHiroBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
-                🎯 HIRO Flow Tape
+                🎯 Intraday Price
             </button>
             <button id="navCompassBtn" class="px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white">
                 🧭 Compass Grid
             </button>
         </div>
     </div>
+
+    <!-- Error banner (hidden unless the data fetch fails) -->
+    <div id="errorBanner" class="hidden mb-5 bg-[#2a0f14] border border-[#7f1d2c] text-rose-200 text-xs font-semibold px-5 py-3 rounded-xl"></div>
 
     <!-- ==================== UNIVERSAL FILTER CONTROL BAR ==================== -->
     <div class="glass-panel px-6 py-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-gray-300 rounded-xl mb-5">
@@ -89,22 +98,6 @@
                 <option value="META">META</option>
                 <option value="AMD">AMD</option>
                 <option value="AMZN">AMZN</option>
-            </select>
-        </div>
-
-        <div class="flex flex-col gap-1">
-            <span class="text-[9px] text-gray-500 uppercase font-black">Timeframe</span>
-            <select id="globalTfSelect" class="control-dropdown">
-                <option value="5m" selected>5m</option>
-                <option value="15m">15m</option>
-            </select>
-        </div>
-
-        <div class="flex flex-col gap-1">
-            <span class="text-[9px] text-gray-500 uppercase font-black">Days</span>
-            <select id="globalDaysSelect" class="control-dropdown">
-                <option value="5" selected>5</option>
-                <option value="10">10</option>
             </select>
         </div>
 
@@ -142,9 +135,9 @@
             <label for="globalInvertToggle" class="text-[10px] text-gray-300 font-bold uppercase cursor-pointer select-none">Invert Pos</label>
         </div>
 
-        <!-- Dynamic Stability Gauge -->
+        <!-- ATM Gamma Concentration Gauge -->
         <div class="flex items-center gap-2.5 bg-[#081225] border border-[#1d2d47] px-4 py-1.5 rounded-lg mt-4 h-[36px]">
-            <span class="text-[10px] text-gray-400 block font-bold uppercase">Stability</span>
+            <span class="text-[10px] text-gray-400 block font-bold uppercase">ATM Gamma</span>
             <span id="globalStabilityVal" class="text-yellow-400 font-black">--%</span>
         </div>
 
@@ -190,7 +183,7 @@
         </div>
         <div class="kpi-card">
             <span class="kpi-title">ATM IV</span>
-            <span id="atmIvVal" class="kpi-value">9.3%</span>
+            <span id="atmIvVal" class="kpi-value">—</span>
         </div>
     </div>
 
@@ -204,8 +197,8 @@
                 <span id="regimeBannerText" class="text-lg font-black text-white">MAGNET / BRACKET tape — dips get bought. Mean reversion is supported. Play ranges off walls.</span>
             </div>
             <div class="flex items-center gap-4 text-xs">
-                <div><span class="text-gray-550 font-bold mr-1">VIX:</span> <span class="font-extrabold text-white">16.0 ▲ 0.2</span></div>
-                <div><span class="text-gray-550 font-bold mr-1">TIDE:</span> <span class="font-extrabold text-emerald-400">Bullish Tide 0</span></div>
+                <div id="vixBlock"><span class="text-gray-550 font-bold mr-1">VIX:</span> <span id="vixVal" class="font-extrabold text-white">—</span></div>
+                <div><span class="text-gray-550 font-bold mr-1">TIDE:</span> <span id="tideVal" class="font-extrabold text-emerald-400">—</span></div>
             </div>
         </div>
 
@@ -214,8 +207,8 @@
             <!-- Left Column: 0DTE Net GEX (3 Columns) -->
             <div class="lg:col-span-3 glass-panel p-4 rounded-xl glow-border">
                 <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2 flex justify-between">
-                    <span>⚡ 0DTE Net GEX</span>
-                    <span class="text-yellow-400">Peak GEX</span>
+                    <span>⚡ Front-Expiry Net $GEX</span>
+                    <span class="text-yellow-400">Per Strike</span>
                 </h3>
                 <div id="zeroDteGexPlot" class="w-full h-[400px]"></div>
             </div>
@@ -231,15 +224,16 @@
                 
                 <div id="mainDashboardPlot" class="w-full h-[380px]"></div>
 
-                <!-- Timeline Slider -->
+                <!-- Expiry scope + data stamp -->
                 <div class="border-t border-gray-850 pt-4 mt-auto flex flex-col gap-2">
                     <div class="flex justify-between items-center text-xs text-gray-500 px-1">
-                        <span class="font-bold uppercase tracking-wider text-yellow-400">🕒 Interactive Timeline Scrub</span>
-                        <span id="traceTimeLabel" class="font-black text-gray-300 bg-[#0a0d16] px-2.5 py-0.5 rounded border border-gray-800">09:30 AM</span>
+                        <span class="font-bold uppercase tracking-wider text-yellow-400">$GEX by strike</span>
+                        <span id="dataStamp" class="font-black text-gray-300 bg-[#0a0d16] px-2.5 py-0.5 rounded border border-gray-800">—</span>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <input type="range" id="traceSlider" min="0" max="119" value="119" class="flex-grow accent-yellow-400 cursor-ew-resize bg-slate-800 h-1.5 rounded-lg appearance-none">
-                        <button id="tracePlayBtn" class="bg-[#1e293b] hover:bg-[#2e3b50] text-white border border-[#2b3952] font-black px-5 py-2 rounded-lg text-xs transition-colors shrink-0">▶ Play Replay</button>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="scopeFrontBtn" class="btn-toggle active">Front expiry</button>
+                        <button id="scopeAllBtn" class="btn-toggle">All expiries</button>
+                        <span class="text-[10px] text-gray-500 ml-1">Bars = net dealer dollar-gamma per strike (calls +, puts −).</span>
                     </div>
                 </div>
             </div>
@@ -247,17 +241,16 @@
             <!-- Right Column: Scenarios (3 Columns) -->
             <div class="lg:col-span-3 flex flex-col gap-4">
                 <div class="glass-panel p-4 rounded-xl glow-border flex-grow">
-                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2">🎯 Intraday Scenarios</h3>
-                    
+                    <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2">🎯 Level Playbook</h3>
+
                     <div class="space-y-4">
                         <!-- Bull Case -->
                         <div class="bg-[#0c1a16] border border-[#0d3c2a] p-3 rounded-lg">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-xs font-black text-emerald-400">▲ BULL CASE</span>
-                                <span class="bg-[#052e16] text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded">20%</span>
                             </div>
-                            <p class="text-[11px] text-gray-300 leading-relaxed">
-                                Spot reclaims the Gamma Flip line on volume and holds above. Target Call Wall.
+                            <p id="scenarioBullText" class="text-[11px] text-gray-300 leading-relaxed">
+                                Spot reclaims the gamma-flip line on volume and holds above. Target the call wall.
                             </p>
                         </div>
 
@@ -265,10 +258,9 @@
                         <div class="bg-[#121826] border border-[#1e293b] p-3 rounded-lg">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-xs font-black text-yellow-400">→ BASE CASE</span>
-                                <span class="bg-yellow-950/60 text-yellow-400 text-[10px] font-extrabold px-2 py-0.5 rounded">50%</span>
                             </div>
-                            <p class="text-[11px] text-gray-300 leading-relaxed">
-                                Spot oscillates between the Put Wall and Call Wall through expiration close.
+                            <p id="scenarioBaseText" class="text-[11px] text-gray-300 leading-relaxed">
+                                Spot oscillates between the put wall and call wall into the close.
                             </p>
                         </div>
 
@@ -276,10 +268,9 @@
                         <div class="bg-[#241315] border border-[#4c1d21] p-3 rounded-lg">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-xs font-black text-rose-400">▼ BEAR CASE</span>
-                                <span class="bg-[#451a1d] text-rose-300 text-[10px] font-extrabold px-2 py-0.5 rounded">30%</span>
                             </div>
-                            <p class="text-[11px] text-gray-300 leading-relaxed">
-                                Spot loses the Put Wall support and accepts below, triggering negative gamma acceleration.
+                            <p id="scenarioBearText" class="text-[11px] text-gray-300 leading-relaxed">
+                                Spot loses the put wall and accepts below, triggering negative-gamma acceleration.
                             </p>
                         </div>
                     </div>
@@ -340,12 +331,12 @@
                     <h3 class="text-xs font-black uppercase text-white tracking-wider mb-3">Swing Positioning Read</h3>
                     <div class="space-y-3 text-xs">
                         <div class="bg-[#0c1a16] border border-[#0d3c2a] p-3 rounded-lg">
-                            <span class="font-bold text-emerald-400 block mb-1">Vanna (VEX) Outlook</span>
-                            <p class="text-gray-305">VEX is moderately negative; a 1-vol-point drop in IV would force ~$85M of dealer buying, acting as a mechanical bid.</p>
+                            <span class="font-bold text-emerald-400 block mb-1">Net $GEX Read</span>
+                            <p id="swingGexRead" class="text-gray-305">—</p>
                         </div>
                         <div class="bg-[#121826] border border-[#1e293b] p-3 rounded-lg">
-                            <span class="font-bold text-yellow-400 block mb-1">Charm (CHEX) Outlook</span>
-                            <p class="text-gray-305">CHEX is positive, adding a small time-driven tailwind as near-term short strikes decay.</p>
+                            <span class="font-bold text-yellow-400 block mb-1">Key Levels</span>
+                            <p id="swingLevelsRead" class="text-gray-305">—</p>
                         </div>
                     </div>
                 </div>
@@ -360,7 +351,7 @@
                 <span class="text-yellow-400">📈</span> Trinity Mode — Three-Panel Index Exposure View
             </h2>
             <p class="text-xs text-gray-400 mt-1">
-                See where dealers are forced to buy and sell in real-time across SPX, SPY, and QQQ. Updated every minute.
+                Where dealers are forced to buy and sell across SPX, SPY, and QQQ — net dollar-gamma per strike from the live chain. Refreshes with the chain data.
             </p>
         </div>
 
@@ -396,6 +387,31 @@
 
     <!-- ==================== HIRO FLOW VIEW ==================== -->
     <div id="hiroView" class="hidden p-5 glass-panel rounded-xl glow-border">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+                <h2 class="text-lg font-black text-white flex items-center gap-2">
+                    <span class="text-yellow-400">🎯</span> Intraday Price
+                </h2>
+                <p class="text-xs text-gray-400 mt-1">Real intraday bars via Yahoo Finance (15-min delayed). Not options flow.</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+                <div class="flex flex-col gap-1">
+                    <span class="text-[9px] text-gray-500 uppercase font-black">Interval</span>
+                    <select id="hiroInterval" class="control-dropdown">
+                        <option value="5m" selected>5m</option>
+                        <option value="15m">15m</option>
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <span class="text-[9px] text-gray-500 uppercase font-black">Range</span>
+                    <select id="hiroRange" class="control-dropdown">
+                        <option value="1d" selected>1 day</option>
+                        <option value="5d">5 days</option>
+                        <option value="10d">10 days</option>
+                    </select>
+                </div>
+            </div>
+        </div>
         <div class="bg-[#080c10] border border-gray-850 rounded-xl p-4 mb-4">
             <div id="hiroChartPlot" class="w-full h-[400px]"></div>
         </div>
@@ -403,6 +419,12 @@
 
     <!-- ==================== COMPASS VIEW ==================== -->
     <div id="compassView" class="hidden p-5 glass-panel rounded-xl glow-border">
+        <div class="mb-4">
+            <h2 class="text-lg font-black text-white flex items-center gap-2">
+                <span class="text-yellow-400">🧭</span> Compass — Index Positioning Map
+            </h2>
+            <p class="text-xs text-gray-400 mt-1">Each index plotted by net dealer dollar-gamma (x) vs. spot distance from its gamma-flip (y), computed from the live chain.</p>
+        </div>
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-850 rounded-xl p-4 flex flex-col">
                 <div id="compassGridPlot" class="w-full h-[450px]"></div>
@@ -436,342 +458,402 @@
         </div>
     </div>
 
-    <script>
-        let currentData = [];
-        let prices = [];
-        let traceData = {};
-        let activeReplayInterval = null;
+        <script>
+        // ==================== STATE ====================
+        let currentData = [];          // option chain records for the selected symbol
+        let chainMeta = { demo: false, symbol: 'SPY', spot: 0, fetchedAt: null };
         let expirationsList = [];
+        let chartScope = 'front';      // 'front' | 'all' — main chart expiry scope
         let selectedDateFilter = "";
+        const chainCache = {};         // symbol -> { ts, payload }
+        const intradayCache = {};      // key -> { ts, data }
 
-        // Tab Navigation
+        const $ = (id) => document.getElementById(id);
+        const DEMO_MODE = new URLSearchParams(location.search).get('demo') === '1';
+
+        // ==================== TAB NAVIGATION ====================
         const views = { trace: 'traceView', swing: 'swingView', trinity: 'trinityView', hiro: 'hiroView', compass: 'compassView' };
         const navBtns = { trace: 'navTraceBtn', swing: 'navSwingBtn', trinity: 'navTrinityBtn', hiro: 'navHiroBtn', compass: 'navCompassBtn' };
 
         function setView(target) {
             Object.keys(views).forEach(k => {
-                document.getElementById(views[k]).classList.add('hidden');
-                document.getElementById(navBtns[k]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
+                $(views[k]).classList.add('hidden');
+                $(navBtns[k]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-gray-400 hover:text-white";
             });
+            $(views[target]).classList.remove('hidden');
+            $(navBtns[target]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
 
-            document.getElementById(views[target]).classList.remove('hidden');
-            document.getElementById(navBtns[target]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
-
-            if (target === 'trace') renderTraceHeatmap();
+            if (target === 'trace') { renderMainChart(); renderProfile(); }
             else if (target === 'swing') renderSwingMode();
             else if (target === 'trinity') renderTrinityMode();
             else if (target === 'hiro') renderHiro();
             else if (target === 'compass') renderCompass();
         }
-
         Object.keys(navBtns).forEach(k => {
-            document.getElementById(navBtns[k]).addEventListener('click', () => setView(k));
+            $(navBtns[k]).addEventListener('click', () => setView(k));
         });
 
-        // Seedable PRNG
-        function seedRandom(str) {
-            let h = 1779033703 ^ str.length;
-            for (let i = 0; i < str.length; i++) {
-                h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
-                h = h << 13 | h >>> 19;
-            }
-            return function() {
-                h = Math.imul(h ^ (h >>> 16), 2246822507);
-                h = Math.imul(h ^ (h >>> 13), 3266489909);
-                return ((h ^= h >>> 16) >>> 0) / 4294967296;
-            }
+        // ==================== FORMATTING ====================
+        function fmtMoney(v) {
+            if (!Number.isFinite(v)) return '—';
+            const a = Math.abs(v);
+            const sign = v < 0 ? '-' : '';
+            if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(2)}B`;
+            if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(1)}M`;
+            if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(1)}K`;
+            return `${sign}$${a.toFixed(0)}`;
+        }
+        function fmtStrike(s) {
+            return Number.isInteger(s) ? s.toFixed(0) : s.toFixed(1);
         }
 
-        // Live tape generator
-        function updateLiveTape() {
-            // Live tape streaming
+        // ==================== DATA FETCHING ====================
+        async function fetchChain(symbol, force = false) {
+            const now = Date.now();
+            const cached = chainCache[symbol];
+            if (cached && !force && now - cached.ts < 60000) return cached.payload;
+
+            const resp = await fetch(`/api/data?symbol=${encodeURIComponent(symbol)}${DEMO_MODE ? '&demo=1' : ''}`);
+            const payload = await resp.json().catch(() => ({}));
+            if (!resp.ok || payload.error || !Array.isArray(payload.records) || payload.records.length === 0) {
+                throw new Error((payload && (payload.error || payload.detail)) || `Chain request failed (HTTP ${resp.status})`);
+            }
+            chainCache[symbol] = { ts: now, payload };
+            return payload;
         }
 
-        // Fetch options chain
-        async function loadOptionsData() {
-            const symbol = document.getElementById('globalSymbolInput').value;
-            const loader = document.getElementById('loader');
+        async function loadOptionsData(force = false) {
+            const symbol = $('globalSymbolInput').value;
+            const loader = $('loader');
             if (loader) loader.classList.remove('hidden');
+            hideError();
 
             try {
-                const response = await fetch(`/api/data?symbol=${symbol}`);
-                const data = await response.json();
-                
-                if (data.error || !Array.isArray(data)) {
-                    console.warn("API error payload returned:", data);
-                    return;
-                }
-                
-                currentData = data;
-                
-                expirationsList = [...new Set(currentData.map(d => d.expiration))].sort().slice(0, 10);
-                if (expirationsList.length > 0) {
-                    selectedDateFilter = expirationsList[0];
-                }
+                const payload = await fetchChain(symbol, force);
+                currentData = payload.records;
+                chainMeta = { demo: !!payload.demo, symbol: payload.symbol, spot: payload.spot, fetchedAt: payload.fetchedAt };
 
-                generateSynthetics();
-                
-                // Set default range limits on slider scrub
-                document.getElementById('traceSlider').value = 119;
-                
-                renderTraceHeatmap();
-                if (!document.getElementById('swingView').classList.contains('hidden')) renderSwingMode();
-                if (!document.getElementById('trinityView').classList.contains('hidden')) renderTrinityMode();
-                calculateStability();
-            } catch (error) {
-                console.warn("Failed to load options data:", error);
+                expirationsList = [...new Set(currentData.map(d => d.expiration))].sort();
+                selectedDateFilter = expirationsList[0] || '';
+
+                updateDataBadge();
+                renderAll();
+                loadMarket(); // fire-and-forget: VIX + quote context
+            } catch (e) {
+                console.warn('loadOptionsData failed:', e);
+                showError(`Could not load options data: ${e.message}`);
             } finally {
                 if (loader) loader.classList.add('hidden');
             }
         }
 
-        function calculateStability() {
-            if (!currentData || currentData.length === 0) return;
-            const spot = currentData[0].underlying_price;
-            let atmGex = 0;
-            let totalGex = 0;
-            currentData.forEach(d => {
-                totalGex += Math.abs(d.gex);
-                if (Math.abs(d.strike - spot) < 3) atmGex += Math.abs(d.gex);
-            });
-            const ratio = (atmGex / (totalGex || 1)) * 100;
-            document.getElementById('globalStabilityVal').innerText = `${Math.min(95, Math.max(10, ratio * 20)).toFixed(0)}%`;
-        }
-
-        function generateSynthetics() {
-            if (!currentData || currentData.length === 0) return;
-            const spot = currentData[0].underlying_price;
-            const symbol = document.getElementById('globalSymbolInput').value;
-            const numBars = 120;
-            
-            const rand = seedRandom(symbol + "-" + Date.now());
-
-            const baseTime = new Date();
-            baseTime.setHours(9, 30, 0, 0);
-            prices = [];
-            let currentPrice = spot - 3.8;
-
-            for (let i = 0; i < numBars; i++) {
-                const time = new Date(baseTime.getTime() + i * 4 * 60 * 1000); // 4 minute intervals
-                const start = currentPrice;
-                const change = (rand() - 0.485) * 1.6;
-                let end = start + change;
-                if (i === numBars - 1) end = spot;
-
-                const max = Math.max(start, end) + rand() * 0.4;
-                const min = Math.min(start, end) - rand() * 0.4;
-
-                prices.push({ time, open: start, high: max, low: min, close: end });
-                currentPrice = end;
+        async function loadMarket() {
+            const symbol = $('globalSymbolInput').value;
+            const vixBlock = $('vixBlock');
+            try {
+                const resp = await fetch(`/api/market?symbol=${encodeURIComponent(symbol)}`);
+                const m = await resp.json().catch(() => ({}));
+                if (!resp.ok || m.error) throw new Error(m.error || `HTTP ${resp.status}`);
+                const arrow = m.vixChange >= 0 ? '▲' : '▼';
+                $('vixVal').innerText = `${m.vix.toFixed(1)} ${arrow} ${Math.abs(m.vixChange).toFixed(1)}`;
+                if (vixBlock) vixBlock.style.display = '';
+            } catch (e) {
+                console.warn('loadMarket failed:', e);
+                if (vixBlock) vixBlock.style.display = 'none';
             }
-
-            const strikeTotals = {};
-            const callOI = {};
-            const putOI = {};
-            currentData.forEach(item => {
-                strikeTotals[item.strike] = (strikeTotals[item.strike] || 0) + item.gex;
-                callOI[item.strike] = (callOI[item.strike] || 0) + (item.gex > 0 ? item.open_interest : 0);
-                putOI[item.strike] = (putOI[item.strike] || 0) + (item.gex < 0 ? item.open_interest : 0);
-            });
-
-            traceData = {
-                strikes: Object.keys(strikeTotals).map(Number).sort((a, b) => a - b),
-                totals: strikeTotals,
-                calls: callOI,
-                puts: putOI
-            };
         }
 
-        function renderTraceHeatmap() {
-            if (!currentData || currentData.length === 0 || prices.length === 0) return;
-            const spot = currentData[0].underlying_price;
-            const symbol = document.getElementById('globalSymbolInput').value;
-            const rangePct = parseFloat(document.getElementById('globalRangeSelect').value) / 100;
-            const numStrikes = parseInt(document.getElementById('globalStrikesSelect').value);
-            const isKeyLevels = document.getElementById('globalKeyLevelsToggle').checked;
-            const isInvert = document.getElementById('globalInvertToggle').checked;
-            const metric = document.getElementById('globalMetricSelect').value;
-
-            const sliderVal = parseInt(document.getElementById('traceSlider').value);
-            const slicedPrices = prices.slice(0, sliderVal + 1);
-
-            const rand = seedRandom(symbol + "-heatmap-v2");
-
-            const times = slicedPrices.map(p => p.time);
-            const close = slicedPrices.map(p => p.close);
-            const open = slicedPrices.map(p => p.open);
-            const high = slicedPrices.map(p => p.high);
-            const low = slicedPrices.map(p => p.low);
-
-            const strikesInRange = traceData.strikes.filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct)).slice(0, numStrikes);
-
-            let maxCallVal = -Infinity;
-            let callWall = spot;
-            let minPutVal = Infinity;
-            let putWall = spot;
-
-            strikesInRange.forEach(s => {
-                let strikeSum = 0;
-                currentData.forEach(d => {
-                    if (d.strike === s) strikeSum += (metric === 'gex' ? d.gex : d.dex);
-                });
-                if (strikeSum > maxCallVal) { maxCallVal = strikeSum; callWall = s; }
-                if (strikeSum < minPutVal) { minPutVal = strikeSum; putWall = s; }
-            });
-
-            let gFlip = (callWall + putWall) / 2;
-            const currentSpotPrice = close[close.length - 1] || spot;
-
-            const timeLabel = new Date(times[times.length - 1]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('traceTimeLabel').innerText = timeLabel;
-
-            const isAboveFlip = currentSpotPrice > gFlip;
-            if (isAboveFlip) {
-                document.getElementById('regimeVal').innerText = "Positive Gamma";
-                document.getElementById('regimeVal').className = "text-[#10b981] text-sm font-black mt-0.5";
-                document.getElementById('regimeBannerText').innerHTML = "MAGNET / BRACKET tape — dips get bought. Mean reversion is supported. Play ranges off walls.";
+        function updateDataBadge() {
+            const badge = $('dataModeBadge');
+            if (chainMeta.demo) {
+                badge.innerText = '● Simulated';
+                badge.className = 'bg-[#451a03] text-amber-400 border border-[#92400e] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider';
             } else {
-                document.getElementById('regimeVal').innerText = "Negative Gamma";
-                document.getElementById('regimeVal').className = "text-[#a855f7] text-sm font-black mt-0.5";
-                document.getElementById('regimeBannerText').innerHTML = "AMPLIFIER tape — moves accelerate both ways. Walls don't hold here. Don't fade the first clean break.";
+                badge.innerText = '● Live';
+                badge.className = 'bg-[#052e16] text-emerald-400 border border-[#166534] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider';
             }
-
-            document.getElementById('spotVal').innerText = `$${currentSpotPrice.toFixed(2)}`;
-            document.getElementById('callWallVal').innerText = `$${callWall.toFixed(0)}`;
-            document.getElementById('putWallVal').innerText = `$${putWall.toFixed(0)}`;
-            document.getElementById('gFlipVal').innerText = `$${gFlip.toFixed(1)}`;
-            document.getElementById('pcRatioVal').innerText = (1.1 - rand() * 0.4).toFixed(2);
-
-            const zMatrix = [];
-            for (let i = 0; i < strikesInRange.length; i++) {
-                zMatrix.push(new Array(slicedPrices.length).fill(0));
+            if (chainMeta.fetchedAt) {
+                const t = new Date(chainMeta.fetchedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                $('dataStamp').innerText = `${chainMeta.demo ? 'Simulated' : 'Updated'} ${t}`;
             }
+        }
 
-            strikesInRange.forEach((strike, sIdx) => {
-                for (let tIdx = 0; tIdx < slicedPrices.length; tIdx++) {
-                    const price = close[tIdx];
-                    let intensity = 0;
-                    if (Math.abs(strike - callWall) < 1.5) intensity = 50 + Math.sin(tIdx / 8) * 12;
-                    else if (Math.abs(strike - putWall) < 1.5) intensity = -50 + Math.cos(tIdx / 6) * 12;
-                    else if (Math.abs(strike - price) < 2) intensity = (strike > gFlip) ? 22 : -22;
-                    if (isInvert) intensity = -intensity;
-                    zMatrix[sIdx][tIdx] = intensity;
+        function showError(msg) {
+            const b = $('errorBanner');
+            b.innerHTML = `<span>⚠ ${msg}</span> <button onclick="loadOptionsData(true)" class="ml-3 underline font-bold hover:text-white">Retry</button>`;
+            b.classList.remove('hidden');
+        }
+        function hideError() {
+            $('errorBanner').classList.add('hidden');
+        }
+
+        // ==================== ANALYTICS ====================
+        // Aggregate per-strike dealer exposure. useDex=false -> dollar gamma, true -> dollar delta.
+        function computeLevels(records, spot, exps, useDex = false) {
+            const val = (r) => useDex ? (r.dollar_dex || 0) : (r.dollar_gex || 0);
+            const perStrike = {};
+            let netGex = 0, netDex = 0, callOi = 0, putOi = 0;
+
+            records.forEach(r => {
+                if (!exps.includes(r.expiration)) return;
+                const s = r.strike;
+                if (!perStrike[s]) perStrike[s] = { v: 0, oi: 0 };
+                const vv = val(r);
+                perStrike[s].v += vv;
+                perStrike[s].oi += r.open_interest || 0;
+                if (!useDex) {
+                    netGex += r.dollar_gex || 0;
+                    netDex += r.dollar_dex || 0;
+                    callOi += r.call_oi || 0;
+                    putOi += r.put_oi || 0;
                 }
             });
-
-            const colorscale = [
-                [0.0, '#a855f7'],  // Peak Negative (Purple)
-                [0.2, '#6366f1'],  // Negative (Violet/Blue)
-                [0.48, '#1b1c24'],
-                [0.5, '#0c0e15'],  // Mid point zero line
-                [0.52, '#182436'],
-                [0.8, '#10b981'],  // Positive (Emerald)
-                [1.0, '#eab308']   // Peak Positive (Yellow)
-            ];
-
-            const overlayLines = [];
-            if (isKeyLevels) {
-                overlayLines.push(
-                    { x: [times[0], times[times.length - 1]], y: [callWall, callWall], type: 'scatter', mode: 'lines', line: { color: '#eab308', width: 1.8 }, name: `CALL ${callWall.toFixed(0)}` },
-                    { x: [times[0], times[times.length - 1]], y: [gFlip, gFlip], type: 'scatter', mode: 'lines', line: { color: '#ffd600', width: 1.8, dash: 'dash' }, name: `γ-FLIP ${gFlip.toFixed(1)}` },
-                    { x: [times[0], times[times.length - 1]], y: [putWall, putWall], type: 'scatter', mode: 'lines', line: { color: '#a855f7', width: 1.8 }, name: `PUT ${putWall.toFixed(0)}` }
-                );
+            // Totals are always gamma-based regardless of the chart metric
+            if (useDex) {
+                records.forEach(r => {
+                    netGex += r.dollar_gex || 0;
+                    netDex += r.dollar_dex || 0;
+                    callOi += r.call_oi || 0;
+                    putOi += r.put_oi || 0;
+                });
             }
 
-            const fig = {
-                data: [
-                    { z: zMatrix, x: times, y: strikesInRange, type: 'heatmap', colorscale: colorscale, showscale: false, opacity: 0.85 },
-                    { x: times, open: open, high: high, low: low, close: close, type: 'candlestick', increasing: { line: { color: '#10b981', width: 1.5 }, fillcolor: '#10b981' }, decreasing: { line: { color: '#ff3344', width: 1.5 }, fillcolor: '#ff3344' } },
-                    ...overlayLines
-                ],
-                layout: {
-                    paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: '#04060b',
-                    margin: { l: 40, r: 40, b: 35, t: 10 },
-                    showlegend: false,
-                    xaxis: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', rangeslider: { visible: false }, type: 'date', tickfont: { color: '#94a3b8', size: 9 } },
-                    yaxis: { showgrid: true, gridcolor: '#161f30', tickcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, side: 'right' }
+            const strikes = Object.keys(perStrike).map(Number).sort((a, b) => a - b);
+
+            // Walls: biggest positive exposure at/above spot (call wall),
+            // most negative at/below spot (put wall).
+            let callWall = spot, maxCall = -Infinity;
+            let putWall = spot, minPut = Infinity;
+            strikes.forEach(s => {
+                const g = perStrike[s].v;
+                if (s >= spot && g > maxCall) { maxCall = g; callWall = s; }
+                if (s <= spot && g < minPut) { minPut = g; putWall = s; }
+            });
+
+            // Gamma flip: strike where cumulative net exposure crosses zero
+            // (scanning low -> high strikes).
+            let cum = 0, flip = (callWall + putWall) / 2, flipFound = false;
+            for (let i = 0; i < strikes.length; i++) {
+                const prev = cum;
+                cum += perStrike[strikes[i]].v;
+                if (i > 0 && prev !== 0 && cum !== 0 && Math.sign(prev) !== Math.sign(cum)) {
+                    const s0 = strikes[i - 1], s1 = strikes[i];
+                    const t = Math.abs(prev) / (Math.abs(prev) + Math.abs(cum));
+                    flip = s0 + (s1 - s0) * t;
+                    flipFound = true;
+                    break;
                 }
+            }
+
+            // ATM IV: OI-weighted mean IV within ±1% of spot, front two expirations
+            const frontTwo = [...new Set(records.map(r => r.expiration))].sort().slice(0, 2);
+            let ivNum = 0, ivDen = 0;
+            records.forEach(r => {
+                if (!frontTwo.includes(r.expiration)) return;
+                if (Math.abs(r.strike - spot) / spot > 0.01) return;
+                if (r.iv > 0 && r.open_interest > 0) { ivNum += r.iv * r.open_interest; ivDen += r.open_interest; }
+            });
+            const atmIv = ivDen > 0 ? ivNum / ivDen : 0;
+
+            // ATM gamma share: |exposure| within ±0.5% of spot vs total |exposure|
+            let atmAbs = 0, totAbs = 0;
+            strikes.forEach(s => {
+                const a = Math.abs(perStrike[s].v);
+                totAbs += a;
+                if (Math.abs(s - spot) / spot <= 0.005) atmAbs += a;
+            });
+
+            return {
+                strikes, perStrike, callWall, putWall, flip, flipFound,
+                netGex, netDex, atmIv,
+                atmShare: totAbs > 0 ? atmAbs / totAbs : 0,
+                pcRatio: callOi > 0 ? putOi / callOi : 0,
+                callOi, putOi
             };
+        }
 
-            Plotly.newPlot('mainDashboardPlot', fig.data, fig.layout, { responsive: true, scrollZoom: true, displayModeBar: true });
+        function scopeExpirations() {
+            if (chartScope === 'front') return expirationsList.length ? [expirationsList[0]] : [];
+            return expirationsList;
+        }
+        function allExpirations(records) {
+            return [...new Set(records.map(r => r.expiration))].sort();
+        }
+        function metricIsDex() {
+            return $('globalMetricSelect').value === 'dex';
+        }
 
-            // Render 0DTE vertical chart in left column
-            const profileXValues = strikesInRange.map(s => {
-                let sum = 0;
-                currentData.forEach(d => { if (d.strike === s) sum += (metric === 'gex' ? d.gex : d.dex); });
-                return sum / 100000;
+        function vlineShape(x, color, dash) {
+            return { type: 'line', x0: x, x1: x, y0: 0, y1: 1, yref: 'paper', line: { color, width: 1.8, dash: dash || 'solid' } };
+        }
+        function baseLayout(extra) {
+            return Object.assign({
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: '#04060b',
+                margin: { l: 45, r: 45, b: 35, t: 30 },
+                showlegend: false,
+                xaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                yaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } }
+            }, extra || {});
+        }
+
+        // ==================== RENDER: KPIs ====================
+        function renderKPIs() {
+            if (!currentData.length) return;
+            const spot = chainMeta.spot;
+            const lv = computeLevels(currentData, spot, expirationsList, false);
+            const useDex = metricIsDex();
+            $('kpiNetGexLabel').innerText = useDex ? 'Net DEX' : 'Net GEX';
+            $('kpiNetDexLabel').innerText = useDex ? 'Net GEX' : 'Net DEX';
+
+            $('spotVal').innerText = `$${spot.toFixed(2)}`;
+
+            // Regime from net gamma + spot vs flip
+            const positive = lv.netGex >= 0;
+            $('regimeVal').innerText = positive ? 'Positive Gamma' : 'Negative Gamma';
+            $('regimeVal').className = positive
+                ? 'text-[#10b981] text-sm font-black mt-0.5'
+                : 'text-[#a855f7] text-sm font-black mt-0.5';
+            $('regimeBannerText').innerText = positive
+                ? 'MAGNET / BRACKET tape — dips get bought. Mean reversion is supported. Play ranges off walls.'
+                : 'AMPLIFIER tape — moves accelerate both ways. Walls don\'t hold here. Don\'t fade the first clean break.';
+            const tide = $('tideVal');
+            tide.innerText = positive ? 'Positive-Gamma Tide' : 'Negative-Gamma Tide';
+            tide.className = 'font-extrabold ' + (positive ? 'text-emerald-400' : 'text-purple-400');
+
+            // Net GEX / DEX badges with real signed dollar values
+            const gexBadge = $('netGexVal');
+            gexBadge.innerText = `${fmtMoney(lv.netGex)} ${lv.netGex >= 0 ? 'BULL' : 'BEAR'}`;
+            gexBadge.className = lv.netGex >= 0
+                ? 'bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded'
+                : 'bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded';
+            const dexBadge = $('netDexVal');
+            dexBadge.innerText = `${fmtMoney(lv.netDex)} ${lv.netDex >= 0 ? 'BULL' : 'BEAR'}`;
+            dexBadge.className = lv.netDex >= 0
+                ? 'bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded'
+                : 'bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded';
+
+            $('callWallVal').innerText = `$${fmtStrike(lv.callWall)}`;
+            $('putWallVal').innerText = `$${fmtStrike(lv.putWall)}`;
+            $('gFlipVal').innerText = `$${lv.flip.toFixed(1)}${lv.flipFound ? '' : '*'}`;
+            $('gFlipVal').title = lv.flipFound ? 'Zero-crossing of cumulative net $GEX' : 'No zero-crossing found; showing wall midpoint';
+
+            $('pcRatioVal').innerText = lv.pcRatio > 0 ? lv.pcRatio.toFixed(2) : '—';
+            $('atmIvVal').innerText = lv.atmIv > 0 ? `${(lv.atmIv * 100).toFixed(1)}%` : '—';
+
+            $('globalStabilityVal').innerText = `${(lv.atmShare * 100).toFixed(0)}%`;
+
+            // Level playbook with real numbers
+            $('scenarioBullText').innerText =
+                `Spot reclaims the flip at $${lv.flip.toFixed(1)} on volume and holds above. First upside target: the call wall at $${fmtStrike(lv.callWall)}.`;
+            $('scenarioBaseText').innerText =
+                `Spot chops between the put wall ($${fmtStrike(lv.putWall)}) and the call wall ($${fmtStrike(lv.callWall)}) into the close. Fade the edges, not the middle.`;
+            $('scenarioBearText').innerText =
+                `Spot loses the put wall at $${fmtStrike(lv.putWall)} and accepts below — negative-gamma acceleration takes over both ways.`;
+
+            // Swing read panel
+            const gexRead = lv.netGex >= 0
+                ? `Net dealer gamma is ${fmtMoney(lv.netGex)} (long gamma). Dealer hedging buys dips and sells rips — expect magnet / bracket price action.`
+                : `Net dealer gamma is ${fmtMoney(lv.netGex)} (short gamma). Dealer hedging amplifies moves — expect trend acceleration and wider ranges.`;
+            $('swingGexRead').innerText = gexRead;
+            $('swingLevelsRead').innerText =
+                `Call wall $${fmtStrike(lv.callWall)} · Put wall $${fmtStrike(lv.putWall)} · Flip $${lv.flip.toFixed(1)} · P/C ${lv.pcRatio.toFixed(2)}.`;
+        }
+
+        // ==================== RENDER: MAIN CHART ====================
+        function renderMainChart() {
+            if (!currentData.length) return;
+            const spot = chainMeta.spot;
+            const useDex = metricIsDex();
+            const invert = $('globalInvertToggle').checked;
+            const showLevels = $('globalKeyLevelsToggle').checked;
+            const rangePct = parseFloat($('globalRangeSelect').value) / 100;
+            const numStrikes = parseInt($('globalStrikesSelect').value);
+
+            const lv = computeLevels(currentData, spot, scopeExpirations(), useDex);
+            const inRange = lv.strikes
+                .filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct))
+                .slice(0, numStrikes);
+
+            const y = inRange.map(s => (invert ? -1 : 1) * lv.perStrike[s].v / 1e6);
+            const colors = inRange.map((s, i) => {
+                if (Math.abs(s - lv.callWall) < 1e-9) return '#eab308';
+                if (Math.abs(s - lv.putWall) < 1e-9) return '#a855f7';
+                return y[i] >= 0 ? '#10b981' : '#6366f1';
             });
-            const profileColors = strikesInRange.map(s => {
-                if (s === callWall) return '#eab308';
-                if (s === putWall) return '#a855f7';
-                let sum = 0;
-                currentData.forEach(d => { if (d.strike === s) sum += (metric === 'gex' ? d.gex : d.dex); });
-                return sum >= 0 ? '#10b981' : '#6366f1';
+
+            const unit = useDex ? '$DEX ($M)' : '$GEX ($M)';
+            const shapes = [];
+            const annotations = [];
+            if (showLevels) {
+                shapes.push(vlineShape(spot, '#ffffff'));
+                shapes.push(vlineShape(lv.callWall, '#eab308'));
+                shapes.push(vlineShape(lv.putWall, '#a855f7'));
+                shapes.push(vlineShape(lv.flip, '#ffd600', 'dash'));
+                const ann = (x, text, color) => annotations.push({
+                    x, y: 1, yref: 'paper', text, showarrow: false,
+                    font: { color, size: 9 }, bgcolor: 'rgba(4,6,11,0.8)', xanchor: 'center', yanchor: 'bottom'
+                });
+                ann(spot, `SPOT ${spot.toFixed(2)}`, '#ffffff');
+                ann(lv.callWall, `CALL ${fmtStrike(lv.callWall)}`, '#eab308');
+                ann(lv.putWall, `PUT ${fmtStrike(lv.putWall)}`, '#a855f7');
+                ann(lv.flip, `FLIP ${lv.flip.toFixed(1)}`, '#ffd600');
+            }
+
+            Plotly.newPlot('mainDashboardPlot', [{
+                x: inRange, y, type: 'bar', marker: { color: colors },
+                hovertemplate: 'Strike %{x}<br>' + unit + ': %{y:.1f}<extra></extra>'
+            }], baseLayout({
+                title: {
+                    text: `${chainMeta.symbol} net dealer ${useDex ? 'delta' : 'gamma'} exposure — ${chartScope === 'front' ? 'front expiry (' + (expirationsList[0] || '') + ')' : 'all expiries'}`,
+                    font: { color: '#94a3b8', size: 11 }
+                },
+                yaxis: { title: { text: unit, font: { color: '#64748b', size: 10 } }, showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, zeroline: true, zerolinecolor: '#334155' },
+                shapes, annotations
+            }), { responsive: true, scrollZoom: true, displayModeBar: true });
+        }
+
+        // ==================== RENDER: FRONT-EXPIRY PROFILE ====================
+        function renderProfile() {
+            if (!currentData.length || !expirationsList.length) return;
+            const spot = chainMeta.spot;
+            const useDex = metricIsDex();
+            const lv = computeLevels(currentData, spot, [expirationsList[0]], useDex);
+            const inRange = lv.strikes
+                .filter(s => s >= spot * 0.985 && s <= spot * 1.015)
+                .slice(0, 25);
+            const x = inRange.map(s => lv.perStrike[s].v / 1e6);
+            const colors = inRange.map(s => {
+                if (Math.abs(s - lv.callWall) < 1e-9) return '#eab308';
+                if (Math.abs(s - lv.putWall) < 1e-9) return '#a855f7';
+                return lv.perStrike[s].v >= 0 ? '#10b981' : '#6366f1';
             });
 
             Plotly.newPlot('zeroDteGexPlot', [{
-                x: profileXValues,
-                y: strikesInRange,
-                type: 'bar',
-                orientation: 'h',
-                marker: { color: profileColors }
-            }], {
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                margin: { l: 40, r: 10, b: 30, t: 10 },
-                xaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
-                yaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } }
-            }, { responsive: true });
+                x, y: inRange, type: 'bar', orientation: 'h', marker: { color: colors },
+                hovertemplate: 'Strike %{y}<br>$' + (useDex ? 'DEX' : 'GEX') + ' %{x:.1f}M<extra></extra>'
+            }], baseLayout({
+                margin: { l: 45, r: 10, b: 30, t: 10 },
+                title: { text: `Front expiry ${expirationsList[0]} ($M)`, font: { color: '#94a3b8', size: 10 } },
+                xaxis: { title: { text: '$M', font: { color: '#64748b', size: 10 } }, showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, zeroline: true, zerolinecolor: '#334155' }
+            }), { responsive: true });
         }
 
-        // Timeline Slider Replay hook
-        document.getElementById('traceSlider').addEventListener('input', renderTraceHeatmap);
-
-        document.getElementById('tracePlayBtn').addEventListener('click', () => {
-            const btn = document.getElementById('tracePlayBtn');
-            const slider = document.getElementById('traceSlider');
-            
-            if (activeReplayInterval) {
-                clearInterval(activeReplayInterval);
-                activeReplayInterval = null;
-                btn.innerText = "▶ Play Replay";
-            } else {
-                if (parseInt(slider.value) >= 119) {
-                    slider.value = 0;
-                }
-                btn.innerText = "⏸ Pause";
-                activeReplayInterval = setInterval(() => {
-                    let val = parseInt(slider.value);
-                    if (val < 119) {
-                        slider.value = val + 1;
-                        renderTraceHeatmap();
-                    } else {
-                        clearInterval(activeReplayInterval);
-                        activeReplayInterval = null;
-                        btn.innerText = "▶ Play Replay";
-                    }
-                }, 100);
-            }
-        });
-
-        // Render Swing Voltick Matrix view
+        // ==================== RENDER: SWING / VOLTICK MATRIX ====================
         function renderSwingMode() {
-            if (!currentData || currentData.length === 0) return;
-            const spot = currentData[0].underlying_price;
-            const metric = document.getElementById('globalMetricSelect').value;
-            const isAllExp = document.getElementById('toggleAllExpBtn').classList.contains('active');
+            if (!currentData.length) return;
+            const spot = chainMeta.spot;
+            const useDex = metricIsDex();
+            const isAllExp = $('toggleAllExpBtn').classList.contains('active');
+            const activeExpirations = isAllExp ? expirationsList : [selectedDateFilter].filter(Boolean);
+            const valOf = (r) => useDex ? (r.dollar_dex || 0) : (r.dollar_gex || 0);
+            const label = useDex ? 'DEX' : 'GEX';
 
-            const activeExpirations = isAllExp ? expirationsList : [selectedDateFilter];
-            
             let headerHtml = `<tr><th class="py-2.5 px-3">Strike</th>`;
-            activeExpirations.forEach(exp => {
-                headerHtml += `<th class="py-2.5 px-3">${exp.slice(5)} ⚡</th>`;
-            });
-            headerHtml += `<th class="py-2.5 px-3">Net GEX</th></tr>`;
-            document.getElementById('voltickGridHeader').innerHTML = headerHtml;
+            activeExpirations.forEach(exp => { headerHtml += `<th class="py-2.5 px-3">${exp.slice(5)}</th>`; });
+            headerHtml += `<th class="py-2.5 px-3">Net $${label}</th></tr>`;
+            $('voltickGridHeader').innerHTML = headerHtml;
 
-            // Group net metrics by strike
             const strikeMap = {};
             currentData.forEach(d => {
                 if (!strikeMap[d.strike]) {
@@ -779,168 +861,238 @@
                     activeExpirations.forEach(exp => strikeMap[d.strike][exp] = 0);
                 }
                 if (strikeMap[d.strike][d.expiration] !== undefined) {
-                    strikeMap[d.strike][d.expiration] += (metric === 'gex' ? d.gex : d.dex);
+                    strikeMap[d.strike][d.expiration] += valOf(d);
                 }
-                strikeMap[d.strike].total += (metric === 'gex' ? d.gex : d.dex);
+                strikeMap[d.strike].total += valOf(d);
             });
 
-            // Sort strikes near spot
-            const strikes = Object.keys(strikeMap).map(Number).filter(s => s >= spot * 0.985 && s <= spot * 1.015).sort((a,b) => b-a);
-            let bodyHtml = "";
+            const strikes = Object.keys(strikeMap).map(Number)
+                .filter(s => s >= spot * 0.985 && s <= spot * 1.015).sort((a, b) => b - a);
 
+            // Dollar thresholds for heat coloring (tuned for index-scale gamma)
+            const HOT = 400e6, WARM = 100e6;
+            let bodyHtml = "";
             strikes.forEach(s => {
                 const node = strikeMap[s];
                 const isSpot = Math.abs(s - spot) < 2.0;
-                
-                let rowBgClass = isSpot ? "bg-white text-black font-extrabold" : "hover:bg-slate-900/60";
-
-                let strikeText = `${s}`;
-                if (s === Math.round(spot * 1.01)) strikeText = `★ ${s}`;
-                else if (s === Math.round(spot * 1.005)) strikeText = `⚡ ${s}`;
-                else if (s === Math.round(spot * 0.99)) strikeText = `◆ ${s}`;
-
+                const rowBgClass = isSpot ? "bg-white text-black font-extrabold" : "hover:bg-slate-900/60";
+                let strikeText = `${fmtStrike(s)}`;
                 if (isSpot) strikeText += ` ◀ ‖ Spot`;
 
                 bodyHtml += `<tr class="${rowBgClass}"><td class="py-2.5 px-3 font-bold border border-gray-800 text-left pl-4">${strikeText}</td>`;
                 activeExpirations.forEach(exp => {
-                    const val = node[exp];
+                    const v = node[exp];
+                    const a = Math.abs(v);
                     let cellClass = "cell-zero";
                     let formattedVal = "$0";
-
-                    if (val > 150000) {
-                        cellClass = val > 600000 ? "cell-sticky-bright" : "cell-sticky-green";
-                        formattedVal = `+$${(val / 100000).toFixed(1)}M`;
-                    } else if (val < -150000) {
-                        cellClass = val < -600000 ? "cell-slippery-bright" : "cell-slippery-red";
-                        formattedVal = `-$${(Math.abs(val) / 100000).toFixed(1)}M`;
+                    if (a >= WARM) {
+                        cellClass = v > 0
+                            ? (a >= HOT ? "cell-sticky-bright" : "cell-sticky-green")
+                            : (a >= HOT ? "cell-slippery-bright" : "cell-slippery-red");
+                        formattedVal = `${v > 0 ? '+' : '-'}$${(a / 1e6).toFixed(1)}M`;
                     }
-
                     bodyHtml += `<td class="py-2.5 px-3 border border-gray-800 font-bold ${cellClass}">${formattedVal}</td>`;
                 });
-                
-                let totClass = node.total >= 0 ? "text-emerald-400 font-bold" : "text-rose-455 font-bold";
-                bodyHtml += `<td class="py-2.5 px-3 ${totClass} border border-gray-800">${(node.total / 100000).toFixed(1)}M</td></tr>`;
+
+                const tot = node.total;
+                const totClass = tot >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold";
+                bodyHtml += `<td class="py-2.5 px-3 ${totClass} border border-gray-800">${tot >= 0 ? '+' : '-'}${(Math.abs(tot) / 1e6).toFixed(1)}M</td></tr>`;
             });
 
-            document.getElementById('voltickGridBody').innerHTML = bodyHtml;
+            $('voltickGridBody').innerHTML = bodyHtml || `<tr><td class="py-6 text-gray-500 text-xs">No strikes in range.</td></tr>`;
         }
 
-        // Toggle handlers for 0DTE vs ALL Expiry inside Swing Mode
-        document.getElementById('toggle0DteBtn').addEventListener('click', () => {
-            document.getElementById('toggle0DteBtn').classList.add('active');
-            document.getElementById('toggleAllExpBtn').classList.remove('active');
-            renderSwingMode();
-        });
+        // ==================== RENDER: TRINITY ====================
+        const TRINITY_PANELS = [
+            { sym: 'I:SPX', plot: 'trinityPlotSpx', regime: 'trinitySpxRegime' },
+            { sym: 'SPY', plot: 'trinityPlotSpy', regime: 'trinitySpyRegime' },
+            { sym: 'QQQ', plot: 'trinityPlotQqq', regime: 'trinityQqqRegime' }
+        ];
 
-        document.getElementById('toggleAllExpBtn').addEventListener('click', () => {
-            document.getElementById('toggleAllExpBtn').classList.add('active');
-            document.getElementById('toggle0DteBtn').classList.remove('active');
-            renderSwingMode();
-        });
-
-        // Render Trinity Mode Panel
         async function renderTrinityMode() {
-            // Map SPX, SPY, QQQ concurrent panels
-            const symbols = ["I:SPX", "SPY", "QQQ"];
-            const titles = ["I:SPX (S&P 500 Index)", "SPY (S&P 500 ETF)", "QQQ (Nasdaq 100 ETF)"];
-            let html = "";
-
-            for (let i = 0; i < symbols.length; i++) {
-                html += `
-                    <div class="glass-panel p-4 rounded-xl glow-border">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="font-black text-sm text-white">${titles[i]}</span>
-                            <span id="trinityRegime-${i}" class="text-xs font-extrabold text-emerald-450">Positive Gamma</span>
-                        </div>
-                        <div id="trinityPlot-${i}" class="w-full h-[400px]"></div>
-                    </div>
-                `;
-            }
-            document.getElementById('trinityPlotsContainer').innerHTML = html;
-
-            for (let i = 0; i < symbols.length; i++) {
+            for (const p of TRINITY_PANELS) {
+                const plotEl = $(p.plot);
+                const regimeEl = $(p.regime);
                 try {
-                    const response = await fetch(`/api/data?symbol=${symbols[i]}`);
-                    const chain = await response.json();
-                    if (!chain || chain.length === 0) continue;
+                    const payload = await fetchChain(p.sym); // 60s cache
+                    const spot = payload.spot;
+                    const lv = computeLevels(payload.records, spot, allExpirations(payload.records), false);
+                    const inRange = lv.strikes
+                        .filter(s => s >= spot * 0.985 && s <= spot * 1.015)
+                        .slice(0, 18);
+                    const totals = inRange.map(s => lv.perStrike[s].v / 1e6);
 
-                    const spot = chain[0].underlying_price;
-                    const rand = seedRandom(symbols[i] + "-trinity");
+                    const positive = lv.netGex >= 0;
+                    regimeEl.innerText = positive ? 'Positive Gamma' : 'Negative Gamma';
+                    regimeEl.className = 'text-xs font-extrabold ' + (positive ? 'text-emerald-400' : 'text-purple-400');
+                    regimeEl.title = `Net dealer $GEX ${fmtMoney(lv.netGex)}`;
 
-                    const strikes = [...new Set(chain.map(d => d.strike))].filter(s => s >= spot * 0.985 && s <= spot * 1.015).slice(0, 15);
-                    const totals = strikes.map(s => {
-                        let sum = 0;
-                        chain.forEach(d => { if (d.strike === s) sum += d.gex; });
-                        return sum / 100000;
-                    });
-
-                    const isAbove = rand() > 0.45;
-                    document.getElementById(`trinityRegime-${i}`).innerText = isAbove ? "Positive Gamma" : "Negative Gamma";
-                    document.getElementById(`trinityRegime-${i}`).className = isAbove ? "text-xs font-extrabold text-emerald-450" : "text-xs font-extrabold text-purple-400";
-
-                    const barColors = totals.map(v => v >= 0 ? '#10b981' : '#a855f7');
-                    Plotly.newPlot(`trinityPlot-${i}`, [{
-                        x: totals,
-                        y: strikes,
-                        type: 'bar',
-                        orientation: 'h',
-                        marker: { color: barColors }
-                    }], {
-                        paper_bgcolor: 'rgba(0,0,0,0)',
-                        plot_bgcolor: 'rgba(0,0,0,0)',
+                    Plotly.newPlot(p.plot, [{
+                        x: totals, y: inRange, type: 'bar', orientation: 'h',
+                        marker: { color: totals.map(v => v >= 0 ? '#10b981' : '#a855f7') },
+                        hovertemplate: 'Strike %{y}<br>$GEX %{x:.1f}M<extra></extra>'
+                    }], baseLayout({
                         margin: { l: 45, r: 15, b: 35, t: 10 },
-                        xaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
-                        yaxis: { showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } }
-                    }, { responsive: true });
+                        title: { text: `Net ${fmtMoney(lv.netGex)} · Flip ${lv.flip.toFixed(1)}`, font: { color: '#94a3b8', size: 10 } },
+                        shapes: [
+                            vlineShape(spot, '#ffffff'),
+                            vlineShape(lv.callWall, '#eab308'),
+                            vlineShape(lv.putWall, '#a855f7'),
+                            vlineShape(lv.flip, '#ffd600', 'dash')
+                        ]
+                    }), { responsive: true });
                 } catch (e) {
-                    console.error("Trinity failed for " + symbols[i], e);
+                    console.warn(`Trinity panel ${p.sym} failed:`, e);
+                    regimeEl.innerText = 'Unavailable';
+                    regimeEl.className = 'text-xs font-extrabold text-gray-500';
+                    plotEl.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500 text-xs">Chain unavailable for ${p.sym}</div>`;
                 }
             }
         }
 
-        // Render HIRO
-        function renderHiro() {
-            if (!currentData || currentData.length === 0) return;
-            const times = prices.map(p => p.time);
-            const close = prices.map(p => p.close);
-            Plotly.newPlot('hiroChartPlot', [{ x: times, y: close, type: 'scatter', mode: 'lines', line: { color: '#ffffff' } }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
+        // ==================== RENDER: HIRO (REAL INTRADAY) ====================
+        async function renderHiro() {
+            const plotEl = $('hiroChartPlot');
+            const symbol = $('globalSymbolInput').value;
+            const interval = $('hiroInterval').value;
+            const range = $('hiroRange').value;
+            const cacheKey = `${symbol}|${interval}|${range}`;
+
+            try {
+                let entry = intradayCache[cacheKey];
+                if (!entry || Date.now() - entry.ts > 60000) {
+                    const resp = await fetch(`/api/intraday?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`);
+                    const j = await resp.json().catch(() => ({}));
+                    if (!resp.ok || j.error || !Array.isArray(j.t) || !j.t.length) {
+                        throw new Error((j && (j.error || j.detail)) || `HTTP ${resp.status}`);
+                    }
+                    entry = { ts: Date.now(), j };
+                    intradayCache[cacheKey] = entry;
+                }
+                const j = entry.j;
+                const dates = j.t.map(t => new Date(t));
+                Plotly.newPlot(plotEl, [
+                    {
+                        x: dates, open: j.o, high: j.h, low: j.l, close: j.c,
+                        type: 'candlestick', name: symbol,
+                        increasing: { line: { color: '#10b981', width: 1.2 } },
+                        decreasing: { line: { color: '#ff3344', width: 1.2 } }
+                    },
+                    {
+                        x: dates, y: j.v, type: 'bar', yaxis: 'y2', name: 'Volume',
+                        marker: { color: 'rgba(148,163,184,0.35)' },
+                        hovertemplate: 'Vol %{y:,}<extra></extra>'
+                    }
+                ], baseLayout({
+                    title: { text: `${symbol} intraday (${interval}, ${range}) — Yahoo Finance`, font: { color: '#94a3b8', size: 11 } },
+                    xaxis: { rangeslider: { visible: false }, type: 'date', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                    yaxis: { domain: [0.22, 1], side: 'right', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                    yaxis2: { domain: [0, 0.18], showticklabels: false, showgrid: false }
+                }), { responsive: true, scrollZoom: true });
+            } catch (e) {
+                console.warn('renderHiro failed:', e);
+                plotEl.innerHTML = `<div class="flex items-center justify-center h-[400px] text-gray-500 text-xs">Intraday data unavailable: ${e.message}</div>`;
+            }
         }
 
-        // Render Compass
-        function renderCompass() {
-            Plotly.newPlot('compassGridPlot', [{ x: [42, 38, 82], y: [72, 65, 89], type: 'scatter', mode: 'markers+text', text: ['SPY', 'QQQ', 'NVDA'], textposition: 'top center' }], { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 40, r: 20, b: 30, t: 10 } }, { responsive: true, scrollZoom: true });
+        // ==================== RENDER: COMPASS ====================
+        async function renderCompass() {
+            const plotEl = $('compassGridPlot');
+            const syms = ['SPY', 'QQQ', 'I:SPX'];
+            const pts = [];
+            for (const s of syms) {
+                try {
+                    const payload = await fetchChain(s); // 60s cache
+                    const lv = computeLevels(payload.records, payload.spot, allExpirations(payload.records), false);
+                    pts.push({
+                        sym: s,
+                        x: lv.netGex / 1e9,
+                        y: (payload.spot - lv.flip) / lv.flip * 100
+                    });
+                } catch (e) {
+                    console.warn(`Compass fetch ${s} failed:`, e);
+                }
+            }
+            if (!pts.length) {
+                plotEl.innerHTML = `<div class="flex items-center justify-center h-[450px] text-gray-500 text-xs">Positioning data unavailable.</div>`;
+                return;
+            }
+            Plotly.newPlot(plotEl, [{
+                x: pts.map(p => p.x), y: pts.map(p => p.y), text: pts.map(p => p.sym),
+                type: 'scatter', mode: 'markers+text', textposition: 'top center',
+                marker: {
+                    size: 22,
+                    color: pts.map(p => p.y >= 0 ? '#10b981' : '#a855f7'),
+                    line: { color: '#ffffff', width: 1 }
+                },
+                hovertemplate: '%{text}<br>Net $GEX %{x:.2f}B<br>Spot vs flip %{y:.2f}%<extra></extra>'
+            }], baseLayout({
+                title: { text: 'Index positioning — net $GEX vs distance from flip', font: { color: '#94a3b8', size: 11 } },
+                xaxis: { title: { text: 'Net dealer $GEX ($B)', font: { color: '#64748b', size: 10 } }, zeroline: true, zerolinecolor: '#334155', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                yaxis: { title: { text: 'Spot vs gamma-flip (%)', font: { color: '#64748b', size: 10 } }, zeroline: true, zerolinecolor: '#334155', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } }
+            }), { responsive: true });
         }
 
-        // Guide drawer controls
-        function showHelpDrawer() {
-            document.getElementById('helpDrawer').style.display = 'flex';
-        }
-        function closeHelpDrawer() {
-            document.getElementById('helpDrawer').style.display = 'none';
+        // ==================== MASTER RENDER ====================
+        function renderAll() {
+            renderKPIs();
+            renderMainChart();
+            renderProfile();
+            if (!$('swingView').classList.contains('hidden')) renderSwingMode();
+            if (!$('trinityView').classList.contains('hidden')) renderTrinityMode();
+            if (!$('hiroView').classList.contains('hidden')) renderHiro();
+            if (!$('compassView').classList.contains('hidden')) renderCompass();
         }
 
-        // Connect global filters
-        document.getElementById('globalRefreshBtn').addEventListener('click', loadOptionsData);
-        
-        ['globalSymbolInput', 'globalTfSelect', 'globalDaysSelect', 'globalRangeSelect', 'globalMetricSelect', 'globalStrikesSelect', 'globalKeyLevelsToggle', 'globalInvertToggle'].forEach(id => {
-            document.getElementById(id).addEventListener('change', () => {
-                generateSynthetics();
-                renderTraceHeatmap();
-                if (!document.getElementById('swingView').classList.contains('hidden')) renderSwingMode();
-                if (!document.getElementById('trinityView').classList.contains('hidden')) renderTrinityMode();
-                calculateStability();
-            });
+        // ==================== EVENT WIRING ====================
+        $('globalRefreshBtn').addEventListener('click', () => loadOptionsData(true));
+
+        ['globalSymbolInput'].forEach(id => {
+            $(id).addEventListener('change', () => loadOptionsData());
         });
 
-        // Tab Views Event Listeners
-        document.getElementById('navTraceBtn').addEventListener('click', () => setView('trace'));
-        document.getElementById('navSwingBtn').addEventListener('click', () => setView('swing'));
-        document.getElementById('navTrinityBtn').addEventListener('click', () => setView('trinity'));
-        document.getElementById('navHiroBtn').addEventListener('click', () => setView('hiro'));
-        document.getElementById('navCompassBtn').addEventListener('click', () => setView('compass'));
+        ['globalRangeSelect', 'globalMetricSelect', 'globalStrikesSelect', 'globalKeyLevelsToggle', 'globalInvertToggle'].forEach(id => {
+            $(id).addEventListener('change', () => { renderKPIs(); renderMainChart(); renderProfile(); renderSwingMode(); });
+        });
 
-        // Initial Load
+        $('scopeFrontBtn').addEventListener('click', () => {
+            chartScope = 'front';
+            $('scopeFrontBtn').classList.add('active');
+            $('scopeAllBtn').classList.remove('active');
+            renderMainChart();
+        });
+        $('scopeAllBtn').addEventListener('click', () => {
+            chartScope = 'all';
+            $('scopeAllBtn').classList.add('active');
+            $('scopeFrontBtn').classList.remove('active');
+            renderMainChart();
+        });
+
+        $('toggle0DteBtn').addEventListener('click', () => {
+            $('toggle0DteBtn').classList.add('active');
+            $('toggleAllExpBtn').classList.remove('active');
+            renderSwingMode();
+        });
+        $('toggleAllExpBtn').addEventListener('click', () => {
+            $('toggleAllExpBtn').classList.add('active');
+            $('toggle0DteBtn').classList.remove('active');
+            renderSwingMode();
+        });
+
+        ['hiroInterval', 'hiroRange'].forEach(id => {
+            $(id).addEventListener('change', () => renderHiro());
+        });
+
+        function showHelpDrawer() {
+            $('helpDrawer').style.display = 'flex';
+        }
+        function closeHelpDrawer() {
+            $('helpDrawer').style.display = 'none';
+        }
+
+        // ==================== INITIAL LOAD ====================
         loadOptionsData();
     </script>
+
 </body>
 </html>
