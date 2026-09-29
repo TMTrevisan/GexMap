@@ -1024,7 +1024,7 @@
                         levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${em.exp} expiry — what the options market has priced in as the expected move">
                             <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🎯</span>
                             <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Expected move <span class="text-amber-300 font-extrabold">+</span></div>
-                            <div class="text-[10px] text-gray-500 leading-tight">priced in to ${em.exp} (ATM straddle)</div></div></div>
+                            <div class="text-[10px] text-gray-500 leading-tight">priced in to ${em.exp} (ATM call + put fair value)</div></div></div>
                             <div class="text-right shrink-0"><div class="text-xs font-extrabold text-white">±$${fmtPx(em.em)}</div>
                             <div class="text-[10px] text-gray-500">±${(em.em / spot * 100).toFixed(2)}%</div></div></div>`;
                     }

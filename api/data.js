@@ -40,7 +40,7 @@ export default async function handler(req, res) {
   const payload = {
     params: [
       'expiration_date', 'strike_price', 'contract_type', 'implied_volatility',
-      'delta', 'gamma', 'theta', 'vega', 'bid', 'ask', 'midpoint', 'open_interest',
+      'delta', 'gamma', 'theta', 'vega', 'bid', 'ask', 'fair_market_value', 'open_interest',
       'day_volume', 'underlying_price'
     ],
     symbol: providerSymbol
@@ -271,8 +271,11 @@ function processChainData(chainData, fallbackSpot = 0) {
 
       // Contract array layout follows the requested params order:
       // [expiration_date, strike_price, contract_type, implied_volatility,
-      //  delta, gamma, theta, vega, bid, ask, midpoint,
+      //  delta, gamma, theta, vega, bid, ask, fair_market_value,
       //  open_interest, day_volume, underlying_price]
+      // NOTE: ConvexValue does not provide bid/ask/midpoint on this endpoint
+      // (all null); fair_market_value is the usable per-contract value and is
+      // stored in the call_mid/put_mid fields for expected-move math.
       const readContract = (contract, sign) => {
         if (!Array.isArray(contract) || contract.length <= 13) return;
         const oi = parseInt(contract[11] || 0, 10) || 0;
