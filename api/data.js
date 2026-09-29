@@ -15,8 +15,6 @@ export default async function handler(req, res) {
 
   // Get symbol from query params (default SPY)
   let symbol = (req.query.symbol || 'SPY').toUpperCase();
-  // Display symbol (I:SPX style) vs provider symbol: ConvexValue expects
-  // plain 'SPX'/'NDX', not the 'I:'-prefixed display form.
   // Display symbols I:SPX / I:NDX ARE the ConvexValue provider symbols for
   // index underlyings (probed 2026-09-29: I:SPX -> 56 expirations / 30110
   // contracts on /api/data/chains; bare SPX -> empty chain). Pass through.
@@ -49,15 +47,21 @@ export default async function handler(req, res) {
   };
 
   try {
-    const apiResponse = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'User-Agent': 'cv-mcp/0.1.0'
-      },
-      body: JSON.stringify(payload)
-    });
+    // ConvexValue omits underlying_price on index chains (probed 2026-09-29:
+    // every SPX contract had underlying_price=null), so fetch a Yahoo spot in
+    // parallel as the fallback for dollar-GEX/DEX math.
+    const [apiResponse, yahooSpot] = await Promise.all([
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'User-Agent': 'cv-mcp/0.1.0'
+        },
+        body: JSON.stringify(payload)
+      }),
+      fetchYahooSpot(symbol)
+    ]);
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text().catch(() => '');
@@ -68,7 +72,7 @@ export default async function handler(req, res) {
     const shapeInfo = chainData && typeof chainData === 'object'
       ? `keys=[${Object.keys(chainData).slice(0, 12).join(',')}] chain=${Array.isArray(chainData.chain) ? `array(${chainData.chain.length})` : typeof chainData.chain}`
       : typeof chainData;
-    const records = processChainData(chainData);
+    const records = processChainData(chainData, yahooSpot);
 
     if (!records.length) {
       throw new Error(`ConvexValue API returned no usable chain records (upstream shape: ${shapeInfo}).`);
@@ -201,12 +205,38 @@ function generateDemoData(symbol) {
   return records;
 }
 
+// Map app symbols to Yahoo symbols for the spot-price fallback. ConvexValue
+// index chains carry underlying_price=null on every contract, so dollar
+// GEX/DEX math needs an independent spot.
+const YAHOO_SYMBOLS = {
+  SPY: 'SPY',
+  QQQ: 'QQQ',
+  'I:SPX': '^GSPC',
+  'I:NDX': '^NDX'
+};
+
+async function fetchYahooSpot(displaySymbol) {
+  const ys = YAHOO_SYMBOLS[displaySymbol] || displaySymbol;
+  try {
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ys)}?interval=1d&range=1d`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; gexmap/1.0)' },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) return 0;
+    const d = await r.json();
+    const px = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    return Number.isFinite(px) && px > 0 ? px : 0;
+  } catch {
+    return 0;
+  }
+}
+
 function num(v) {
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : 0;
 }
 
-function processChainData(chainData) {
+function processChainData(chainData, fallbackSpot = 0) {
   if (!chainData || !Array.isArray(chainData.chain) || chainData.chain.length === 0) {
     return [];
   }
@@ -264,10 +294,14 @@ function processChainData(chainData) {
       readContract(callContract, +1);
       readContract(putContract, -1);
 
-      if (underlyingPrice > 0) {
+      if (underlyingPrice > 0 || fallbackSpot > 0) {
+        // GEX/DEX in Dollars = Gamma/Delta * OI * 100 * Spot. Prefer the
+        // contract's own underlying_price; fall back to Yahoo spot when the
+        // provider omits it (all index chains).
+        const px = underlyingPrice > 0 ? underlyingPrice : fallbackSpot;
         // GEX/DEX in Dollars = Gamma/Delta * OI * 100 * Spot
-        const dollarGex = strikeGex * underlyingPrice;
-        const dollarDex = strikeDex * underlyingPrice;
+        const dollarGex = strikeGex * px;
+        const dollarDex = strikeDex * px;
 
         processedRecords.push({
           expiration: expDate,
@@ -284,7 +318,7 @@ function processChainData(chainData) {
           open_interest: callOi + putOi,
           volume: strikeVol,
           iv: ivDen > 0 ? Math.round((ivNum / ivDen) * 10000) / 10000 : 0,
-          underlying_price: underlyingPrice
+          underlying_price: px
         });
       }
     }
