@@ -1,3 +1,7 @@
+// Vercel reuses warm serverless instances, so cached chains dedup requests from
+// concurrent tabs/users within this window. Each cold instance starts empty.
+const serverChainCache = new Map();
+
 export default async function handler(req, res) {
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -34,6 +38,11 @@ export default async function handler(req, res) {
   if (!apiKey) {
     res.status(503).json({ error: 'Options data unavailable: missing CV_API_KEY environment variable in Vercel configuration.' });
     return;
+  }
+
+  const entry = serverChainCache.get(symbol);
+  if (entry && Date.now() - entry.ts < 90 * 1000) {
+    return res.status(200).json({...entry.body, cached: true});
   }
 
   const apiUrl = 'https://tap.convexvalue.com/api/data/chains';
@@ -79,9 +88,17 @@ export default async function handler(req, res) {
     }
 
     const spot = records[0].underlying_price;
-    res.status(200).json({ records, demo: false, symbol, spot, fetchedAt });
+    const body = { records, demo: false, symbol, spot, fetchedAt };
+    serverChainCache.set(symbol, { ts: Date.now(), body });
+    res.status(200).json(body);
   } catch (error) {
     console.warn(`Options chain fetch failed for ${symbol}: ${error.message}`);
+    if (/429|hourly request limit/i.test(error.message)) {
+      return res.status(429).json({
+        error: 'Upstream hourly API budget exhausted — chain requests are paused until the window resets.',
+        detail: error.message
+      });
+    }
     res.status(503).json({
       error: 'Options data temporarily unavailable. Upstream chain provider did not return usable data.',
       detail: error.message

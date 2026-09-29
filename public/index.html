@@ -490,18 +490,46 @@
         }
 
         // ==================== DATA FETCHING ====================
+        // Chains/OI/greeks move slowly, so a 5-minute client cache is the main API saver.
+        const CHAIN_TTL_MS = 5 * 60 * 1000;
+        const chainInflight = {};
+        let budgetExhaustedUntil = 0;
+        let budgetError = null; // Keep the error and reset time stable across repeated renders.
+
         async function fetchChain(symbol, force = false) {
             const now = Date.now();
             const cached = chainCache[symbol];
-            if (cached && !force && now - cached.ts < 60000) return cached.payload;
-
-            const resp = await fetch(`/api/data?symbol=${encodeURIComponent(symbol)}${DEMO_MODE ? '&demo=1' : ''}`);
-            const payload = await resp.json().catch(() => ({}));
-            if (!resp.ok || payload.error || !Array.isArray(payload.records) || payload.records.length === 0) {
-                throw new Error((payload && (payload.error || payload.detail)) || `Chain request failed (HTTP ${resp.status})`);
+            const fresh = cached && now - cached.ts < CHAIN_TTL_MS;
+            if (now < budgetExhaustedUntil) {
+                if (fresh) return cached.payload;
+                throw budgetError;
             }
-            chainCache[symbol] = { ts: now, payload };
-            return payload;
+            if (chainInflight[symbol]) return chainInflight[symbol];
+            if (fresh && !force) return cached.payload;
+
+            chainInflight[symbol] = (async () => {
+                const resp = await fetch(`/api/data?symbol=${encodeURIComponent(symbol)}${DEMO_MODE ? '&demo=1' : ''}`);
+                const payload = await resp.json().catch(() => ({}));
+                if (resp.status === 429 || /hourly request limit|\b429\b/i.test(`${payload?.detail || ''} ${payload?.error || ''}`)) {
+                    if (Date.now() >= budgetExhaustedUntil) {
+                        budgetExhaustedUntil = Date.now() + 3600*1000;
+                        const be = new Error('ConvexValue hourly API budget exhausted — resets ~' + new Date(budgetExhaustedUntil).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) + '. No further chain requests until then.');
+                        be.budgetExhausted = true;
+                        budgetError = be;
+                    }
+                    throw budgetError;
+                }
+                if (!resp.ok || payload.error || !Array.isArray(payload.records) || payload.records.length === 0) {
+                    throw new Error((payload && (payload.error || payload.detail)) || `Chain request failed (HTTP ${resp.status})`);
+                }
+                chainCache[symbol] = { ts: Date.now(), payload };
+                return payload;
+            })();
+            try {
+                return await chainInflight[symbol];
+            } finally {
+                delete chainInflight[symbol];
+            }
         }
 
         async function loadOptionsData(force = false) {
@@ -523,7 +551,7 @@
                 loadMarket(); // fire-and-forget: VIX + quote context
             } catch (e) {
                 console.warn('loadOptionsData failed:', e);
-                showError(`Could not load options data: ${e.message}`);
+                showError(e.budgetExhausted ? e.message : `Could not load options data: ${e.message}`);
             } finally {
                 if (loader) loader.classList.add('hidden');
             }
@@ -1022,7 +1050,7 @@
                 const el = $(p.board);
                 try {
                     const [payload, mkt] = await Promise.all([
-                        fetchChain(p.sym), // 60s cache
+                        fetchChain(p.sym), // 5-minute cache
                         fetchMarket(p.sym).catch(() => null)
                     ]);
                     const spot = payload.spot;
@@ -1117,10 +1145,13 @@
                         </div>`;
                 } catch (e) {
                     console.warn(`Trinity panel ${p.sym} failed:`, e);
+                    const message = e.budgetExhausted
+                        ? e.message.replace('ConvexValue hourly', 'Hourly')
+                        : `Chain unavailable: ${e.message}`;
                     el.innerHTML = `<div class="py-10 text-center">
                         <div class="font-black text-sm text-white mb-1">${p.short} <span class="text-gray-500 font-semibold text-[10px]">${p.label}</span></div>
-                        <div class="text-xs text-gray-500">Chain unavailable: ${String(e.message).replace(/</g, '&lt;')}</div>
-                        <button onclick="renderTrinityMode()" class="mt-3 text-xs underline text-sky-400">Retry</button></div>`;
+                        <div class="text-xs text-gray-500">${String(message).replace(/</g, '&lt;')}</div>
+                        ${e.budgetExhausted ? '' : '<button onclick="renderTrinityMode()" class="mt-3 text-xs underline text-sky-400">Retry</button>'}</div>`;
                 }
             }
         }
@@ -1177,7 +1208,7 @@
             const pts = [];
             for (const s of syms) {
                 try {
-                    const payload = await fetchChain(s); // 60s cache
+                    const payload = await fetchChain(s); // 5-minute cache
                     const lv = computeLevels(payload.records, payload.spot, allExpirations(payload.records), false);
                     pts.push({
                         sym: s,
