@@ -348,40 +348,22 @@
     <div id="trinityView" class="hidden">
         <div class="glass-panel p-5 rounded-xl glow-border mb-5">
             <h2 class="text-lg font-black text-white flex items-center gap-2">
-                <span class="text-yellow-400">📈</span> Trinity Mode — Three-Panel Index Exposure View
+                <span class="text-yellow-400">📈</span> Trinity — SPX · SPY · QQQ dealer boards
             </h2>
-            <p class="text-xs text-gray-400 mt-1">
-                Where dealers are forced to buy and sell across SPX, SPY, and QQQ — net dollar-gamma per strike from the live chain. Refreshes with the chain data.
+            <p class="text-xs text-gray-400 mt-2 leading-relaxed">
+                <b class="text-gray-200">How to read this:</b> each column is one index. Rows are strike prices near the current price —
+                <span class="text-emerald-400 font-bold">green rows</span> are positive dealer gamma (dealers buy dips and sell rallies, so moves grind and levels hold),
+                <span class="text-purple-400 font-bold">purple rows</span> are negative dealer gamma (dealers sell dips and chase rallies, so moves extend and chop).
+                The brighter the row, the more dealer hedging is stacked there. <span class="text-gray-500">$GEX = dealer gamma × open interest × 100 × spot (per $1 move).</span>
             </p>
+            <p class="text-[11px] text-gray-500 mt-1">Trust rating: <b class="text-white">+++</b> strongest confluence (wall + heaviest strike agree) ·
+                <b class="text-white">++</b> wall or flip very near price · <b class="text-white">+</b> listed level. Levels are friction, not floors — they don't have to hold.</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <!-- Panel 1: SPX -->
-            <div class="glass-panel p-4 rounded-xl glow-border">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="font-black text-sm text-white">I:SPX (S&P 500 Index)</span>
-                    <span id="trinitySpxRegime" class="text-xs font-extrabold text-emerald-450">Positive Gamma</span>
-                </div>
-                <div id="trinityPlotSpx" class="w-full h-[400px]"></div>
-            </div>
-
-            <!-- Panel 2: SPY -->
-            <div class="glass-panel p-4 rounded-xl glow-border">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="font-black text-sm text-white">SPY (S&P 500 ETF)</span>
-                    <span id="trinitySpyRegime" class="text-xs font-extrabold text-emerald-450">Positive Gamma</span>
-                </div>
-                <div id="trinityPlotSpy" class="w-full h-[400px]"></div>
-            </div>
-
-            <!-- Panel 3: QQQ -->
-            <div class="glass-panel p-4 rounded-xl glow-border">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="font-black text-sm text-white">QQQ (Nasdaq 100 ETF)</span>
-                    <span id="trinityQqqRegime" class="text-xs font-extrabold text-[#a855f7]">Negative Gamma</span>
-                </div>
-                <div id="trinityPlotQqq" class="w-full h-[400px]"></div>
-            </div>
+            <div class="glass-panel p-4 rounded-xl glow-border" id="trinityBoardSpx"></div>
+            <div class="glass-panel p-4 rounded-xl glow-border" id="trinityBoardSpy"></div>
+            <div class="glass-panel p-4 rounded-xl glow-border" id="trinityBoardQqq"></div>
         </div>
     </div>
 
@@ -597,10 +579,13 @@
             records.forEach(r => {
                 if (!exps.includes(r.expiration)) return;
                 const s = r.strike;
-                if (!perStrike[s]) perStrike[s] = { v: 0, oi: 0 };
+                if (!perStrike[s]) perStrike[s] = { v: 0, oi: 0, callOi: 0, putOi: 0, ivNum: 0, ivDen: 0 };
                 const vv = val(r);
                 perStrike[s].v += vv;
                 perStrike[s].oi += r.open_interest || 0;
+                perStrike[s].callOi += r.call_oi || 0;
+                perStrike[s].putOi += r.put_oi || 0;
+                if (r.iv > 0 && r.open_interest > 0) { perStrike[s].ivNum += r.iv * r.open_interest; perStrike[s].ivDen += r.open_interest; }
                 if (!useDex) {
                     netGex += r.dollar_gex || 0;
                     netDex += r.dollar_dex || 0;
@@ -624,10 +609,12 @@
             // most negative at/below spot (put wall).
             let callWall = spot, maxCall = -Infinity;
             let putWall = spot, minPut = Infinity;
+            let voltStrike = spot, maxAbsV = -Infinity;
             strikes.forEach(s => {
                 const g = perStrike[s].v;
                 if (s >= spot && g > maxCall) { maxCall = g; callWall = s; }
                 if (s <= spot && g < minPut) { minPut = g; putWall = s; }
+                if (Math.abs(g) > maxAbsV) { maxAbsV = Math.abs(g); voltStrike = s; }
             });
 
             // Gamma flip: strike where cumulative net exposure crosses zero
@@ -664,7 +651,7 @@
             });
 
             return {
-                strikes, perStrike, callWall, putWall, flip, flipFound,
+                strikes, perStrike, callWall, putWall, voltStrike, flip, flipFound,
                 netGex, netDex, atmIv,
                 atmShare: totAbs > 0 ? atmAbs / totAbs : 0,
                 pcRatio: callOi > 0 ? putOi / callOi : 0,
@@ -903,49 +890,202 @@
         }
 
         // ==================== RENDER: TRINITY ====================
+        // Voltick-style dealer boards: three columns (SPX/SPY/QQQ), each with a
+        // regime line, key levels with distances, and per-strike colored rows.
         const TRINITY_PANELS = [
-            { sym: 'I:SPX', plot: 'trinityPlotSpx', regime: 'trinitySpxRegime' },
-            { sym: 'SPY', plot: 'trinityPlotSpy', regime: 'trinitySpyRegime' },
-            { sym: 'QQQ', plot: 'trinityPlotQqq', regime: 'trinityQqqRegime' }
+            { sym: 'I:SPX', short: 'SPX', label: 'S&P 500 Index', board: 'trinityBoardSpx' },
+            { sym: 'SPY', short: 'SPY', label: 'S&P 500 ETF', board: 'trinityBoardSpy' },
+            { sym: 'QQQ', short: 'QQQ', label: 'Nasdaq 100 ETF', board: 'trinityBoardQqq' }
         ];
+
+        const marketCache = {};
+        async function fetchMarket(symbol) {
+            const now = Date.now();
+            const c = marketCache[symbol];
+            if (c && now - c.ts < 60000) return c.data;
+            const resp = await fetch(`/api/market?symbol=${encodeURIComponent(symbol)}`);
+            const j = await resp.json().catch(() => ({}));
+            if (!resp.ok || j.error) throw new Error(j.detail || j.error || `HTTP ${resp.status}`);
+            marketCache[symbol] = { ts: now, data: j };
+            return j;
+        }
+
+        const fmtPx = v => v >= 1000 ? v.toFixed(1) : v.toFixed(2);
+        const fmtOi = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(Math.round(n));
+
+        function fmtDist(level, spot) {
+            const d = level - spot, pct = d / spot * 100, a = Math.abs(d);
+            const pts = a >= 100 ? a.toFixed(0) : a.toFixed(1);
+            return `${d < 0 ? '-' : '+'}${pts} pts (${d < 0 ? '-' : '+'}${Math.abs(pct).toFixed(2)}%)`;
+        }
+
+        // Expected move from the front-expiry ATM straddle (mid prices).
+        function expectedMove(records, spot) {
+            const exps = [...new Set(records.map(r => r.expiration))].sort();
+            if (!exps.length) return null;
+            let best = null, bestD = Infinity;
+            records.forEach(r => {
+                if (r.expiration !== exps[0]) return;
+                const d = Math.abs(r.strike - spot);
+                if (d < bestD) { bestD = d; best = r; }
+            });
+            if (!best || !(best.call_mid > 0) || !(best.put_mid > 0)) return null;
+            return { em: best.call_mid + best.put_mid, exp: exps[0], strike: best.strike };
+        }
+
+        // Confluence trust rating, GexSuite-style.
+        function confluence(level, lv, spot, kind) {
+            const isWall = level === lv.callWall || level === lv.putWall;
+            const isVolt = level === lv.voltStrike;
+            if (kind === 'flip') return Math.abs(level - spot) / spot <= 0.005 ? '++' : '+';
+            if (isWall && isVolt) return '+++';
+            if (isWall || isVolt) return '++';
+            if (Math.abs(level - spot) / spot <= 0.01) return '++';
+            return '+';
+        }
+
+        function trinityLevelRow(icon, name, gloss, level, spot, tier, warn) {
+            return `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-5 text-center shrink-0">${icon}</span>
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold text-white truncate">${name} <span class="text-amber-300 font-extrabold">${tier}</span></div>
+                        <div class="text-[10px] text-gray-500 leading-tight">${gloss}${warn ? ` <span class="text-amber-400 font-bold">${warn}</span>` : ''}</div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="text-xs font-extrabold text-white">${fmtPx(level)}</div>
+                    <div class="text-[10px] text-gray-500">${fmtDist(level, spot)}</div>
+                </div>
+            </div>`;
+        }
+
+        // Day-over-day positioning change vs a localStorage baseline snapshot.
+        function trinityDOD(sym, lv) {
+            const key = 'gexmap_dod_' + sym;
+            const today = new Date().toISOString().slice(0, 10);
+            const snap = {};
+            lv.strikes.forEach(s => { snap[s] = Math.round(lv.perStrike[s].v); });
+            let base = null;
+            try { base = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { /* ignore */ }
+            const save = () => { try { localStorage.setItem(key, JSON.stringify({ date: today, snap })); } catch (e) { /* ignore */ } };
+            if (!base || !base.snap || base.date === today) {
+                if (!base || !base.snap) save();
+                return base && base.snap ? null : 'Collecting a positioning baseline — day-over-day change appears on your next visit.';
+            }
+            const deltas = [];
+            Object.keys(snap).forEach(k => {
+                const oldA = Math.abs(base.snap[k] || 0), nowA = Math.abs(snap[k]);
+                if (oldA > 0) deltas.push({ s: Number(k), chg: (nowA - oldA) / oldA });
+            });
+            deltas.sort((a, b) => b.chg - a.chg);
+            const grew = deltas.filter(d => d.chg > 0.15).slice(0, 3).map(d => fmtStrike(d.s));
+            const faded = deltas.filter(d => d.chg < -0.15).slice(-3).reverse().map(d => fmtStrike(d.s));
+            save();
+            if (!grew.length && !faded.length) return 'Positioning roughly unchanged since your last check.';
+            let txt = 'Since your last check: positioning ';
+            if (grew.length) txt += `grew at ${grew.join(', ')}`;
+            if (grew.length && faded.length) txt += ' and ';
+            if (faded.length) txt += `faded at ${faded.join(', ')}`;
+            return txt + '.';
+        }
 
         async function renderTrinityMode() {
             for (const p of TRINITY_PANELS) {
-                const plotEl = $(p.plot);
-                const regimeEl = $(p.regime);
+                const el = $(p.board);
                 try {
-                    const payload = await fetchChain(p.sym); // 60s cache
+                    const [payload, mkt] = await Promise.all([
+                        fetchChain(p.sym), // 60s cache
+                        fetchMarket(p.sym).catch(() => null)
+                    ]);
                     const spot = payload.spot;
                     const lv = computeLevels(payload.records, spot, allExpirations(payload.records), false);
-                    const inRange = lv.strikes
-                        .filter(s => s >= spot * 0.985 && s <= spot * 1.015)
-                        .slice(0, 18);
-                    const totals = inRange.map(s => lv.perStrike[s].v / 1e6);
-
                     const positive = lv.netGex >= 0;
-                    regimeEl.innerText = positive ? 'Positive Gamma' : 'Negative Gamma';
-                    regimeEl.className = 'text-xs font-extrabold ' + (positive ? 'text-emerald-400' : 'text-purple-400');
-                    regimeEl.title = `Net dealer $GEX ${fmtMoney(lv.netGex)}`;
 
-                    Plotly.newPlot(p.plot, [{
-                        x: totals, y: inRange, type: 'bar', orientation: 'h',
-                        marker: { color: totals.map(v => v >= 0 ? '#10b981' : '#a855f7') },
-                        hovertemplate: 'Strike %{y}<br>$GEX %{x:.1f}M<extra></extra>'
-                    }], baseLayout({
-                        margin: { l: 45, r: 15, b: 35, t: 10 },
-                        title: { text: `Net ${fmtMoney(lv.netGex)} · Flip ${lv.flip.toFixed(1)}`, font: { color: '#94a3b8', size: 10 } },
-                        shapes: [
-                            vlineShape(spot, '#ffffff'),
-                            vlineShape(lv.callWall, '#eab308'),
-                            vlineShape(lv.putWall, '#a855f7'),
-                            vlineShape(lv.flip, '#ffd600', 'dash')
-                        ]
-                    }), { responsive: true });
+                    const dayTxt = mkt && Number.isFinite(mkt.changePct)
+                        ? ` · ${mkt.changePct >= 0 ? 'up' : 'down'} ${Math.abs(mkt.changePct).toFixed(2)}% today` : '';
+                    const regimeLine = `<span class="font-black text-sm text-white">${p.short}</span> ` +
+                        `<span class="text-[10px] text-gray-500">${p.label}</span><br>` +
+                        `<span class="text-xs text-gray-300">$${fmtPx(spot)}${dayTxt} · ` +
+                        (positive
+                            ? `<b class="text-emerald-400">positive gamma</b> <span class="text-gray-500">(moves grind, levels hold)</span>`
+                            : `<b class="text-purple-400">negative gamma</b> <span class="text-gray-500">(moves extend, choppier)</span>`) +
+                        `</span>`;
+
+                    const em = expectedMove(payload.records, spot);
+                    const putWarn = lv.putWall > spot ? '⚠ sits above price — slippery, not a floor from here' : '';
+
+                    let levelsHtml = '';
+                    levelsHtml += trinityLevelRow('★', 'Volt — heaviest strike', 'most positioning stacked on one strike', lv.voltStrike, spot, confluence(lv.voltStrike, lv, spot));
+                    levelsHtml += trinityLevelRow('‖', 'Call wall', 'ceiling — heaviest call gamma above price; sticky resistance', lv.callWall, spot, confluence(lv.callWall, lv, spot));
+                    levelsHtml += trinityLevelRow('‖', 'Put wall', 'floor — heaviest put gamma below price; key support', lv.putWall, spot, confluence(lv.putWall, lv, spot), putWarn);
+                    levelsHtml += trinityLevelRow('⚡', 'Gamma flip', 'dealer hedging changes sign here — above it moves dampen, below they amplify', lv.flip, spot, confluence(lv.flip, lv, spot, 'flip'));
+                    if (em) {
+                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${em.exp} expiry — what the options market has priced in as the expected move">
+                            <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🎯</span>
+                            <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Expected move <span class="text-amber-300 font-extrabold">+</span></div>
+                            <div class="text-[10px] text-gray-500 leading-tight">priced in to ${em.exp} (ATM straddle)</div></div></div>
+                            <div class="text-right shrink-0"><div class="text-xs font-extrabold text-white">±$${fmtPx(em.em)}</div>
+                            <div class="text-[10px] text-gray-500">±${(em.em / spot * 100).toFixed(2)}%</div></div></div>`;
+                    }
+                    levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="Open-interest-weighted implied volatility near the money, front two expirations">
+                        <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🌊</span>
+                        <div class="min-w-0"><div class="text-xs font-bold text-white">ATM IV</div>
+                        <div class="text-[10px] text-gray-500 leading-tight">market's expected annualized wiggle</div></div></div>
+                        <div class="text-xs font-extrabold text-white">${(lv.atmIv * 100).toFixed(1)}%</div></div>`;
+                    levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5" title="Net dollar delta exposure — the directional share-equivalent dealers must hold right now">
+                        <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🧭</span>
+                        <div class="min-w-0"><div class="text-xs font-bold text-white">Net DEX</div>
+                        <div class="text-[10px] text-gray-500 leading-tight">${lv.netDex >= 0 ? 'dealers long deltas — a tailwind for up moves' : 'dealers short deltas — a headwind for up moves'}</div></div></div>
+                        <div class="text-xs font-extrabold ${lv.netDex >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${fmtMoney(lv.netDex)}</div></div>`;
+
+                    // Per-strike colored rows, high -> low.
+                    const near = lv.strikes.filter(s => s >= spot * 0.98 && s <= spot * 1.02)
+                        .sort((a, b) => Math.abs(a - spot) - Math.abs(b - spot)).slice(0, 25)
+                        .sort((a, b) => b - a);
+                    const maxAbs = Math.max(...near.map(s => Math.abs(lv.perStrike[s].v)), 1e-9);
+                    let spotStrike = near[0];
+                    near.forEach(s => { if (Math.abs(s - spot) < Math.abs(spotStrike - spot)) spotStrike = s; });
+                    const rowsHtml = near.map(s => {
+                        const ps = lv.perStrike[s], v = ps.v;
+                        const inten = (0.07 + 0.75 * Math.abs(v) / maxAbs).toFixed(2);
+                        const bg = v >= 0 ? `background:rgba(16,185,129,${inten})` : `background:rgba(168,85,247,${inten})`;
+                        const iv = ps.ivDen > 0 ? (ps.ivNum / ps.ivDen * 100).toFixed(1) + '%' : '—';
+                        const barW = Math.max(2, Math.abs(v) / maxAbs * 100).toFixed(0);
+                        const bar = `<span class="inline-block h-1.5 rounded-full align-middle mr-1.5" style="width:${barW}%;max-width:64px;${v >= 0 ? 'background:#10b981' : 'background:#a855f7'}"></span>`;
+                        return `<tr class="border-b border-gray-800/50" style="${bg}${s === spotStrike ? ';box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)' : ''}" title="${s === spotStrike ? 'Nearest strike to spot' : 'Strike ' + fmtStrike(s)} — net dealer $GEX ${fmtMoney(v)}">
+                            <td class="py-1.5 pl-2 pr-1 text-right font-bold text-white whitespace-nowrap">${fmtStrike(s)}${s === spotStrike ? ' <span class="text-[9px] text-white/90">●</span>' : ''}</td>
+                            <td class="py-1.5 px-1 text-right font-extrabold text-white whitespace-nowrap">${bar}${fmtMoney(v)}</td>
+                            <td class="py-1.5 px-1 text-right text-gray-100">${fmtOi(ps.callOi)}</td>
+                            <td class="py-1.5 pr-2 pl-1 text-right text-gray-100">${fmtOi(ps.putOi)}</td>
+                            <td class="py-1.5 pr-2 text-right text-gray-300">${iv}</td></tr>`;
+                    }).join('');
+
+                    const dod = trinityDOD(p.sym, lv);
+
+                    el.innerHTML = `
+                        <div class="mb-2">${regimeLine}</div>
+                        <div class="text-[10px] text-gray-500 mb-2">Net $GEX <b class="${positive ? 'text-emerald-400' : 'text-purple-400'}">${fmtMoney(lv.netGex)}</b> · P/C ${lv.pcRatio.toFixed(2)}${payload.demo ? ' · <b class="text-amber-400">SIMULATED</b>' : ''}</div>
+                        <div class="mb-3">${levelsHtml}</div>
+                        ${dod ? `<div class="text-[11px] text-sky-300/90 bg-sky-950/40 border border-sky-900/60 rounded-lg px-2.5 py-1.5 mb-3">📊 ${dod}</div>` : ''}
+                        <div class="overflow-y-auto max-h-[420px] rounded-lg border border-gray-800">
+                            <table class="w-full text-xs">
+                                <thead class="sticky top-0 bg-[#0b1120] z-10"><tr class="text-gray-400">
+                                    <th class="text-right py-2 pl-2 pr-1 font-semibold" title="Option strike price">Strike</th>
+                                    <th class="text-right py-2 px-1 font-semibold" title="Net dealer dollar-gamma at this strike. Green: dealers buy dips (support). Purple: dealers sell dips (fuel).">Net $GEX</th>
+                                    <th class="text-right py-2 px-1 font-semibold" title="Call open interest at this strike">Call OI</th>
+                                    <th class="text-right py-2 px-1 font-semibold" title="Put open interest at this strike">Put OI</th>
+                                    <th class="text-right py-2 pr-2 font-semibold" title="Implied volatility, OI-weighted">IV</th>
+                                </tr></thead>
+                                <tbody>${rowsHtml || `<tr><td colspan="5" class="py-6 text-center text-gray-500">No strikes in range.</td></tr>`}</tbody>
+                            </table>
+                        </div>`;
                 } catch (e) {
                     console.warn(`Trinity panel ${p.sym} failed:`, e);
-                    regimeEl.innerText = 'Unavailable';
-                    regimeEl.className = 'text-xs font-extrabold text-gray-500';
-                    plotEl.innerHTML = `<div class="flex items-center justify-center h-full text-gray-500 text-xs">Chain unavailable for ${p.sym}</div>`;
+                    el.innerHTML = `<div class="py-10 text-center">
+                        <div class="font-black text-sm text-white mb-1">${p.short} <span class="text-gray-500 font-semibold text-[10px]">${p.label}</span></div>
+                        <div class="text-xs text-gray-500">Chain unavailable: ${String(e.message).replace(/</g, '&lt;')}</div>
+                        <button onclick="renderTrinityMode()" class="mt-3 text-xs underline text-sky-400">Retry</button></div>`;
                 }
             }
         }

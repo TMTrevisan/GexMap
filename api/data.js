@@ -15,9 +15,11 @@ export default async function handler(req, res) {
 
   // Get symbol from query params (default SPY)
   let symbol = (req.query.symbol || 'SPY').toUpperCase();
-  if (symbol === 'SPX') {
-    symbol = 'I:SPX';
-  }
+  // Display symbol (I:SPX style) vs provider symbol: ConvexValue expects
+  // plain 'SPX'/'NDX', not the 'I:'-prefixed display form.
+  let providerSymbol = symbol;
+  if (symbol === 'I:SPX' || symbol === 'SPX') { symbol = 'I:SPX'; providerSymbol = 'SPX'; }
+  else if (symbol === 'I:NDX' || symbol === 'NDX') { symbol = 'I:NDX'; providerSymbol = 'NDX'; }
   const demoRequested = req.query.demo === '1';
   const apiKey = process.env.CV_API_KEY;
   const fetchedAt = new Date().toISOString();
@@ -42,7 +44,7 @@ export default async function handler(req, res) {
       'delta', 'gamma', 'theta', 'vega', 'bid', 'ask', 'midpoint', 'open_interest',
       'day_volume', 'underlying_price'
     ],
-    symbol: symbol
+    symbol: providerSymbol
   };
 
   try {
@@ -166,6 +168,11 @@ function generateDemoData(symbol) {
       const volume = Math.round(oi * 0.15 * (Math.sin(strike) + 1.2));
       // Synthetic IV smile: higher away from the money
       const iv = 0.18 + 0.35 * Math.pow(Math.abs(strike - spot) / (spot * 0.03), 1.5);
+      // Synthetic option midpoints (for expected-move math in demo mode)
+      const dist = Math.abs(strike - spot);
+      const tv = Math.max(0.05, spot * 0.006 * Math.sqrt(dte + 1) - dist * 0.3);
+      const cmid = Math.round((strike >= spot ? tv : tv + (spot - strike)) * 100) / 100;
+      const pmid = Math.round((strike <= spot ? tv : tv + (strike - spot)) * 100) / 100;
 
       records.push({
         expiration: exp,
@@ -177,6 +184,8 @@ function generateDemoData(symbol) {
         dollar_dex: Math.round(gex * 0.5 * spot * 100) / 100,
         call_oi: callOi,
         put_oi: putOi,
+        call_mid: cmid,
+        put_mid: pmid,
         open_interest: oi,
         volume: volume,
         iv: Math.round(iv * 10000) / 10000,
@@ -223,6 +232,8 @@ function processChainData(chainData) {
       let underlyingPrice = 0.0;
       let ivNum = 0;
       let ivDen = 0;
+      let callMid = 0;
+      let putMid = 0;
 
       // Contract array layout follows the requested params order:
       // [expiration_date, strike_price, contract_type, implied_volatility,
@@ -238,7 +249,8 @@ function processChainData(chainData) {
         const uPrice = num(contract[13]);
         if (uPrice > 0) underlyingPrice = uPrice;
         if (iv > 0 && iv < 5 && oi > 0) { ivNum += iv * oi; ivDen += oi; }
-        if (sign > 0) callOi += oi; else putOi += oi;
+        if (sign > 0) { callOi += oi; callMid = num(contract[10]); }
+        else { putOi += oi; putMid = num(contract[10]); }
         strikeVol += vol;
         strikeGex += sign * gamma * oi * 100;
         strikeDex += delta * oi * 100; // put delta is already negative
@@ -263,6 +275,8 @@ function processChainData(chainData) {
           dollar_dex: Math.round(dollarDex * 100) / 100,
           call_oi: callOi,
           put_oi: putOi,
+          call_mid: Math.round(callMid * 100) / 100,
+          put_mid: Math.round(putMid * 100) / 100,
           open_interest: callOi + putOi,
           volume: strikeVol,
           iv: ivDen > 0 ? Math.round((ivNum / ivDen) * 10000) / 10000 : 0,
