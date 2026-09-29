@@ -626,16 +626,14 @@
                 const lo = spot * 0.8, hi = spot * 1.2;
                 let prevS = null;
                 for (const s of strikes) {
-                    if (s < lo) continue;
-                    if (s > hi) break;
                     const prev = cum;
                     cum += perStrike[s].v;
                     if (prevS !== null && prev !== 0) {
-                        if (cum === 0) { flip = s; break; }
-                        if (Math.sign(prev) !== Math.sign(cum)) {
-                            const t = Math.abs(prev) / (Math.abs(prev) + Math.abs(cum));
-                            flip = prevS + (s - prevS) * t;
-                            break;
+                        if (cum === 0) {
+                            if (s >= lo && s <= hi) { flip = s; break; }
+                        } else if (Math.sign(prev) !== Math.sign(cum)) {
+                            const crossing = prevS + (s - prevS) * (Math.abs(prev) / (Math.abs(prev) + Math.abs(cum)));
+                            if (crossing >= lo && crossing <= hi) { flip = crossing; break; }
                         }
                     }
                     prevS = s;
@@ -936,7 +934,12 @@
         // spot, e.g. 0DTE after the close) and steps to the next live expiry.
         function expectedMove(records, spot) {
             const exps = [...new Set(records.map(r => r.expiration))].sort();
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const ptHour = Number(new Date(now.toLocaleString('en-US', {timeZone:'America/Los_Angeles'})).getHours());
             for (const exp of exps) {
+                if (exp < todayStr) continue;
+                if (exp === todayStr && ptHour >= 13) continue;
                 let best = null, bestD = Infinity;
                 for (const r of records) {
                     if (r.expiration !== exp) continue;
