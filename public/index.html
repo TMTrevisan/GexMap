@@ -480,7 +480,7 @@
             if (!Number.isFinite(v)) return '—';
             const a = Math.abs(v);
             const sign = v < 0 ? '-' : '';
-            if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(2)}B`;
+            if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(1)}B`;
             if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(1)}M`;
             if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(1)}K`;
             return `${sign}$${a.toFixed(0)}`;
@@ -617,20 +617,31 @@
                 if (Math.abs(g) > maxAbsV) { maxAbsV = Math.abs(g); voltStrike = s; }
             });
 
-            // Gamma flip: strike where cumulative net exposure crosses zero
-            // (scanning low -> high strikes).
-            let cum = 0, flip = (callWall + putWall) / 2, flipFound = false;
-            for (let i = 0; i < strikes.length; i++) {
-                const prev = cum;
-                cum += perStrike[strikes[i]].v;
-                if (i > 0 && prev !== 0 && cum !== 0 && Math.sign(prev) !== Math.sign(cum)) {
-                    const s0 = strikes[i - 1], s1 = strikes[i];
-                    const t = Math.abs(prev) / (Math.abs(prev) + Math.abs(cum));
-                    flip = s0 + (s1 - s0) * t;
-                    flipFound = true;
-                    break;
+            // Gamma flip: strike where cumulative net exposure crosses zero,
+            // searched only within ±20% of spot. Crossings in the far tails
+            // are noise from thin strikes, not tradable levels — report null
+            // instead of a fantasy number.
+            let cum = 0, flip = null;
+            {
+                const lo = spot * 0.8, hi = spot * 1.2;
+                let prevS = null;
+                for (const s of strikes) {
+                    if (s < lo) continue;
+                    if (s > hi) break;
+                    const prev = cum;
+                    cum += perStrike[s].v;
+                    if (prevS !== null && prev !== 0) {
+                        if (cum === 0) { flip = s; break; }
+                        if (Math.sign(prev) !== Math.sign(cum)) {
+                            const t = Math.abs(prev) / (Math.abs(prev) + Math.abs(cum));
+                            flip = prevS + (s - prevS) * t;
+                            break;
+                        }
+                    }
+                    prevS = s;
                 }
             }
+            const flipFound = flip !== null;
 
             // ATM IV: OI-weighted mean IV within ±1% of spot, front two expirations
             const frontTwo = [...new Set(records.map(r => r.expiration))].sort().slice(0, 2);
@@ -722,8 +733,8 @@
 
             $('callWallVal').innerText = `$${fmtStrike(lv.callWall)}`;
             $('putWallVal').innerText = `$${fmtStrike(lv.putWall)}`;
-            $('gFlipVal').innerText = `$${lv.flip.toFixed(1)}${lv.flipFound ? '' : '*'}`;
-            $('gFlipVal').title = lv.flipFound ? 'Zero-crossing of cumulative net $GEX' : 'No zero-crossing found; showing wall midpoint';
+            $('gFlipVal').innerText = lv.flipFound ? `$${lv.flip.toFixed(1)}` : '—';
+            $('gFlipVal').title = lv.flipFound ? 'Zero-crossing of cumulative net $GEX within ±20% of spot' : 'No gamma sign-change within ±20% of spot';
 
             $('pcRatioVal').innerText = lv.pcRatio > 0 ? lv.pcRatio.toFixed(2) : '—';
             $('atmIvVal').innerText = lv.atmIv > 0 ? `${(lv.atmIv * 100).toFixed(1)}%` : '—';
@@ -731,8 +742,9 @@
             $('globalStabilityVal').innerText = `${(lv.atmShare * 100).toFixed(0)}%`;
 
             // Level playbook with real numbers
-            $('scenarioBullText').innerText =
-                `Spot reclaims the flip at $${lv.flip.toFixed(1)} on volume and holds above. First upside target: the call wall at $${fmtStrike(lv.callWall)}.`;
+            $('scenarioBullText').innerText = lv.flipFound
+                ? `Spot reclaims the flip at $${lv.flip.toFixed(1)} on volume and holds above. First upside target: the call wall at $${fmtStrike(lv.callWall)}.`
+                : `Spot pushes through the call wall at $${fmtStrike(lv.callWall)} on volume and holds above — no nearby flip to act as a magnet.`;
             $('scenarioBaseText').innerText =
                 `Spot chops between the put wall ($${fmtStrike(lv.putWall)}) and the call wall ($${fmtStrike(lv.callWall)}) into the close. Fade the edges, not the middle.`;
             $('scenarioBearText').innerText =
@@ -744,7 +756,7 @@
                 : `Net dealer gamma is ${fmtMoney(lv.netGex)} (short gamma). Dealer hedging amplifies moves — expect trend acceleration and wider ranges.`;
             $('swingGexRead').innerText = gexRead;
             $('swingLevelsRead').innerText =
-                `Call wall $${fmtStrike(lv.callWall)} · Put wall $${fmtStrike(lv.putWall)} · Flip $${lv.flip.toFixed(1)} · P/C ${lv.pcRatio.toFixed(2)}.`;
+                `Call wall $${fmtStrike(lv.callWall)} · Put wall $${fmtStrike(lv.putWall)} · Flip ${lv.flipFound ? '$' + lv.flip.toFixed(1) : 'none nearby'} · P/C ${lv.pcRatio.toFixed(2)}.`;
         }
 
         // ==================== RENDER: MAIN CHART ====================
@@ -776,7 +788,7 @@
                 shapes.push(vlineShape(spot, '#ffffff'));
                 shapes.push(vlineShape(lv.callWall, '#eab308'));
                 shapes.push(vlineShape(lv.putWall, '#a855f7'));
-                shapes.push(vlineShape(lv.flip, '#ffd600', 'dash'));
+                if (lv.flipFound) shapes.push(vlineShape(lv.flip, '#ffd600', 'dash'));
                 const ann = (x, text, color) => annotations.push({
                     x, y: 1, yref: 'paper', text, showarrow: false,
                     font: { color, size: 9 }, bgcolor: 'rgba(4,6,11,0.8)', xanchor: 'center', yanchor: 'bottom'
@@ -784,7 +796,7 @@
                 ann(spot, `SPOT ${spot.toFixed(2)}`, '#ffffff');
                 ann(lv.callWall, `CALL ${fmtStrike(lv.callWall)}`, '#eab308');
                 ann(lv.putWall, `PUT ${fmtStrike(lv.putWall)}`, '#a855f7');
-                ann(lv.flip, `FLIP ${lv.flip.toFixed(1)}`, '#ffd600');
+                if (lv.flipFound) ann(lv.flip, `FLIP ${lv.flip.toFixed(1)}`, '#ffd600');
             }
 
             Plotly.newPlot('mainDashboardPlot', [{
@@ -919,25 +931,37 @@
             return `${d < 0 ? '-' : '+'}${pts} pts (${d < 0 ? '-' : '+'}${Math.abs(pct).toFixed(2)}%)`;
         }
 
-        // Expected move from the front-expiry ATM straddle (mid prices).
+        // Expected move from the nearest-expiry ATM straddle (fair values).
+        // Skips a front expiry whose straddle is effectively dead (< 0.05% of
+        // spot, e.g. 0DTE after the close) and steps to the next live expiry.
         function expectedMove(records, spot) {
             const exps = [...new Set(records.map(r => r.expiration))].sort();
-            if (!exps.length) return null;
-            let best = null, bestD = Infinity;
-            records.forEach(r => {
-                if (r.expiration !== exps[0]) return;
-                const d = Math.abs(r.strike - spot);
-                if (d < bestD) { bestD = d; best = r; }
-            });
-            if (!best || !(best.call_mid > 0) || !(best.put_mid > 0)) return null;
-            return { em: best.call_mid + best.put_mid, exp: exps[0], strike: best.strike };
+            for (const exp of exps) {
+                let best = null, bestD = Infinity;
+                for (const r of records) {
+                    if (r.expiration !== exp) continue;
+                    const d = Math.abs(r.strike - spot);
+                    if (d < bestD) { bestD = d; best = r; }
+                }
+                if (!best) continue;
+                const c = best.call_mid > 0 ? best.call_mid : 0;
+                const p = best.put_mid > 0 ? best.put_mid : 0;
+                const straddle = c + p;
+                if (straddle > 0 && straddle >= spot * 0.0005) {
+                    return { em: straddle, exp, strike: best.strike };
+                }
+            }
+            return null;
         }
 
         // Confluence trust rating, GexSuite-style.
         function confluence(level, lv, spot, kind) {
             const isWall = level === lv.callWall || level === lv.putWall;
             const isVolt = level === lv.voltStrike;
-            if (kind === 'flip') return Math.abs(level - spot) / spot <= 0.005 ? '++' : '+';
+            if (kind === 'flip') {
+                if (level === null || level === undefined) return '';
+                return Math.abs(level - spot) / spot <= 0.005 ? '++' : '+';
+            }
             if (isWall && isVolt) return '+++';
             if (isWall || isVolt) return '++';
             if (Math.abs(level - spot) / spot <= 0.01) return '++';
@@ -1019,7 +1043,15 @@
                     levelsHtml += trinityLevelRow('★', 'Volt — heaviest strike', 'most positioning stacked on one strike', lv.voltStrike, spot, confluence(lv.voltStrike, lv, spot));
                     levelsHtml += trinityLevelRow('‖', 'Call wall', 'ceiling — heaviest call gamma above price; sticky resistance', lv.callWall, spot, confluence(lv.callWall, lv, spot));
                     levelsHtml += trinityLevelRow('‖', 'Put wall', 'floor — heaviest put gamma below price; key support', lv.putWall, spot, confluence(lv.putWall, lv, spot), putWarn);
-                    levelsHtml += trinityLevelRow('⚡', 'Gamma flip', 'dealer hedging changes sign here — above it moves dampen, below they amplify', lv.flip, spot, confluence(lv.flip, lv, spot, 'flip'));
+                    if (lv.flipFound) {
+                        levelsHtml += trinityLevelRow('⚡', 'Gamma flip', 'dealer hedging changes sign here — above it moves dampen, below they amplify', lv.flip, spot, confluence(lv.flip, lv, spot, 'flip'));
+                    } else {
+                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="No strike within ±20% of spot where cumulative dealer gamma changes sign — positioning is one-sided here">
+                            <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">⚡</span>
+                            <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Gamma flip</div>
+                            <div class="text-[10px] text-gray-500 leading-tight">no sign-change within ±20% of spot</div></div></div>
+                            <div class="text-right shrink-0"><div class="text-xs font-extrabold text-gray-500">—</div></div></div>`;
+                    }
                     if (em) {
                         levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${em.exp} expiry — what the options market has priced in as the expected move">
                             <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🎯</span>
@@ -1147,7 +1179,7 @@
                     pts.push({
                         sym: s,
                         x: lv.netGex / 1e9,
-                        y: (payload.spot - lv.flip) / lv.flip * 100
+                        y: lv.flipFound ? (payload.spot - lv.flip) / lv.flip * 100 : null
                     });
                 } catch (e) {
                     console.warn(`Compass fetch ${s} failed:`, e);
