@@ -17,9 +17,10 @@ export default async function handler(req, res) {
   let symbol = (req.query.symbol || 'SPY').toUpperCase();
   // Display symbol (I:SPX style) vs provider symbol: ConvexValue expects
   // plain 'SPX'/'NDX', not the 'I:'-prefixed display form.
+  // Display symbols I:SPX / I:NDX ARE the ConvexValue provider symbols for
+  // index underlyings (probed 2026-09-29: I:SPX -> 56 expirations / 30110
+  // contracts on /api/data/chains; bare SPX -> empty chain). Pass through.
   let providerSymbol = symbol;
-  if (symbol === 'I:SPX' || symbol === 'SPX') { symbol = 'I:SPX'; providerSymbol = 'SPX'; }
-  else if (symbol === 'I:NDX' || symbol === 'NDX') { symbol = 'I:NDX'; providerSymbol = 'NDX'; }
   const demoRequested = req.query.demo === '1';
   const apiKey = process.env.CV_API_KEY;
   const fetchedAt = new Date().toISOString();
