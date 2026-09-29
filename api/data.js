@@ -64,10 +64,13 @@ export default async function handler(req, res) {
     }
 
     const chainData = await apiResponse.json();
+    const shapeInfo = chainData && typeof chainData === 'object'
+      ? `keys=[${Object.keys(chainData).slice(0, 12).join(',')}] chain=${Array.isArray(chainData.chain) ? `array(${chainData.chain.length})` : typeof chainData.chain}`
+      : typeof chainData;
     const records = processChainData(chainData);
 
     if (!records.length) {
-      throw new Error('ConvexValue API returned no usable chain records (unexpected response shape).');
+      throw new Error(`ConvexValue API returned no usable chain records (upstream shape: ${shapeInfo}).`);
     }
 
     const spot = records[0].underlying_price;
