@@ -50,6 +50,7 @@
         .btn-toggle:hover { border-color: #ffd600; color: #fff; }
         .btn-toggle.active { background-color: #1e293b; color: #fff; border-color: #ffd600; }
     @media(max-width:600px) { body {padding:10px!important;} body>div:first-child {flex-wrap:wrap;gap:12px;} .flex {min-width:0;} body>div:first-child>div, #swingView>div>div {flex-wrap:wrap;} .kpi-value {overflow-wrap:anywhere;} .drawer-content {max-height:90vh;overflow:auto;margin:10px;} }
+    .js-plotly-plot {max-width:100%;} .grid>* {min-width:0;} details {overflow-wrap:anywhere;} summary {cursor:pointer;color:#94a3b8;}
     </style>
 </head>
 <body class="p-6 select-none">
@@ -190,10 +191,25 @@
         </div>
     </div>
 
+    <p class="text-xs text-amber-300 mb-3">OI as of last settlement — intraday positioning may differ. All exposure uses assumed positioning signs, not observed inventory.</p>
+    <div id="globalExplanation" class="mb-3"></div>
     <p id="dataCoverage" class="text-xs text-gray-400 mb-3"></p>
     <!-- ==================== COCKPIT VIEW (GEX EDGE CLONE) ==================== -->
     <div id="traceView" class="block">
         
+        <section class="glass-panel rounded-xl p-4 mb-5">
+            <h3>Split call / put GEX</h3><div id="splitPlot" class="w-full h-[320px]"></div>
+            <details><summary>Why do the bars cancel?</summary>Calls are assigned positive gamma and puts negative gamma. Net = call + put: large opposing bars can leave a small net. Dollars per 1% spot move. Uses the cockpit expiry scope; independent of DEX and invert controls. Dashed markers are scenario zero-gamma roots within ±20% of spot, not price targets.</details>
+        </section>
+        <section class="glass-panel rounded-xl p-4 mb-5">
+            <h3>Expiration dashboard &amp; IV structure</h3>
+            <label>Expiration scope <select id="expiryScope" class="control-dropdown"><option value="all">All</option><option value="today">0DTE (New York today)</option><option value="week">Week (today + 6 dates)</option></select></label>
+            <div id="expiryExplanation"></div><div id="expiryTable" class="overflow-x-auto"></div>
+            <div id="expiryHeatmap" class="w-full h-[340px]"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div id="ivTerm" class="w-full h-[280px]"></div><div id="ivSkew" class="w-full h-[280px]"></div></div>
+            <p class="text-xs text-gray-400">IV rank/history requires collected history; neither is available here.</p>
+            <div id="modeledGreeks"></div>
+        </section>
         <!-- Large GEX Edge Regime Statement Banner -->
         <div class="glass-panel p-5 rounded-xl glow-border mb-5 flex flex-wrap justify-between items-center gap-4">
             <div>
@@ -222,7 +238,7 @@
                 <div id="loader" class="absolute inset-0 bg-[#04060b]/90 flex items-center justify-center rounded-xl z-50">
                     <div class="text-center">
                         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400 mx-auto mb-3"></div>
-                        <p class="text-xs text-gray-400 font-semibold">Calculating options timeline & liquidity levels...</p>
+                        <p class="text-xs text-gray-400 font-semibold">Calculating OI-based exposure levels...</p>
                     </div>
                 </div>
                 
@@ -285,8 +301,8 @@
                         <span>📖</span> Learn GEX
                     </h3>
                     <div id="explainerContent" class="text-[11px] text-gray-405 leading-relaxed">
-                        <p class="font-bold text-white mb-1">Dealer Delta Hedging:</p>
-                        <p>Market makers hedge options by buying/selling stock. As price moves, they re-hedge dynamically, forming the technical levels seen here.</p>
+                        <p class="font-bold text-white mb-1">OI exposure model:</p>
+                        <p>These levels summarize open interest under assumed call-positive and put-negative signs. They do not reveal actual dealer inventory, trades, or future price behavior.</p>
                     </div>
                 </div>
             </div>
@@ -351,7 +367,7 @@
     <div id="trinityView" class="hidden">
         <div class="glass-panel p-5 rounded-xl glow-border mb-5">
             <h2 class="text-lg font-black text-white flex items-center gap-2">
-                <span class="text-yellow-400">📈</span> Trinity — SPX · SPY · QQQ dealer boards
+                <span class="text-yellow-400">📈</span> Trinity — SPX · SPY · QQQ OI model boards
             </h2>
             <p class="text-xs text-gray-400 mt-2 leading-relaxed">
                 <b class="text-gray-200">How to read this:</b> each column is one index. Rows are strike prices near the current price —
@@ -398,7 +414,7 @@
             </div>
         </div>
         <div class="bg-[#080c10] border border-gray-850 rounded-xl p-4 mb-4">
-            <div id="hiroChartPlot" class="w-full h-[400px]"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4"><div class="lg:col-span-2"><div id="hiroChartPlot" class="w-full h-[400px]"></div><details><summary>Price overlays explained</summary><p id="overlayExplanation"></p>EM = nearest live expiry ATM call fair value + put fair value; a fair-value straddle proxy, not a probability interval. Band starts at the chain snapshot time and ends at expiry. Walls and flips use cockpit expiry scope.</details></div><div><div id="gexHistory" class="w-full h-[260px]"></div><p id="historyStatus" class="text-xs text-gray-400"></p><p class="text-xs text-gray-400">Device-local; gaps while the page is closed. Starts at first observed snapshot, never backfilled. All expirations; dollars per 1% move. OI as of last settlement — intraday positioning may differ.</p></div></div>
         </div>
     </div>
 
@@ -408,7 +424,7 @@
             <h2 class="text-lg font-black text-white flex items-center gap-2">
                 <span class="text-yellow-400">🧭</span> Compass — Index Positioning Map
             </h2>
-            <p class="text-xs text-gray-400 mt-1">Each index plotted by net dealer dollar-gamma (x) vs. spot distance from its gamma-flip (y), computed from the selected data mode. Closest root is used for distance; all roots appear in the level boards.</p>
+            <p class="text-xs text-gray-400 mt-1">Each index plotted by model-implied dollar-gamma (x) vs. spot distance from its gamma-flip (y), computed from the selected data mode. Closest root is used for distance; all roots appear in the level boards.</p>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-850 rounded-xl p-4 flex flex-col">
@@ -467,10 +483,10 @@
             $(views[target]).classList.remove('hidden');
             $(navBtns[target]).className = "px-5 py-1.5 rounded-md text-xs font-bold transition-all text-white bg-[#1e293b]";
 
-            if (target === 'trace') { renderMainChart(); renderProfile(); }
+            if (target === 'trace') { renderMainChart(); renderProfile(); renderExpirationDashboard(); }
             else if (target === 'swing') renderSwingMode();
             else if (target === 'trinity') renderTrinityMode();
-            else if (target === 'hiro') renderHiro();
+            else if (target === 'hiro') {renderHistory(); renderHiro();}
             else if (target === 'compass') renderCompass();
         }
         Object.keys(navBtns).forEach(k => {
@@ -557,6 +573,7 @@
 
                 expirationsList = [...new Set(currentData.map(d => d.expiration))].sort();
 
+                recordSnapshot();
                 updateDataBadge();
                 renderAll();
                 loadMarket(); // fire-and-forget: VIX + quote context
@@ -773,12 +790,14 @@
             $('swingGexRead').innerText = `GEX ${fmtMoney(lv.netGex)} per 1% move. Gamma available on ${(lv.gammaCoverage*100).toFixed(1)}% of contracts; delta ${(lv.deltaCoverage*100).toFixed(1)}%; scenario IV/expiry ${(lv.scenarioCoverage*100).toFixed(1)}%.`;
             $('swingLevelsRead').innerText = `Call wall ${fmtStrike(lv.callWall)} · Put wall ${fmtStrike(lv.putWall)} · ${flipText(lv)} · P/C ${ratioText(lv.pcRatio)}`;
             $('dataCoverage').innerText = $('swingGexRead').innerText;
+            renderExplainers();
 
         }
 
         // ==================== RENDER: MAIN CHART ====================
         function renderMainChart() {
             if (!currentData.length) return;
+            renderSplit();
             const spot = chainMeta.spot;
             const useDex = metricIsDex();
             const invert = $('globalInvertToggle').checked;
@@ -819,7 +838,7 @@
                 hovertemplate: 'Strike %{x}<br>' + unit + ': %{y:.1f}<extra></extra>'
             }], baseLayout({
                 title: {
-                    text: `${chainMeta.symbol} net dealer ${useDex ? 'delta' : 'gamma'} exposure — ${chartScope === 'front' ? 'front expiry (' + escapeHtml(expirationsList[0] || '') + ')' : 'all expiries'}`,
+                    text: `${chainMeta.symbol} model-implied ${useDex ? 'delta' : 'gamma'} exposure — ${chartScope === 'front' ? 'front expiry (' + escapeHtml(expirationsList[0] || '') + ')' : 'all expiries'}`,
                     font: { color: '#94a3b8', size: 11 }
                 },
                 yaxis: { title: { text: unit, font: { color: '#64748b', size: 10 } }, showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, zeroline: true, zerolinecolor: '#334155' },
@@ -914,11 +933,12 @@
                 bodyHtml += `<td class="py-2.5 px-3 ${totClass} border border-gray-800">${fmtMoney(tot)}</td></tr>`;
             });
 
+            renderExplainers();
             $('voltickGridBody').innerHTML = bodyHtml || `<tr><td class="py-6 text-gray-500 text-xs">No expirations or strikes in selected scope.</td></tr>`;
         }
 
         // ==================== RENDER: TRINITY ====================
-        // Voltick-style dealer boards: three columns (SPX/SPY/QQQ), each with a
+        // Voltick-style OI model boards: three columns (SPX/SPY/QQQ), each with a
         // regime line, key levels with distances, and per-strike colored rows.
         const TRINITY_PANELS = [
             { sym: 'I:SPX', short: 'SPX', label: 'S&P 500 Index', board: 'trinityBoardSpx' },
@@ -1063,7 +1083,7 @@
                     const putWarn = lv.putWall !== null && lv.putWall > spot ? 'Above spot; not guaranteed support' : '';
 
                     let levelsHtml = '';
-                    levelsHtml += trinityLevelRow('★', 'Volt — heaviest strike', 'most positioning stacked on one strike', lv.voltStrike, spot, confluence(lv.voltStrike, lv, spot));
+                    levelsHtml += trinityLevelRow('★', 'Volt — heaviest strike', 'largest absolute net GEX at one strike', lv.voltStrike, spot, confluence(lv.voltStrike, lv, spot));
                     levelsHtml += trinityLevelRow('‖', 'Call wall', 'largest positive call gamma exposure', lv.callWall, spot, confluence(lv.callWall, lv, spot));
                     levelsHtml += trinityLevelRow('‖', 'Put wall', 'largest negative put gamma exposure', lv.putWall, spot, confluence(lv.putWall, lv, spot), putWarn);
                     if (lv.flipFound) {
@@ -1076,10 +1096,10 @@
                             <div class="text-right shrink-0"><div class="text-xs font-extrabold text-gray-500">—</div></div></div>`;
                     }
                     if (em) {
-                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${escapeHtml(em.exp)} expiry — what the options market has priced in as the expected move">
+                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${escapeHtml(em.exp)} expiry — fair-value straddle proxy, not a probability interval">
                             <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🎯</span>
                             <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Expected move <span class="text-amber-300 font-extrabold">+</span></div>
-                            <div class="text-[10px] text-gray-500 leading-tight">priced in to ${escapeHtml(em.exp)} (ATM call + put fair value)</div></div></div>
+                            <div class="text-[10px] text-gray-500 leading-tight">proxy to ${escapeHtml(em.exp)} (ATM call + put fair value)</div></div></div>
                             <div class="text-right shrink-0"><div class="text-xs font-extrabold text-white">±$${fmtPx(em.em)}</div>
                             <div class="text-[10px] text-gray-500">±${(em.em / spot * 100).toFixed(2)}%</div></div></div>`;
                     }
@@ -1087,7 +1107,7 @@
                     levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="Open-interest-weighted implied volatility near the money, front two expirations">
                         <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🌊</span>
                         <div class="min-w-0"><div class="text-xs font-bold text-white">ATM IV</div>
-                        <div class="text-[10px] text-gray-500 leading-tight">market's expected annualized wiggle</div></div></div>
+                        <div class="text-[10px] text-gray-500 leading-tight">annualized IV from option values</div></div></div>
                         <div class="text-xs font-extrabold text-white">${lv.atmIv === null ? 'n/a' : (lv.atmIv * 100).toFixed(1) + '%'}</div></div>`;
                     levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5" title="Signed delta exposure from open interest, not measured dealer inventory">
                         <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🧭</span>
@@ -1109,7 +1129,7 @@
                         const iv = ps.ivDen > 0 ? (ps.ivNum / ps.ivDen * 100).toFixed(1) + '%' : '—';
                         const barW = Math.max(2, Math.abs(v) / maxAbs * 100).toFixed(0);
                         const bar = `<span class="inline-block h-1.5 rounded-full align-middle mr-1.5" style="width:${barW}%;max-width:64px;${v >= 0 ? 'background:#10b981' : 'background:#a855f7'}"></span>`;
-                        return `<tr class="border-b border-gray-800/50" style="${bg}${s === spotStrike ? ';box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)' : ''}" title="${s === spotStrike ? 'Nearest strike to spot' : 'Strike ' + fmtStrike(s)} — net dealer $GEX ${fmtMoney(v)}">
+                        return `<tr class="border-b border-gray-800/50" style="${bg}${s === spotStrike ? ';box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)' : ''}" title="${s === spotStrike ? 'Nearest strike to spot' : 'Strike ' + fmtStrike(s)} — model-implied $GEX ${fmtMoney(v)}">
                             <td class="py-1.5 pl-2 pr-1 text-right font-bold text-white whitespace-nowrap">${fmtStrike(s)}${s === spotStrike ? ' <span class="text-[9px] text-white/90">●</span>' : ''}</td>
                             <td class="py-1.5 px-1 text-right font-extrabold text-white whitespace-nowrap">${bar}${fmtMoney(v)}</td>
                             <td class="py-1.5 px-1 text-right text-gray-100">${fmtOi(ps.callOi)}</td>
@@ -1121,10 +1141,10 @@
 
                     el.innerHTML = `
                         <div class="mb-2">${regimeLine}</div>
-                        <div class="text-[10px] text-gray-500 mb-2">Net $GEX / 1% move <b class="${positive ? 'text-emerald-400' : 'text-purple-400'}">${fmtMoney(lv.netGex)}</b> · P/C ${ratioText(lv.pcRatio)}${payload.demo ? ' · <b class="text-amber-400">SIMULATED</b>' : ''} · <span data-asof="${escapeHtml(payload.fetchedAt)}">as of ${escapeHtml(new Date(payload.fetchedAt).toLocaleTimeString())}${Date.now()-Date.parse(payload.fetchedAt)>CHAIN_TTL_MS?' · STALE':''}</span> · gamma ${(lv.gammaCoverage*100).toFixed(1)}% / delta ${(lv.deltaCoverage*100).toFixed(1)}% coverage · scenario IV/expiry ${(lv.scenarioCoverage*100).toFixed(1)}%</div>
-                        <div class="mb-3">${levelsHtml}</div>
+                        <div class="text-[10px] text-gray-500 mb-2">Net $GEX / 1% move <b class="${positive ? 'text-emerald-400' : 'text-purple-400'}">${fmtMoney(lv.netGex)}</b> · P/C ${ratioText(lv.pcRatio)}${payload.demo ? ' · <b class="text-amber-400">SIMULATED</b>' : ' · LIVE'} · <span data-asof="${escapeHtml(payload.fetchedAt)}">as of ${escapeHtml(new Date(payload.fetchedAt).toLocaleTimeString())}${Date.now()-Date.parse(payload.fetchedAt)>CHAIN_TTL_MS?' · STALE':''}</span> · gamma ${(lv.gammaCoverage*100).toFixed(1)}% / delta ${(lv.deltaCoverage*100).toFixed(1)}% coverage · scenario IV/expiry ${(lv.scenarioCoverage*100).toFixed(1)}%</div>
+                        <div class="mb-3">${levelsHtml}</div>${detailsHtml("Explain these statistics", statsFormula + " " + explanation(payload.records,payload,allExpirations(payload.records)))}
                         ${dod ? `<div class="text-[11px] text-sky-300/90 bg-sky-950/40 border border-sky-900/60 rounded-lg px-2.5 py-1.5 mb-3">📊 ${dod}</div>` : ''}
-                        <div class="overflow-y-auto max-h-[420px] rounded-lg border border-gray-800">
+                        <div class="overflow-auto max-h-[420px] rounded-lg border border-gray-800">
                             <table class="w-full text-xs">
                                 <thead class="sticky top-0 bg-[#0b1120] z-10"><tr class="text-gray-400">
                                     <th class="text-right py-2 pl-2 pr-1 font-semibold" title="Option strike price">Strike</th>
@@ -1176,6 +1196,11 @@
                 if(token !== hiroSequence) return;
                 const j = entry.j;
                 const dates = j.t.map(t => new Date(t));
+                const overlays = chainMeta.symbol === symbol ? overlayLevels(currentData, chainMeta.spot, scopeExpirations(), chainMeta.fetchedAt) : {lines:[], band:null};
+                const shapes = overlays.lines.map(l=>({type:'line',xref:'paper',x0:0,x1:1,y0:l.value,y1:l.value,line:{color:l.color,dash:'dot'}}));
+                const annotations = overlays.lines.map(l=>({xref:'paper',x:0,y:l.value,text:l.label+' '+fmtStrike(l.value),showarrow:false,font:{color:l.color,size:10},bgcolor:'#04060b'}));
+                if(overlays.band) {const b=overlays.band;shapes.push({type:'rect',x0:b.from,x1:b.to,y0:b.low,y1:b.high,fillcolor:'rgba(56,189,248,.12)',line:{width:0},layer:'below'});annotations.push({x:b.from,y:b.high,text:'EM upper '+fmtStrike(b.high),showarrow:false,font:{color:'#38bdf8'}},{x:b.from,y:b.low,text:'EM lower '+fmtStrike(b.low),showarrow:false,font:{color:'#38bdf8'}});}
+                $('overlayExplanation').innerText = explanation(currentData, chainMeta, scopeExpirations());
                 Plotly.newPlot(plotEl, [
                     {
                         x: dates, open: j.o, high: j.h, low: j.l, close: j.c,
@@ -1189,8 +1214,9 @@
                         hovertemplate: 'Vol %{y:,}<extra></extra>'
                     }
                 ], baseLayout({
+                    shapes, annotations,
                     title: { text: `${symbol} intraday (${interval}, ${range}) — Yahoo Finance`, font: { color: '#94a3b8', size: 11 } },
-                    xaxis: { rangeslider: { visible: false }, type: 'date', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                    xaxis: { range:[dates[0],new Date(Math.max(+dates[dates.length-1],Date.parse(chainMeta.fetchedAt)||0)+Math.max(60000,(+dates[dates.length-1]-dates[0])*.05))], rangeslider: { visible: false }, type: 'date', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
                     yaxis: { domain: [0.22, 1], side: 'right', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
                     yaxis2: { domain: [0, 0.18], showticklabels: false, showgrid: false }
                 }), { responsive: true, scrollZoom: true });
@@ -1242,17 +1268,119 @@
             }), { responsive: true });
         }
 
+        const OI_NOTE = 'OI as of last settlement — intraday positioning may differ.';
+        const statsFormula = 'Spot is the supplied quote. Regime/Tide is the sign of net GEX. Net GEX = sum(call GEX + put GEX). DEX = sum(signed delta × OI × 100 × spot), calls +, puts −. Walls maximize call GEX / absolute negative put GEX. Flip solves scenario net gamma = 0 within ±20% spot with fixed IV. P/C = put OI / call OI (undefined without calls). ATM IV = sum(IV × OI)/sum(valid-IV OI), within 1% spot in front two scoped expiries. ATM gamma concentration = absolute net GEX within 0.5% spot / all absolute strike net GEX. Heaviest strike maximizes absolute net GEX; distance = (level/spot − 1) × 100%. Overlap markers count nearby levels, not confidence. EM = ATM call + put fair value, not a probability interval. VIX and daily quote change are external market context, unavailable in simulation.';
+        function detailsHtml(title, text) { return `<details class="text-xs text-gray-400 mt-2"><summary>${escapeHtml(title)}</summary>${escapeHtml(text)}</details>`; }
+        function explanation(records, meta, exps) {
+            const cs=records.filter(r=>exps.includes(r.expiration)).flatMap(r=>r.contracts||[]);
+            const valid=k=>cs.filter(c=>Number.isFinite(c[k]) && (k!=='iv'||c.iv>0)).length;
+            return `${meta.demo?'SIMULATED':'LIVE'} · as of ${meta.fetchedAt||'unknown'}; age ${Number.isFinite(Date.parse(meta.fetchedAt))?Math.max(0,Math.floor((Date.now()-Date.parse(meta.fetchedAt))/60000))+' min':'unknown'}. Scope: ${exps.join(', ')||'empty'}. Coverage: gamma ${valid('gamma')}/${cs.length}, delta ${valid('delta')}/${cs.length}, IV ${valid('iv')}/${cs.length} contracts. Missing Greeks/IV excluded, totals may be partial; upstream completeness unknown. ${OI_NOTE} ${MODEL_NOTE}`;
+        }
+        function renderExplainers() {
+            if(!document.querySelectorAll) return;
+            const text=statsFormula+' '+explanation(currentData,chainMeta,scopeExpirations());
+            document.querySelectorAll('.kpi-card, #traceView .glass-panel, #swingView .glass-panel').forEach(el=>{
+                let d=el.querySelector(':scope > details.metric-explainer');
+                if(!d){d=document.createElement('details');d.className='metric-explainer text-xs text-gray-400 mt-2';el.appendChild(d);}
+                const exps=el.closest('#swingView')?swingExpirations(expirationsList,swingScope):el.querySelector('#zeroDteGexPlot')?[expirationsList[0]].filter(Boolean):scopeExpirations();
+                d.innerHTML='<summary>How is this calculated?</summary>'+escapeHtml(statsFormula+' '+explanation(currentData,chainMeta,exps));
+            });
+            $('globalStabilityVal').parentElement.title=text;
+            $('globalExplanation').innerHTML=detailsHtml('Explain ATM concentration and statistics',text);
+        }
+        function splitBars(lv) {return lv.strikes.map(strike=>({strike,call:lv.perStrike[strike].call,put:lv.perStrike[strike].put,net:lv.perStrike[strike].call+lv.perStrike[strike].put}));}
+        function renderSplit() {
+            const lv=computeLevels(currentData,chainMeta.spot,scopeExpirations()), rows=splitBars(lv);
+            const traces=['call','put','net'].map((key,i)=>({x:rows.map(r=>r.strike),y:rows.map(r=>r[key]),type:i===2?'scatter':'bar',mode:'lines',name:key,marker:{color:['#10b981','#ff3344','#ffffff'][i]},line:{color:'#ffffff'},hovertemplate:key+' GEX $%{y:,.0f}<br>Strike %{x}<br>Net = call + put; opposing exposures cancel<extra></extra>'}));
+            traces.push({x:lv.roots,y:lv.roots.map(()=>0),type:'scatter',mode:'markers',name:'Scenario zero gamma',marker:{color:'#ffd600',symbol:'diamond',size:10},hovertemplate:'Scenario root %{x:.2f}<extra></extra>'});
+            Plotly.newPlot('splitPlot',traces,baseLayout({barmode:'relative',showlegend:true,legend:{orientation:'h',font:{color:'#94a3b8'}},shapes:lv.roots.map(r=>vlineShape(r,'#ffd600','dash'))}),{responsive:true});
+        }
+        function expiryTotals(records, exps) {
+            const rows=exps.map(exp=>{const rs=records.filter(r=>r.expiration===exp);return {exp,net:rs.reduce((a,r)=>a+(r.dollar_gex||0),0),call:rs.reduce((a,r)=>a+(r.call_gex||0),0),put:rs.reduce((a,r)=>a+(r.put_gex||0),0),oi:rs.reduce((a,r)=>a+(r.call_oi||0)+(r.put_oi||0),0),gross:rs.reduce((a,r)=>a+Math.abs(r.call_gex||0)+Math.abs(r.put_gex||0),0)};});
+            const total=rows.reduce((a,r)=>a+r.gross,0);return rows.map(r=>({...r,share:total?r.gross/total:null}));
+        }
+        function ivStructure(records, spot, exps) {
+            const average=cs=>{const valid=cs.filter(c=>Number.isFinite(c.iv)&&c.iv>0&&Number.isFinite(c.oi)&&c.oi>0);const weight=valid.reduce((a,c)=>a+c.oi,0);return weight?valid.reduce((a,c)=>a+c.iv*c.oi,0)/weight:null;};
+            const scoped=records.filter(r=>exps.includes(r.expiration));
+            const term=exps.map(exp=>({exp,iv:average(scoped.filter(r=>r.expiration===exp&&Math.abs(r.strike-spot)<=spot*.01).flatMap(r=>r.contracts||[]))}));
+            const front=scoped.filter(r=>r.expiration===exps[0]);
+            const skew=[...new Set(front.map(r=>r.strike))].sort((a,b)=>a-b).map(strike=>({strike,iv:average(front.filter(r=>r.strike===strike).flatMap(r=>r.contracts||[]))}));
+            return {term,skew};
+        }
+        function expiryClose(exp) {
+            if(exp.length>10) return exp;
+            const probe=new Date(exp+'T20:00:00Z');
+            const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',hourCycle:'h23'}).format(probe));
+            return new Date(probe.getTime()+(16-hour)*3600000).toISOString();
+        }
+        function overlayLevels(records,spot,exps,asof) {
+            const lv=computeLevels(records,spot,exps), em=expectedMove(records.filter(r=>exps.includes(r.expiration)),spot);
+            const lines=[{label:'Call wall',value:lv.callWall,color:'#10b981'},{label:'Put wall',value:lv.putWall,color:'#ff3344'},...lv.roots.map(value=>({label:'Gamma flip',value,color:'#ffd600'}))].filter(l=>Number.isFinite(l.value));
+            return {lines,band:em&&Number.isFinite(Date.parse(asof))&&Date.parse(expiryClose(em.exp))>Date.parse(asof)?{low:spot-em.em,high:spot+em.em,from:asof,to:expiryClose(em.exp)}:null};
+        }
+        function pruneSnapshots(rows, now=Date.now(), cap=288) {
+            const day=marketDate(new Date(now)), unique=new Map();
+            for(const r of rows) if(r&&Number.isFinite(r.t)&&r.t<=now&&marketDate(new Date(r.t))===day&&['netGex','netDex','spot'].every(k=>Number.isFinite(r[k]))&&(r.flip===null||Number.isFinite(r.flip))) unique.set(r.t,r);
+            return [...unique.values()].sort((a,b)=>a.t-b.t).slice(-cap);
+        }
+        function historyKey(){return `gexmap_intraday_v1_${chainMeta.demo?'simulated':'live'}_${chainMeta.symbol}`;}
+        function readHistory(){try {const rows=JSON.parse(localStorage.getItem(historyKey())||'[]');return pruneSnapshots(Array.isArray(rows)?rows:[]);}catch{return [];}}
+        let historyError='';
+        function recordSnapshot() {
+            const t=Date.parse(chainMeta.fetchedAt);if(!Number.isFinite(t)) return;
+            const lv=computeLevels(currentData,chainMeta.spot,allExpirations(currentData));
+            const rows=pruneSnapshots([...readHistory(),{t,netGex:lv.netGex,netDex:lv.netDex,spot:chainMeta.spot,flip:lv.flip}]);
+            try{localStorage.setItem(historyKey(),JSON.stringify(rows));historyError='';}catch{historyError='Storage unavailable; snapshots cannot be saved.';}
+        }
+        function renderHistory() {
+            const rows=readHistory(), x=[],y=[];
+            try {localStorage.setItem(historyKey(),JSON.stringify(rows));} catch {historyError='Storage unavailable; snapshots cannot be saved.';}
+            rows.forEach((r,i)=>{if(i&&r.t-rows[i-1].t>CHAIN_TTL_MS*2){x.push(new Date(r.t-1));y.push(null);}x.push(new Date(r.t));y.push(r.netGex);});
+            Plotly.newPlot('gexHistory',[{x,y,type:'scatter',mode:'lines+markers',connectgaps:false,line:{color:'#38bdf8'},hovertemplate:'%{x}<br>Net GEX $%{y:,.0f}<extra></extra>'}],baseLayout({title:{text:`${chainMeta.demo?'SIMULATED':'LIVE'} · observed net GEX`,font:{color:'#94a3b8',size:11}}}),{responsive:true});
+            $('historyStatus').innerText=historyError||`${rows.length} snapshots today (New York); maximum 288. ${rows.length?'Latest as of '+new Date(rows[rows.length-1].t).toISOString():'No observations yet.'}`;
+        }
+        function normalCDF(x){const t=1/(1+.2316419*Math.abs(x)), d=.3989422804014327*Math.exp(-x*x/2);const p=1-d*t*(.319381530+t*(-.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));return x>=0?p:1-p;}
+        function bsDelta(c,spot,now,iv=c.iv){const t=(Date.parse(c.expiration)-now)/(365*86400000);if(!(t>0&&iv>0&&spot>0&&c.strike>0))return null;const d1=(Math.log(spot/c.strike)+(.043+iv*iv/2)*t)/(iv*Math.sqrt(t));return normalCDF(d1)-(c.type==='put'?1:0);}
+        function modeledGreeks(contracts,spot,now=Date.now()) {
+            let vanna=0,charm=0,used=0;
+            for(const c of contracts){const days=(Date.parse(c.expiration)-now)/86400000;if(!(days>=1/24&&Number.isFinite(c.iv)&&c.iv>0&&Number.isFinite(c.oi)&&c.oi>0&&c.strike>0&&spot>0&&['call','put'].includes(c.type)))continue;
+                const h=Math.min(.001,c.iv/10),dt=Math.min(.001,days/10);
+                const v=step=>(bsDelta(c,spot,now,c.iv+step)-bsDelta(c,spot,now,c.iv-step))/(2*step);
+                const ch=step=>(bsDelta(c,spot,now+step*86400000)-bsDelta(c,spot,now-step*86400000))/(2*step);
+                const a=v(h),b=v(h/2),d=ch(dt),e=ch(dt/2);
+                if(![a,b,d,e].every(Number.isFinite)||Math.abs(a-b)>1e-5+.01*Math.abs(b)||Math.abs(d-e)>1e-5+.01*Math.abs(e))continue;
+                const weight=(c.type==='call'?1:-1)*c.oi*100;vanna+=b*weight*.01;charm+=e*weight;used++;
+            }
+            return {vanna:used?vanna:null,charm:used?charm:null,used,total:contracts.length};
+        }
+        function renderExpirationDashboard() {
+            const exps=swingExpirations(expirationsList,$('expiryScope').value||'all'), rows=expiryTotals(currentData,exps),iv=ivStructure(currentData,chainMeta.spot,exps);
+            $('expiryExplanation').innerHTML=detailsHtml('Formulas, scope, coverage & as of','Net = call + put GEX. Gross gamma = sum(|call GEX| + |put GEX|) before cancellation. Share = expiry gross / total gross in this filter, not absolute net. OI = call + put OI. Heatmap uses one symmetric scale relative to largest absolute visible cell; absent cells are gaps. IV is OI-weighted across valid calls and puts; ATM means within 1% of spot. Skew uses front expiry in this filter. '+explanation(currentData,chainMeta,exps));
+            $('expiryTable').innerHTML='<table class="w-full text-xs text-right"><thead><tr>'+['Expiry','Net GEX','Call GEX','Put GEX','OI','Gross gamma','Gross share'].map(t=>`<th class="p-2 whitespace-nowrap">${t}</th>`).join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+[r.exp,fmtMoney(r.net),fmtMoney(r.call),fmtMoney(r.put),r.oi.toLocaleString(),fmtMoney(r.gross),r.share===null?'n/a':(r.share*100).toFixed(1)+'%'].map(v=>`<td class="p-2 whitespace-nowrap">${escapeHtml(v)}</td>`).join('')+'</tr>').join('')+'</tbody></table>'+(rows.length?'':'No expirations in this scope.');
+            const strikes=[...new Set(currentData.filter(r=>exps.includes(r.expiration)).map(r=>r.strike))].sort((a,b)=>a-b);
+            const cells=new Map();
+            currentData.forEach(r=>{if(exps.includes(r.expiration)){const key=r.expiration+'|'+r.strike;cells.set(key,(cells.get(key)||0)+(r.dollar_gex||0));}});
+            const z=exps.map(exp=>strikes.map(strike=>cells.get(exp+'|'+strike)??null));
+            const max=z.reduce((a,row)=>row.reduce((b,v)=>Math.max(b,Math.abs(v||0)),a),1);
+            Plotly.newPlot('expiryHeatmap',[{x:strikes,y:exps,z,type:'heatmap',zmin:-max,zmax:max,colorscale:[[0,'#ff3344'],[.5,'#04060b'],[1,'#10b981']],hoverongaps:false,hovertemplate:'Strike %{x}<br>Expiry %{y}<br>Net GEX $%{z:,.0f}<extra></extra>'}],baseLayout({margin:{l:100,r:45,t:30,b:40},yaxis:{type:'category',automargin:true}}),{responsive:true});
+            for(const [id,data,key,title] of [['ivTerm',iv.term,'exp','ATM IV by expiry'],['ivSkew',iv.skew,'strike','Front scoped expiry IV skew']]) Plotly.newPlot(id,[{x:data.map(r=>r[key]),y:data.map(r=>r.iv===null?null:r.iv*100),type:'scatter',mode:'lines+markers',connectgaps:false,hovertemplate:'%{x}<br>OI-weighted IV %{y:.2f}%<extra></extra>'}],baseLayout({title:{text:title,font:{color:'#94a3b8',size:11}}}),{responsive:true});
+            const g=modeledGreeks(currentData.filter(r=>exps.includes(r.expiration)).flatMap(r=>r.contracts||[]),chainMeta.spot);
+            $('modeledGreeks').innerHTML='<h4>MODELED ESTIMATES</h4><p class="text-xs">Vanna: '+(g.vanna===null?'n/a':g.vanna.toFixed(2))+' delta shares / +1 IV percentage point · Charm: '+(g.charm===null?'n/a':g.charm.toFixed(2))+' delta shares / elapsed calendar day</p>'+detailsHtml('Model method and exclusions',`Finite differences of Black-Scholes delta at fixed spot: vanna ≈ Δdelta/ΔIV × 0.01; charm ≈ Δdelta/Δelapsed-day. Sum with signed OI × 100 (calls +, puts −). Rate 4.3%, dividend 0; IV fixed for charm. Not measured hedging or trading. Central steps IV ≤0.001 and time ≤0.001 day; halved-step agreement required within 1% + 0.00001. Less than one hour to expiry excluded. Included ${g.used}/${g.total}; omitted ${g.total-g.used} invalid, zero-OI, near-expiry or unstable contracts. `+explanation(currentData,chainMeta,exps));
+        }
+
         // ==================== MASTER RENDER ====================
         function renderAll() {
             renderKPIs();
+            renderExpirationDashboard();
             renderMainChart();
             renderProfile();
             if (!$('swingView').classList.contains('hidden')) renderSwingMode();
             if (!$('trinityView').classList.contains('hidden')) renderTrinityMode();
-            if (!$('hiroView').classList.contains('hidden')) renderHiro();
+            if (!$('hiroView').classList.contains('hidden')) {renderHistory(); renderHiro();}
             if (!$('compassView').classList.contains('hidden')) renderCompass();
         }
 
+        $('expiryScope').addEventListener('change', renderExpirationDashboard);
         // ==================== EVENT WIRING ====================
         $('globalRefreshBtn').addEventListener('click', () => loadOptionsData(true));
 
