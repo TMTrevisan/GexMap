@@ -1,6 +1,7 @@
 // Vercel reuses warm serverless instances, so cached chains dedup requests from
 // concurrent tabs/users within this window. Each cold instance starts empty.
 const serverChainCache = new Map();
+const serverInflight = new Map();
 
 export default async function handler(req, res) {
   // Add CORS headers
@@ -45,65 +46,79 @@ export default async function handler(req, res) {
     return res.status(200).json({...entry.body, cached: true});
   }
 
-  const apiUrl = 'https://tap.convexvalue.com/api/data/chains';
-  const payload = {
-    params: [
-      'expiration_date', 'strike_price', 'contract_type', 'implied_volatility',
-      'delta', 'gamma', 'theta', 'vega', 'bid', 'ask', 'fair_market_value', 'open_interest',
-      'day_volume', 'underlying_price'
-    ],
-    symbol: providerSymbol
-  };
-
-  try {
-    // ConvexValue omits underlying_price on index chains (probed 2026-09-29:
-    // every SPX contract had underlying_price=null), so fetch a Yahoo spot in
-    // parallel as the fallback for dollar-GEX/DEX math.
-    const [apiResponse, yahooSpot] = await Promise.all([
-      fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'User-Agent': 'cv-mcp/0.1.0'
-        },
-        body: JSON.stringify(payload)
-      }),
-      fetchYahooSpot(symbol)
-    ]);
-
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text().catch(() => '');
-      throw new Error(`ConvexValue API responded ${apiResponse.status}: ${errorText.slice(0, 200)}`);
-    }
-
-    const chainData = await apiResponse.json();
-    const shapeInfo = chainData && typeof chainData === 'object'
-      ? `keys=[${Object.keys(chainData).slice(0, 12).join(',')}] chain=${Array.isArray(chainData.chain) ? `array(${chainData.chain.length})` : typeof chainData.chain}`
-      : typeof chainData;
-    const records = processChainData(chainData, yahooSpot);
-
-    if (!records.length) {
-      throw new Error(`ConvexValue API returned no usable chain records (upstream shape: ${shapeInfo}).`);
-    }
-
-    const spot = records[0].underlying_price;
-    const body = { records, demo: false, symbol, spot, fetchedAt };
-    serverChainCache.set(symbol, { ts: Date.now(), body });
-    res.status(200).json(body);
-  } catch (error) {
-    console.warn(`Options chain fetch failed for ${symbol}: ${error.message}`);
-    if (/429|hourly request limit/i.test(error.message)) {
-      return res.status(429).json({
-        error: 'Upstream hourly API budget exhausted — chain requests are paused until the window resets.',
-        detail: error.message
-      });
-    }
-    res.status(503).json({
-      error: 'Options data temporarily unavailable. Upstream chain provider did not return usable data.',
-      detail: error.message
-    });
+  if (serverInflight.has(symbol)) {
+    const result = await serverInflight.get(symbol);
+    return res.status(result.status).json(result.body);
   }
+  const pending = (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const apiUrl = 'https://tap.convexvalue.com/api/data/chains';
+    const payload = {
+      params: [
+        'expiration_date', 'strike_price', 'contract_type', 'implied_volatility',
+        'delta', 'gamma', 'theta', 'vega', 'bid', 'ask', 'fair_market_value', 'open_interest',
+        'day_volume', 'underlying_price'
+      ],
+      symbol: providerSymbol
+    };
+
+    try {
+      // ConvexValue omits underlying_price on index chains (probed 2026-09-29:
+      // every SPX contract had underlying_price=null), so fetch a Yahoo spot in
+      // parallel as the fallback for dollar-GEX/DEX math.
+      const [apiResponse, yahooSpot] = await Promise.all([
+        fetch(apiUrl, {
+          signal: controller.signal,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'User-Agent': 'cv-mcp/0.1.0'
+          },
+          body: JSON.stringify(payload)
+        }),
+        fetchYahooSpot(symbol)
+      ]);
+
+      if (!apiResponse.ok) {
+        const errorText = await apiResponse.text().catch(() => '');
+        throw new Error(`ConvexValue API responded ${apiResponse.status}: ${errorText.slice(0, 200)}`);
+      }
+
+      const chainData = await apiResponse.json();
+      const shapeInfo = chainData && typeof chainData === 'object'
+        ? `keys=[${Object.keys(chainData).slice(0, 12).join(',')}] chain=${Array.isArray(chainData.chain) ? `array(${chainData.chain.length})` : typeof chainData.chain}`
+        : typeof chainData;
+      const records = processChainData(chainData, yahooSpot);
+
+      if (!records.length) {
+        throw new Error(`ConvexValue API returned no usable chain records (upstream shape: ${shapeInfo}).`);
+      }
+
+      const spot = records[0].underlying_price;
+      const body = { records, demo: false, symbol, spot, fetchedAt };
+      serverChainCache.set(symbol, { ts: Date.now(), body });
+      return {status: 200, body};
+    } catch (error) {
+      console.warn(`Options chain fetch failed for ${symbol}: ${error.message}`);
+      if (/429|hourly request limit/i.test(error.message)) {
+        return {status: 429, body: {
+          error: 'Upstream hourly API budget exhausted — chain requests are paused until the window resets.',
+          detail: error.message
+        }};
+      }
+      return {status: 503, body: {
+        error: 'Options data temporarily unavailable. Upstream chain provider did not return usable data.',
+        detail: error.message
+      }};
+    } finally { clearTimeout(timeout); }
+  })();
+  serverInflight.set(symbol, pending);
+  try {
+    const result = await pending;
+    return res.status(result.status).json(result.body);
+  } finally { serverInflight.delete(symbol); }
 }
 
 function generateDemoData(symbol) {
@@ -122,18 +137,17 @@ function generateDemoData(symbol) {
   else if (symbol === 'AMD') { spot = 162.30; interval = 1.0; }
   else if (symbol === 'AMZN') { spot = 185.40; interval = 1.0; }
 
-  // Add a small live fluctuation to spot price on every refresh
+  // Add a small synthetic fluctuation to spot price on every refresh
   spot = spot + (Math.random() - 0.5) * (interval * 3.5);
 
-  // Generate 8 expirations starting from today
+  // Generate 8 distinct weekday expirations starting tomorrow
   const expDates = [];
   const startDay = new Date();
   startDay.setDate(startDay.getDate() + 1);
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; expDates.length < 8; i++) {
     const d = new Date(startDay.getTime() + i * 24 * 60 * 60 * 1000);
     // skip weekends
-    if (d.getDay() === 0) d.setDate(d.getDate() + 1);
-    if (d.getDay() === 6) d.setDate(d.getDate() + 2);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
 
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -154,7 +168,7 @@ function generateDemoData(symbol) {
 
   expDates.forEach((exp, expIdx) => {
     const expiryFactor = Math.exp(-expIdx * 0.3);
-    const dte = Math.max(0, Math.round((new Date(exp + 'T00:00:00') - today) / 86400000));
+    const dte = Math.max(0, (expirationTimestamp(exp) - today) / 86400000);
 
     strikes.forEach(strike => {
       // Use dynamic noise based on current timestamp
@@ -203,10 +217,6 @@ function generateDemoData(symbol) {
         expiration: exp,
         dte,
         strike: strike,
-        gex: Math.round(gex * 100) / 100,
-        dex: Math.round(gex * 0.5 * 100) / 100,
-        dollar_gex: Math.round(gex * spot * 100) / 100,
-        dollar_dex: Math.round(gex * 0.5 * spot * 100) / 100,
         call_oi: callOi,
         put_oi: putOi,
         call_mid: cmid,
@@ -219,7 +229,10 @@ function generateDemoData(symbol) {
     });
   });
 
-  return records;
+  return processChainData({chain: expDates.map(exp => ({expiration: exp, strikes: records.filter(r => r.expiration === exp).map(r => [r.strike,
+    [exp, r.strike, 'call', r.iv, 0.5, 0.02, null, null, null, null, r.call_mid, r.call_oi, r.volume / 2, spot],
+    [exp, r.strike, 'put', r.iv, -0.5, 0.02, null, null, null, null, r.put_mid, r.put_oi, r.volume / 2, spot]
+  ])}))}, spot);
 }
 
 // Map app symbols to Yahoo symbols for the spot-price fallback. ConvexValue
@@ -248,6 +261,18 @@ async function fetchYahooSpot(displaySymbol) {
   }
 }
 
+function expirationTimestamp(exp) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(exp)) return Date.parse(exp);
+  const noon = new Date(exp + 'T12:00:00Z');
+  const hour = Number(new Intl.DateTimeFormat('en-US', {timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23'}).format(noon));
+  return Date.parse(exp + 'T16:00:00Z') + (12 - hour) * 3600000;
+}
+function nullableNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 function num(v) {
   const n = parseFloat(v);
   return Number.isFinite(n) ? n : 0;
@@ -265,7 +290,7 @@ function processChainData(chainData, fallbackSpot = 0) {
     const expDate = item.expiration;
     const strikes = item.strikes || [];
     if (!expDate || !Array.isArray(strikes)) continue;
-    const dte = Math.max(0, Math.round((new Date(expDate + 'T00:00:00') - today) / 86400000));
+    const dte = Math.max(0, (expirationTimestamp(expDate) - today) / 86400000);
 
     for (const strikeInfo of strikes) {
       if (!Array.isArray(strikeInfo) || strikeInfo.length < 3) continue;
@@ -283,8 +308,10 @@ function processChainData(chainData, fallbackSpot = 0) {
       let underlyingPrice = 0.0;
       let ivNum = 0;
       let ivDen = 0;
-      let callMid = 0;
-      let putMid = 0;
+      let callMid = null;
+      let putMid = null;
+      let callGex = 0, putGex = 0;
+      const contracts = [];
 
       // Contract array layout follows the requested params order:
       // [expiration_date, strike_price, contract_type, implied_volatility,
@@ -297,17 +324,22 @@ function processChainData(chainData, fallbackSpot = 0) {
         if (!Array.isArray(contract) || contract.length <= 13) return;
         const oi = parseInt(contract[11] || 0, 10) || 0;
         const vol = parseInt(contract[12] || 0, 10) || 0;
-        const delta = num(contract[4]);
-        const gamma = num(contract[5]);
-        const iv = num(contract[3]);
+        const delta = nullableNum(contract[4]);
+        const gamma = nullableNum(contract[5]);
+        const iv = nullableNum(contract[3]);
         const uPrice = num(contract[13]);
         if (uPrice > 0) underlyingPrice = uPrice;
-        if (iv > 0 && iv < 5 && oi > 0) { ivNum += iv * oi; ivDen += oi; }
-        if (sign > 0) { callOi += oi; callMid = num(contract[10]); }
-        else { putOi += oi; putMid = num(contract[10]); }
+        if (iv > 0 && oi > 0) { ivNum += iv * oi; ivDen += oi; }
+        if (sign > 0) { callOi += oi; callMid = nullableNum(contract[10]); }
+        else { putOi += oi; putMid = nullableNum(contract[10]); }
         strikeVol += vol;
-        strikeGex += sign * gamma * oi * 100;
-        strikeDex += delta * oi * 100; // put delta is already negative
+        contracts.push({strike, expiration: Number.isFinite(expirationTimestamp(contract[0] || expDate)) ? new Date(expirationTimestamp(contract[0] || expDate)).toISOString() : null, type: sign > 0 ? 'call' : 'put', iv, oi, gamma, delta});
+        if (gamma !== null) {
+          const exposure = sign * gamma * oi * 100;
+          strikeGex += exposure;
+          if (sign > 0) callGex += exposure; else putGex += exposure;
+        }
+        if (delta !== null) strikeDex += delta * oi * 100; // put delta is already negative
       };
 
       // Dealer positioning convention: long call gamma / short put gamma
@@ -315,16 +347,18 @@ function processChainData(chainData, fallbackSpot = 0) {
       readContract(putContract, -1);
 
       if (underlyingPrice > 0 || fallbackSpot > 0) {
-        // GEX/DEX in Dollars = Gamma/Delta * OI * 100 * Spot. Prefer the
+        // Dollar GEX = signed gamma * OI * 100 * spot² * 1%; DEX = delta * OI * 100 * spot. Prefer the
         // contract's own underlying_price; fall back to Yahoo spot when the
         // provider omits it (all index chains).
         const px = underlyingPrice > 0 ? underlyingPrice : fallbackSpot;
-        // GEX/DEX in Dollars = Gamma/Delta * OI * 100 * Spot
-        const dollarGex = strikeGex * px;
+        // Dollar GEX = signed gamma * OI * 100 * spot² * 1%; DEX = delta * OI * 100 * spot
+        const dollarGex = strikeGex * px * px * 0.01;
         const dollarDex = strikeDex * px;
 
         processedRecords.push({
           expiration: expDate,
+          contracts, iv_num: ivNum, iv_den: ivDen,
+          call_gex: callGex * px * px * 0.01, put_gex: putGex * px * px * 0.01,
           dte,
           strike: strike,
           gex: Math.round(strikeGex * 100) / 100,
@@ -333,8 +367,8 @@ function processChainData(chainData, fallbackSpot = 0) {
           dollar_dex: Math.round(dollarDex * 100) / 100,
           call_oi: callOi,
           put_oi: putOi,
-          call_mid: Math.round(callMid * 100) / 100,
-          put_mid: Math.round(putMid * 100) / 100,
+          call_mid: callMid,
+          put_mid: putMid,
           open_interest: callOi + putOi,
           volume: strikeVol,
           iv: ivDen > 0 ? Math.round((ivNum / ivDen) * 10000) / 10000 : 0,

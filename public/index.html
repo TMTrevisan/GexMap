@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GEX Edge Terminal - Premium Options Analytics</title>
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- TODO: add verified SRI hashes when network access is available. -->
+    <script crossorigin="anonymous" src="https://cdn.tailwindcss.com"></script>
     <!-- Plotly.js for charting -->
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <!-- TODO: add verified SRI hashes when network access is available. -->
+    <script crossorigin="anonymous" src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         body { background-color: #04060b; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
         .glow-border { border: 1px solid #1a233a; box-shadow: 0 0 15px rgba(234, 179, 8, 0.03); }
@@ -47,6 +49,7 @@
         .btn-toggle { background-color: #0a0d16; border: 1px solid #1e293b; color: #94a3b8; font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .btn-toggle:hover { border-color: #ffd600; color: #fff; }
         .btn-toggle.active { background-color: #1e293b; color: #fff; border-color: #ffd600; }
+    @media(max-width:600px) { body {padding:10px!important;} body>div:first-child {flex-wrap:wrap;gap:12px;} .flex {min-width:0;} body>div:first-child>div, #swingView>div>div {flex-wrap:wrap;} .kpi-value {overflow-wrap:anywhere;} .drawer-content {max-height:90vh;overflow:auto;margin:10px;} }
     </style>
 </head>
 <body class="p-6 select-none">
@@ -86,7 +89,7 @@
     <!-- ==================== UNIVERSAL FILTER CONTROL BAR ==================== -->
     <div class="glass-panel px-6 py-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-gray-300 rounded-xl mb-5">
         <div class="flex flex-col gap-1">
-            <span class="text-[9px] text-gray-500 uppercase font-black">Symbol</span>
+            <label for="globalSymbolInput" class="text-[9px] text-gray-500 uppercase font-black">Symbol</label>
             <select id="globalSymbolInput" class="control-dropdown font-bold">
                 <option value="SPY" selected>SPY</option>
                 <option value="QQQ">QQQ</option>
@@ -102,7 +105,7 @@
         </div>
 
         <div class="flex flex-col gap-1">
-            <span class="text-[9px] text-gray-500 uppercase font-black">Range ±%</span>
+            <label for="globalRangeSelect" class="text-[9px] text-gray-500 uppercase font-black">Range ±%</label>
             <select id="globalRangeSelect" class="control-dropdown font-bold">
                 <option value="1.5" selected>1.5</option>
                 <option value="3.0">3.0</option>
@@ -110,15 +113,15 @@
         </div>
 
         <div class="flex flex-col gap-1">
-            <span class="text-[9px] text-gray-500 uppercase font-black">Metric</span>
+            <label for="globalMetricSelect" class="text-[9px] text-gray-500 uppercase font-black">Metric</label>
             <select id="globalMetricSelect" class="control-dropdown">
-                <option value="gex" selected>GEX (volxγ)</option>
-                <option value="dex">DEX (volxδ)</option>
+                <option value="gex" selected>GEX (γ × OI, $/1%)</option>
+                <option value="dex">DEX (δ × OI, $)</option>
             </select>
         </div>
 
         <div class="flex flex-col gap-1">
-            <span class="text-[9px] text-gray-500 uppercase font-black">Strikes</span>
+            <label for="globalStrikesSelect" class="text-[9px] text-gray-500 uppercase font-black">Strikes</label>
             <select id="globalStrikesSelect" class="control-dropdown">
                 <option value="21" selected>21</option>
                 <option value="41">41</option>
@@ -155,15 +158,15 @@
         </div>
         <div class="kpi-card">
             <span class="kpi-title">LS Regime</span>
-            <span id="regimeVal" class="text-emerald-400 text-sm font-black mt-0.5">Weak Bull</span>
+            <span id="regimeVal" class="text-emerald-400 text-sm font-black mt-0.5">--</span>
         </div>
         <div class="kpi-card">
             <span class="kpi-title" id="kpiNetGexLabel">Net GEX</span>
-            <div class="mt-1"><span id="netGexVal" class="bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded">CALL</span></div>
+            <div class="mt-1"><span id="netGexVal" class="bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded">--</span></div>
         </div>
         <div class="kpi-card">
             <span class="kpi-title" id="kpiNetDexLabel">Net DEX</span>
-            <div class="mt-1"><span id="netDexVal" class="bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded">BEAR</span></div>
+            <div class="mt-1"><span id="netDexVal" class="bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded">--</span></div>
         </div>
         <div class="kpi-card">
             <span class="kpi-title" id="kpiCallWallLabel">Call Wall</span>
@@ -187,6 +190,7 @@
         </div>
     </div>
 
+    <p id="dataCoverage" class="text-xs text-gray-400 mb-3"></p>
     <!-- ==================== COCKPIT VIEW (GEX EDGE CLONE) ==================== -->
     <div id="traceView" class="block">
         
@@ -194,7 +198,7 @@
         <div class="glass-panel p-5 rounded-xl glow-border mb-5 flex flex-wrap justify-between items-center gap-4">
             <div>
                 <span class="text-[9px] bg-purple-900/60 text-purple-300 font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider mr-2">REGIME STATUS</span>
-                <span id="regimeBannerText" class="text-lg font-black text-white">MAGNET / BRACKET tape — dips get bought. Mean reversion is supported. Play ranges off walls.</span>
+                <span id="regimeBannerText" class="text-lg font-black text-white">Loading model-implied exposure…</span>
             </div>
             <div class="flex items-center gap-4 text-xs">
                 <div id="vixBlock"><span class="text-gray-550 font-bold mr-1">VIX:</span> <span id="vixVal" class="font-extrabold text-white">—</span></div>
@@ -207,7 +211,7 @@
             <!-- Left Column: 0DTE Net GEX (3 Columns) -->
             <div class="lg:col-span-3 glass-panel p-4 rounded-xl glow-border">
                 <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-4 border-b border-gray-800 pb-2 flex justify-between">
-                    <span>⚡ Front-Expiry Net $GEX</span>
+                    <span>⚡ Front-Expiry Exposure</span>
                     <span class="text-yellow-400">Per Strike</span>
                 </h3>
                 <div id="zeroDteGexPlot" class="w-full h-[400px]"></div>
@@ -227,13 +231,13 @@
                 <!-- Expiry scope + data stamp -->
                 <div class="border-t border-gray-850 pt-4 mt-auto flex flex-col gap-2">
                     <div class="flex justify-between items-center text-xs text-gray-500 px-1">
-                        <span class="font-bold uppercase tracking-wider text-yellow-400">$GEX by strike</span>
+                        <span class="font-bold uppercase tracking-wider text-yellow-400">Exposure by strike</span>
                         <span id="dataStamp" class="font-black text-gray-300 bg-[#0a0d16] px-2.5 py-0.5 rounded border border-gray-800">—</span>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <button id="scopeFrontBtn" class="btn-toggle active">Front expiry</button>
                         <button id="scopeAllBtn" class="btn-toggle">All expiries</button>
-                        <span class="text-[10px] text-gray-500 ml-1">Bars = net dealer dollar-gamma per strike (calls +, puts −).</span>
+                        <span class="text-[10px] text-gray-500 ml-1">Bars follow the selected metric: GEX dollars per 1% move; DEX signed dollar delta. OI-based, not measured inventory.</span>
                     </div>
                 </div>
             </div>
@@ -247,30 +251,30 @@
                         <!-- Bull Case -->
                         <div class="bg-[#0c1a16] border border-[#0d3c2a] p-3 rounded-lg">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs font-black text-emerald-400">▲ BULL CASE</span>
+                                <span class="text-xs font-black text-emerald-400">CALL EXPOSURE</span>
                             </div>
                             <p id="scenarioBullText" class="text-[11px] text-gray-300 leading-relaxed">
-                                Spot reclaims the gamma-flip line on volume and holds above. Target the call wall.
+                                Call wall: largest positive call gamma exposure.
                             </p>
                         </div>
 
                         <!-- Base Case -->
                         <div class="bg-[#121826] border border-[#1e293b] p-3 rounded-lg">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs font-black text-yellow-400">→ BASE CASE</span>
+                                <span class="text-xs font-black text-yellow-400">MODEL ASSUMPTIONS</span>
                             </div>
                             <p id="scenarioBaseText" class="text-[11px] text-gray-300 leading-relaxed">
-                                Spot oscillates between the put wall and call wall into the close.
+                                Gamma exposure depends on model assumptions.
                             </p>
                         </div>
 
                         <!-- Bear Case -->
                         <div class="bg-[#241315] border border-[#4c1d21] p-3 rounded-lg">
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs font-black text-rose-400">▼ BEAR CASE</span>
+                                <span class="text-xs font-black text-rose-400">PUT EXPOSURE</span>
                             </div>
                             <p id="scenarioBearText" class="text-[11px] text-gray-300 leading-relaxed">
-                                Spot loses the put wall and accepts below, triggering negative-gamma acceleration.
+                                Put wall: largest negative put gamma exposure.
                             </p>
                         </div>
                     </div>
@@ -295,10 +299,9 @@
         <div class="flex flex-wrap justify-between items-center gap-3 mb-4 bg-black/45 p-2.5 rounded border border-[#141b2b]">
             <div class="flex items-center gap-2">
                 <button id="toggle0DteBtn" class="btn-toggle active">⚡ 0DTE</button>
-                <button class="btn-toggle">■ WEEK</button>
+                <button id="toggleWeekBtn" class="btn-toggle">■ WEEK</button>
                 <button id="toggleAllExpBtn" class="btn-toggle">Σ ALL EXP</button>
                 <button onclick="showHelpDrawer()" class="btn-toggle">? Guide</button>
-                <button class="btn-toggle text-yellow-400">★ AI Analyst</button>
             </div>
 
             <div class="flex items-center gap-4 text-[10px] text-gray-400 font-bold">
@@ -311,7 +314,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-5">
             <div class="lg:col-span-9 bg-[#080c10] border border-[#141b2b] rounded-xl p-3">
                 <h3 class="text-xs font-black uppercase text-yellow-400 tracking-wider mb-3.5 flex justify-between items-center">
-                    <span>📋 Voltick Multi-Expiry Gamma Matrix</span>
+                    <span>📋 Voltick Multi-Expiry Exposure Matrix</span>
                 </h3>
                 <div class="overflow-x-auto max-h-[500px]">
                     <table class="w-full voltick-grid text-left text-gray-300 divide-y divide-gray-800">
@@ -352,11 +355,11 @@
             </h2>
             <p class="text-xs text-gray-400 mt-2 leading-relaxed">
                 <b class="text-gray-200">How to read this:</b> each column is one index. Rows are strike prices near the current price —
-                <span class="text-emerald-400 font-bold">green rows</span> are positive dealer gamma (dealers buy dips and sell rallies, so moves grind and levels hold),
-                <span class="text-purple-400 font-bold">purple rows</span> are negative dealer gamma (dealers sell dips and chase rallies, so moves extend and chop).
-                The brighter the row, the more dealer hedging is stacked there. <span class="text-gray-500">$GEX = dealer gamma × open interest × 100 × spot (per $1 move).</span>
+                <span class="text-emerald-400 font-bold">green rows</span> represent positive gamma under the calls-positive assumption,
+                <span class="text-purple-400 font-bold">purple rows</span> represent negative gamma under the puts-negative assumption.
+                Brighter rows indicate larger absolute exposure. <span class="text-gray-500">$GEX = signed gamma × open interest × 100 × spot² × 0.01 (per 1% move).</span>
             </p>
-            <p class="text-[11px] text-gray-500 mt-1">Trust rating: <b class="text-white">+++</b> strongest confluence (wall + heaviest strike agree) ·
+            <p class="text-[11px] text-gray-500 mt-1">Overlap markers (not predictive confidence): <b class="text-white">+++</b> strongest confluence (wall + heaviest strike agree) ·
                 <b class="text-white">++</b> wall or flip very near price · <b class="text-white">+</b> listed level. Levels are friction, not floors — they don't have to hold.</p>
         </div>
 
@@ -378,14 +381,14 @@
             </div>
             <div class="flex items-center gap-3 text-xs">
                 <div class="flex flex-col gap-1">
-                    <span class="text-[9px] text-gray-500 uppercase font-black">Interval</span>
+                    <label for="hiroInterval" class="text-[9px] text-gray-500 uppercase font-black">Interval</label>
                     <select id="hiroInterval" class="control-dropdown">
                         <option value="5m" selected>5m</option>
                         <option value="15m">15m</option>
                     </select>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <span class="text-[9px] text-gray-500 uppercase font-black">Range</span>
+                    <label for="hiroRange" class="text-[9px] text-gray-500 uppercase font-black">Range</label>
                     <select id="hiroRange" class="control-dropdown">
                         <option value="1d" selected>1 day</option>
                         <option value="5d">5 days</option>
@@ -405,7 +408,7 @@
             <h2 class="text-lg font-black text-white flex items-center gap-2">
                 <span class="text-yellow-400">🧭</span> Compass — Index Positioning Map
             </h2>
-            <p class="text-xs text-gray-400 mt-1">Each index plotted by net dealer dollar-gamma (x) vs. spot distance from its gamma-flip (y), computed from the live chain.</p>
+            <p class="text-xs text-gray-400 mt-1">Each index plotted by net dealer dollar-gamma (x) vs. spot distance from its gamma-flip (y), computed from the selected data mode. Closest root is used for distance; all roots appear in the level boards.</p>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <div class="lg:col-span-8 bg-[#0b0f17] border border-gray-850 rounded-xl p-4 flex flex-col">
@@ -416,24 +419,24 @@
 
     <!-- ==================== INTERACTIVE GUIDE DRAWER ==================== -->
     <div id="helpDrawer" class="drawer-overlay" onclick="closeHelpDrawer()">
-        <div class="drawer-content" onclick="event.stopPropagation()">
+        <div class="drawer-content" role="dialog" aria-modal="true" aria-label="Level dictionary" tabindex="-1" onclick="event.stopPropagation()">
             <h3 class="text-base font-black text-yellow-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">📖 Voltick Level Dictionary</h3>
             <div class="space-y-4 text-xs text-gray-300 max-h-[400px] overflow-y-auto pr-1">
                 <div>
                     <span class="font-bold text-white block">★ Volt</span>
-                    <p class="text-gray-400">The big one, the strongest options level. Usually set from overnight positioning.</p>
+                    <p class="text-gray-400">The strike with largest absolute net gamma exposure.</p>
                 </div>
                 <div>
                     <span class="font-bold text-white block">⚡ Surge</span>
-                    <p class="text-gray-400">Today's active hotspot where new options volume and capital is stacking up right now.</p>
+                    <p class="text-gray-400">This view uses open interest, not measured intraday capital flows.</p>
                 </div>
                 <div>
                     <span class="font-bold text-white block">◆ Coil</span>
-                    <p class="text-gray-400">A major positioning cluster before the Volt. Green slows price, red speeds it through.</p>
+                    <p class="text-gray-400">A gamma exposure cluster. Color indicates sign, not a guaranteed price response.</p>
                 </div>
                 <div>
                     <span class="font-bold text-white block">⚡ The Flip</span>
-                    <p class="text-gray-400">The mood line. Above it is calm positive gamma; below it is wild negative gamma.</p>
+                    <p class="text-gray-400">Scenario spot levels where repriced net gamma changes sign; multiple roots are possible.</p>
                 </div>
             </div>
             <button onclick="closeHelpDrawer()" class="bg-[#1e293b] hover:bg-[#2e3b50] text-white font-bold w-full py-2 rounded-lg text-xs mt-5 transition-colors">Close Guide</button>
@@ -446,7 +449,6 @@
         let chainMeta = { demo: false, symbol: 'SPY', spot: 0, fetchedAt: null };
         let expirationsList = [];
         let chartScope = 'front';      // 'front' | 'all' — main chart expiry scope
-        let selectedDateFilter = "";
         const chainCache = {};         // symbol -> { ts, payload }
         const intradayCache = {};      // key -> { ts, data }
 
@@ -483,9 +485,10 @@
             if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(1)}B`;
             if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(1)}M`;
             if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(1)}K`;
-            return `${sign}$${a.toFixed(0)}`;
+            return `${sign}$${a.toFixed(2)}`;
         }
         function fmtStrike(s) {
+            if (!Number.isFinite(s)) return '--';
             return Number.isInteger(s) ? s.toFixed(0) : s.toFixed(1);
         }
 
@@ -493,7 +496,11 @@
         // Chains/OI/greeks move slowly, so a 5-minute client cache is the main API saver.
         const CHAIN_TTL_MS = 5 * 60 * 1000;
         const chainInflight = {};
+        // Cooldown is per page-load by design; reload starts a new JS context.
         let budgetExhaustedUntil = 0;
+        let chainLoading = false;
+        let selectionSequence = 0, hiroSequence = 0, trinitySequence = 0, compassSequence = 0;
+        let swingScope = 'today';
         let budgetError = null; // Keep the error and reset time stable across repeated renders.
 
         async function fetchChain(symbol, force = false) {
@@ -533,48 +540,60 @@
         }
 
         async function loadOptionsData(force = false) {
+            const token = ++selectionSequence;
+            chainLoading = true;
+            ++hiroSequence;
             const symbol = $('globalSymbolInput').value;
+            $('dataModeBadge').innerText = `${DEMO_MODE ? 'SIMULATED · ' : ''}Loading ${symbol} · previous data stale`;
             const loader = $('loader');
             if (loader) loader.classList.remove('hidden');
             hideError();
 
             try {
                 const payload = await fetchChain(symbol, force);
+                if (token !== selectionSequence) return;
                 currentData = payload.records;
                 chainMeta = { demo: !!payload.demo, symbol: payload.symbol, spot: payload.spot, fetchedAt: payload.fetchedAt };
 
                 expirationsList = [...new Set(currentData.map(d => d.expiration))].sort();
-                selectedDateFilter = expirationsList[0] || '';
 
                 updateDataBadge();
                 renderAll();
                 loadMarket(); // fire-and-forget: VIX + quote context
             } catch (e) {
+                if (token !== selectionSequence) return;
                 console.warn('loadOptionsData failed:', e);
                 showError(e.budgetExhausted ? e.message : `Could not load options data: ${e.message}`);
             } finally {
-                if (loader) loader.classList.add('hidden');
+                if (token === selectionSequence) {chainLoading=false; if(loader) loader.classList.add('hidden');}
             }
         }
 
         async function loadMarket() {
+            const token = selectionSequence;
+            if (DEMO_MODE) { $('vixBlock').style.display = 'none'; return; }
             const symbol = $('globalSymbolInput').value;
             const vixBlock = $('vixBlock');
             try {
                 const resp = await fetch(`/api/market?symbol=${encodeURIComponent(symbol)}`);
                 const m = await resp.json().catch(() => ({}));
                 if (!resp.ok || m.error) throw new Error(m.error || `HTTP ${resp.status}`);
+                if (token !== selectionSequence) return;
                 const arrow = m.vixChange >= 0 ? '▲' : '▼';
                 $('vixVal').innerText = `${m.vix.toFixed(1)} ${arrow} ${Math.abs(m.vixChange).toFixed(1)}`;
                 if (vixBlock) vixBlock.style.display = '';
             } catch (e) {
                 console.warn('loadMarket failed:', e);
-                if (vixBlock) vixBlock.style.display = 'none';
+                if (token === selectionSequence && vixBlock) vixBlock.style.display = 'none';
             }
         }
 
         function updateDataBadge() {
             const badge = $('dataModeBadge');
+            for (const el of document.querySelectorAll?.('[data-asof]') || []) {
+                const timestamp = el.getAttribute('data-asof');
+                el.textContent = `as of ${new Date(timestamp).toLocaleTimeString()}${Date.now()-Date.parse(timestamp)>CHAIN_TTL_MS?' · STALE':''}`;
+            }
             if (chainMeta.demo) {
                 badge.innerText = '● Simulated';
                 badge.className = 'bg-[#451a03] text-amber-400 border border-[#92400e] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider';
@@ -583,14 +602,15 @@
                 badge.className = 'bg-[#052e16] text-emerald-400 border border-[#166534] text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider';
             }
             if (chainMeta.fetchedAt) {
+                if(Date.now()-Date.parse(chainMeta.fetchedAt)>CHAIN_TTL_MS) badge.innerText += ' · STALE';
                 const t = new Date(chainMeta.fetchedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                $('dataStamp').innerText = `${chainMeta.demo ? 'Simulated' : 'Updated'} ${t}`;
+                $('dataStamp').innerText = `${chainMeta.demo ? 'SIMULATED · ' : ''}as of ${t}${Date.now()-Date.parse(chainMeta.fetchedAt)>CHAIN_TTL_MS?' · STALE':''}`;
             }
         }
 
         function showError(msg) {
             const b = $('errorBanner');
-            b.innerHTML = `<span>⚠ ${msg}</span> <button onclick="loadOptionsData(true)" class="ml-3 underline font-bold hover:text-white">Retry</button>`;
+            b.innerHTML = `<span>⚠ ${escapeHtml(msg)}</span> <button onclick="loadOptionsData(true)" class="ml-3 underline font-bold hover:text-white">Retry</button>`;
             b.classList.remove('hidden');
         }
         function hideError() {
@@ -599,101 +619,83 @@
 
         // ==================== ANALYTICS ====================
         // Aggregate per-strike dealer exposure. useDex=false -> dollar gamma, true -> dollar delta.
+        const ASSUMED_RISK_FREE_RATE = 0.043;
+        const ASSUMED_DIVIDEND_YIELD = 0;
+        const MODEL_NOTE = 'GEX per 1% spot move = signed gamma × OI × 100 × spot² × 0.01. Assumption: calls +, puts −; not measured dealer inventory. Scenario Black-Scholes holds IV fixed, risk-free rate 4.3%, dividends 0. Date-only expirations assume 4 PM New York close.';
+        function escapeHtml(v) { return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function nearestStrikes(strikes, spot, n) { return [...strikes].sort((a,b) => Math.abs(a-spot)-Math.abs(b-spot) || a-b).slice(0,n).sort((a,b)=>a-b); }
+        function scenarioGamma(c, spot, now) {
+            const t = (Date.parse(c.expiration)-now)/(365*86400000);
+            if (!(t > 0 && c.iv > 0 && c.strike > 0 && spot > 0)) return 0;
+            const volT = c.iv*Math.sqrt(t);
+            const d1 = (Math.log(spot/c.strike)+(ASSUMED_RISK_FREE_RATE-ASSUMED_DIVIDEND_YIELD+c.iv*c.iv/2)*t)/volT;
+            return Math.exp(-d1*d1/2-ASSUMED_DIVIDEND_YIELD*t)/(Math.sqrt(2*Math.PI)*spot*volT);
+        }
+        function scenarioRoots(contracts, spot, now = Date.now()) {
+            const valid = contracts.filter(c => c.iv > 0 && Number.isFinite(c.iv) && c.oi > 0 && Date.parse(c.expiration) > now);
+            if (!valid.length) return [];
+            // Precompute contract terms once; do not parse dates inside the grid loop.
+            const terms=valid.map(c=>{const t=(Date.parse(c.expiration)-now)/(365*86400000), v=c.iv*Math.sqrt(t);return {logK:Math.log(c.strike), drift:(ASSUMED_RISK_FREE_RATE+c.iv*c.iv/2)*t, v, weight:(c.type==='call'?1:-1)*c.oi/(Math.sqrt(2*Math.PI)*v)};});
+            const value = s => {const logS=Math.log(s);let sum=0;for(const c of terms){const d=(logS-c.logK+c.drift)/c.v;sum+=c.weight*Math.exp(-d*d/2);}return sum*s;};
+            // Base ±15% grid, extended to ±20%. Add points around narrow expiry peaks.
+            const grid = new Set(Array.from({length:801},(_,i)=>spot*(0.8+i*0.0005)));
+            for (const c of valid) {
+                const t=(Date.parse(c.expiration)-now)/(365*86400000);
+                // Only narrow peaks need extra samples beyond the base 0.05% spacing.
+                if (c.iv*Math.sqrt(t) >= 0.002) continue;
+                const center=c.strike*Math.exp(-(ASSUMED_RISK_FREE_RATE+c.iv*c.iv/2)*t);
+                for(let i=-12;i<=12;i++) { const s=center*Math.exp(i*c.iv*Math.sqrt(t)/4); if(s>=spot*.8 && s<=spot*1.2) grid.add(s); }
+            }
+            const xs=[...grid].sort((a,b)=>a-b), roots=[];
+            const add=x=>{if(!roots.some(r=>Math.abs(r-x)<spot*1e-7)) roots.push(x);};
+            let a=xs[0], fa=value(a);
+            for(const b of xs.slice(1)) {
+                const fb=value(b);
+                if(fa*fb<0) {
+                    let lo=a, hi=b, flo=fa;
+                    for(let i=0;i<50;i++) { const mid=(lo+hi)/2, fm=value(mid); if(fm===0){lo=hi=mid;break;} if(Math.sign(fm)===Math.sign(flo)){lo=mid;flo=fm;}else hi=mid; }
+                    add((lo+hi)/2);
+                } else if(fb===0 && fa!==0 && b<xs[xs.length-1] && Math.sign(value(b+spot*1e-8))!==Math.sign(fa)) add(b);
+                a=b;fa=fb;
+            }
+            return roots.sort((a,b)=>a-b);
+        }
+        const levelCache = new WeakMap();
         function computeLevels(records, spot, exps, useDex = false) {
-            const val = (r) => useDex ? (r.dollar_dex || 0) : (r.dollar_gex || 0);
-            const perStrike = {};
-            let netGex = 0, netDex = 0, callOi = 0, putOi = 0;
-
-            records.forEach(r => {
-                if (!exps.includes(r.expiration)) return;
-                const s = r.strike;
-                if (!perStrike[s]) perStrike[s] = { v: 0, oi: 0, callOi: 0, putOi: 0, ivNum: 0, ivDen: 0 };
-                const vv = val(r);
-                perStrike[s].v += vv;
-                perStrike[s].oi += r.open_interest || 0;
-                perStrike[s].callOi += r.call_oi || 0;
-                perStrike[s].putOi += r.put_oi || 0;
-                if (r.iv > 0 && r.open_interest > 0) { perStrike[s].ivNum += r.iv * r.open_interest; perStrike[s].ivDen += r.open_interest; }
-                if (!useDex) {
-                    netGex += r.dollar_gex || 0;
-                    netDex += r.dollar_dex || 0;
-                    callOi += r.call_oi || 0;
-                    putOi += r.put_oi || 0;
-                }
-            });
-            // Totals are always gamma-based regardless of the chart metric
-            if (useDex) {
-                records.forEach(r => {
-                    netGex += r.dollar_gex || 0;
-                    netDex += r.dollar_dex || 0;
-                    callOi += r.call_oi || 0;
-                    putOi += r.put_oi || 0;
-                });
+            const cacheKey=JSON.stringify([spot,exps,useDex,Math.floor(Date.now()/60000)]);
+            const cached=levelCache.get(records);
+            if(cached?.has(cacheKey)) return cached.get(cacheKey);
+            const scoped=records.filter(r=>exps.includes(r.expiration)), perStrike={};
+            let netGex=0,netDex=0,callOi=0,putOi=0,ivNum=0,ivDen=0;
+            const contracts=scoped.flatMap(r=>r.contracts || []);
+            const frontTwo=[...new Set(scoped.map(r=>r.expiration))].sort().slice(0,2);
+            for(const r of scoped) {
+                const ps=perStrike[r.strike] ||= {v:0,g:0,call:0,put:0,oi:0,callOi:0,putOi:0,ivNum:0,ivDen:0};
+                ps.v+= (useDex?r.dollar_dex:r.dollar_gex) || 0; ps.g+=r.dollar_gex || 0;
+                ps.call+=r.call_gex || 0; ps.put+=r.put_gex || 0;
+                ps.oi+=r.open_interest || 0; ps.callOi+=r.call_oi || 0; ps.putOi+=r.put_oi || 0;
+                ps.ivNum+=r.iv_num || 0; ps.ivDen+=r.iv_den || 0;
+                netGex+=r.dollar_gex || 0; netDex+=r.dollar_dex || 0; callOi+=r.call_oi || 0; putOi+=r.put_oi || 0;
+                if(frontTwo.includes(r.expiration) && Math.abs(r.strike-spot)/spot<=.01){ivNum+=r.iv_num || 0;ivDen+=r.iv_den || 0;}
             }
-
-            const strikes = Object.keys(perStrike).map(Number).sort((a, b) => a - b);
-
-            // Walls: biggest positive exposure at/above spot (call wall),
-            // most negative at/below spot (put wall).
-            let callWall = spot, maxCall = -Infinity;
-            let putWall = spot, minPut = Infinity;
-            let voltStrike = spot, maxAbsV = -Infinity;
-            strikes.forEach(s => {
-                const g = perStrike[s].v;
-                if (s >= spot && g > maxCall) { maxCall = g; callWall = s; }
-                if (s <= spot && g < minPut) { minPut = g; putWall = s; }
-                if (Math.abs(g) > maxAbsV) { maxAbsV = Math.abs(g); voltStrike = s; }
-            });
-
-            // Gamma flip: strike where cumulative net exposure crosses zero,
-            // searched only within ±20% of spot. Crossings in the far tails
-            // are noise from thin strikes, not tradable levels — report null
-            // instead of a fantasy number.
-            let cum = 0, flip = null;
-            {
-                const lo = spot * 0.8, hi = spot * 1.2;
-                let prevS = null;
-                for (const s of strikes) {
-                    const prev = cum;
-                    cum += perStrike[s].v;
-                    if (prevS !== null && prev !== 0) {
-                        if (cum === 0) {
-                            if (s >= lo && s <= hi) { flip = s; break; }
-                        } else if (Math.sign(prev) !== Math.sign(cum)) {
-                            const crossing = prevS + (s - prevS) * (Math.abs(prev) / (Math.abs(prev) + Math.abs(cum)));
-                            if (crossing >= lo && crossing <= hi) { flip = crossing; break; }
-                        }
-                    }
-                    prevS = s;
-                }
-            }
-            const flipFound = flip !== null;
-
-            // ATM IV: OI-weighted mean IV within ±1% of spot, front two expirations
-            const frontTwo = [...new Set(records.map(r => r.expiration))].sort().slice(0, 2);
-            let ivNum = 0, ivDen = 0;
-            records.forEach(r => {
-                if (!frontTwo.includes(r.expiration)) return;
-                if (Math.abs(r.strike - spot) / spot > 0.01) return;
-                if (r.iv > 0 && r.open_interest > 0) { ivNum += r.iv * r.open_interest; ivDen += r.open_interest; }
-            });
-            const atmIv = ivDen > 0 ? ivNum / ivDen : 0;
-
-            // ATM gamma share: |exposure| within ±0.5% of spot vs total |exposure|
-            let atmAbs = 0, totAbs = 0;
-            strikes.forEach(s => {
-                const a = Math.abs(perStrike[s].v);
-                totAbs += a;
-                if (Math.abs(s - spot) / spot <= 0.005) atmAbs += a;
-            });
-
-            return {
-                strikes, perStrike, callWall, putWall, voltStrike, flip, flipFound,
-                netGex, netDex, atmIv,
-                atmShare: totAbs > 0 ? atmAbs / totAbs : 0,
-                pcRatio: callOi > 0 ? putOi / callOi : 0,
-                callOi, putOi
-            };
+            const strikes=Object.keys(perStrike).map(Number).sort((a,b)=>a-b);
+            let callWall=null,putWall=null,voltStrike=null,maxCall=0,minPut=0,maxAbs=0,atmAbs=0,totalAbs=0;
+            for(const s of strikes){const p=perStrike[s];if(p.call>maxCall){maxCall=p.call;callWall=s;}if(p.put<minPut){minPut=p.put;putWall=s;}if(Math.abs(p.g)>maxAbs){maxAbs=Math.abs(p.g);voltStrike=s;}totalAbs+=Math.abs(p.g);if(Math.abs(s-spot)/spot<=.005)atmAbs+=Math.abs(p.g);}
+            const roots=scenarioRoots(contracts,spot);
+            const flip=roots.length?[...roots].sort((a,b)=>Math.abs(a-spot)-Math.abs(b-spot))[0]:null;
+            const coverage = key => contracts.length ? contracts.filter(c=>Number.isFinite(c[key])).length/contracts.length : 0;
+            const result = {strikes,perStrike,netGex,netDex,callOi,putOi,callWall,putWall,voltStrike,roots,flip,flipFound:flip!==null,atmIv:ivDen?ivNum/ivDen:null,atmShare:totalAbs?atmAbs/totalAbs:0,pcRatio:callOi?putOi/callOi:null,gammaCoverage:coverage('gamma'),deltaCoverage:coverage('delta'),scenarioCoverage:contracts.length?contracts.filter(c=>c.iv>0 && Number.isFinite(c.iv) && Number.isFinite(Date.parse(c.expiration))).length/contracts.length:0};
+            const cache=cached || new Map();
+            if(cache.size>12) cache.clear();
+            cache.set(cacheKey,result);levelCache.set(records,cache);
+            return result;
+        }
+        function flipText(lv) { if(!lv.scenarioCoverage) return 'Gamma flip n/a: missing IV/expiry'; return (lv.roots.length ? lv.roots.map(fmtStrike).join(', ') : 'No gamma flip within 20% of spot') + (lv.scenarioCoverage<1?' (partial coverage)':''); }
+        function ratioText(v) { return v === null ? 'n/a' : v.toFixed(2); }
+        function marketDate(now=new Date()) { return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(now); }
+        function swingExpirations(exps, mode, now=new Date()) {
+            const today=marketDate(now), end=new Date(today+'T12:00:00Z');end.setUTCDate(end.getUTCDate()+7);
+            return exps.filter(e=>mode==='all' || (mode==='today'?e.slice(0,10)===today:e.slice(0,10)>=today && e.slice(0,10)<end.toISOString().slice(0,10)));
         }
 
         function scopeExpirations() {
@@ -725,10 +727,10 @@
         function renderKPIs() {
             if (!currentData.length) return;
             const spot = chainMeta.spot;
-            const lv = computeLevels(currentData, spot, expirationsList, false);
+            const lv = computeLevels(currentData, spot, scopeExpirations(), false);
             const useDex = metricIsDex();
-            $('kpiNetGexLabel').innerText = useDex ? 'Net DEX' : 'Net GEX';
-            $('kpiNetDexLabel').innerText = useDex ? 'Net GEX' : 'Net DEX';
+            $('kpiNetGexLabel').innerText = 'Net GEX / 1% move';
+            $('kpiNetDexLabel').innerText = 'Net DEX';
 
             $('spotVal').innerText = `$${spot.toFixed(2)}`;
 
@@ -738,51 +740,40 @@
             $('regimeVal').className = positive
                 ? 'text-[#10b981] text-sm font-black mt-0.5'
                 : 'text-[#a855f7] text-sm font-black mt-0.5';
-            $('regimeBannerText').innerText = positive
-                ? 'MAGNET / BRACKET tape — dips get bought. Mean reversion is supported. Play ranges off walls.'
-                : 'AMPLIFIER tape — moves accelerate both ways. Walls don\'t hold here. Don\'t fade the first clean break.';
+            $('regimeBannerText').innerText = 'Model-implied gamma exposure; hedging behavior and price outcomes are not guaranteed.';
             const tide = $('tideVal');
             tide.innerText = positive ? 'Positive-Gamma Tide' : 'Negative-Gamma Tide';
             tide.className = 'font-extrabold ' + (positive ? 'text-emerald-400' : 'text-purple-400');
 
             // Net GEX / DEX badges with real signed dollar values
             const gexBadge = $('netGexVal');
-            gexBadge.innerText = `${fmtMoney(lv.netGex)} ${lv.netGex >= 0 ? 'BULL' : 'BEAR'}`;
+            gexBadge.innerText = `${fmtMoney(lv.netGex)} ${lv.netGex >= 0 ? 'Positive gamma' : 'Negative gamma'}`;
             gexBadge.className = lv.netGex >= 0
                 ? 'bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded'
                 : 'bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded';
             const dexBadge = $('netDexVal');
-            dexBadge.innerText = `${fmtMoney(lv.netDex)} ${lv.netDex >= 0 ? 'BULL' : 'BEAR'}`;
+            dexBadge.innerText = `${fmtMoney(lv.netDex)} signed delta`;
             dexBadge.className = lv.netDex >= 0
                 ? 'bg-[#003822] text-[#00e676] border border-[#006400] text-[9px] font-black px-2.5 py-0.5 rounded'
                 : 'bg-[#5d0e15] text-[#ff3344] border border-[#800c15] text-[9px] font-black px-2.5 py-0.5 rounded';
 
             $('callWallVal').innerText = `$${fmtStrike(lv.callWall)}`;
             $('putWallVal').innerText = `$${fmtStrike(lv.putWall)}`;
-            $('gFlipVal').innerText = lv.flipFound ? `$${lv.flip.toFixed(1)}` : '—';
-            $('gFlipVal').title = lv.flipFound ? 'Zero-crossing of cumulative net $GEX within ±20% of spot' : 'No gamma sign-change within ±20% of spot';
+            $('gFlipVal').innerText = flipText(lv);
+            $('gFlipVal').title = MODEL_NOTE;
 
-            $('pcRatioVal').innerText = lv.pcRatio > 0 ? lv.pcRatio.toFixed(2) : '—';
-            $('atmIvVal').innerText = lv.atmIv > 0 ? `${(lv.atmIv * 100).toFixed(1)}%` : '—';
+            $('pcRatioVal').innerText = ratioText(lv.pcRatio);
+            $('atmIvVal').innerText = lv.atmIv > 0 ? `${lv.atmIv === null ? 'n/a' : (lv.atmIv * 100).toFixed(1) + '%'}` : '—';
 
             $('globalStabilityVal').innerText = `${(lv.atmShare * 100).toFixed(0)}%`;
 
-            // Level playbook with real numbers
-            $('scenarioBullText').innerText = lv.flipFound
-                ? `Spot reclaims the flip at $${lv.flip.toFixed(1)} on volume and holds above. First upside target: the call wall at $${fmtStrike(lv.callWall)}.`
-                : `Spot pushes through the call wall at $${fmtStrike(lv.callWall)} on volume and holds above — no nearby flip to act as a magnet.`;
-            $('scenarioBaseText').innerText =
-                `Spot chops between the put wall ($${fmtStrike(lv.putWall)}) and the call wall ($${fmtStrike(lv.callWall)}) into the close. Fade the edges, not the middle.`;
-            $('scenarioBearText').innerText =
-                `Spot loses the put wall at $${fmtStrike(lv.putWall)} and accepts below — negative-gamma acceleration takes over both ways.`;
+            $('scenarioBullText').innerText = 'Call wall: largest positive call gamma exposure, not a price target.';
+            $('scenarioBaseText').innerText = MODEL_NOTE;
+            $('scenarioBearText').innerText = 'Put wall: largest negative put gamma exposure, not guaranteed support.';
+            $('swingGexRead').innerText = `GEX ${fmtMoney(lv.netGex)} per 1% move. Gamma available on ${(lv.gammaCoverage*100).toFixed(1)}% of contracts; delta ${(lv.deltaCoverage*100).toFixed(1)}%; scenario IV/expiry ${(lv.scenarioCoverage*100).toFixed(1)}%.`;
+            $('swingLevelsRead').innerText = `Call wall ${fmtStrike(lv.callWall)} · Put wall ${fmtStrike(lv.putWall)} · ${flipText(lv)} · P/C ${ratioText(lv.pcRatio)}`;
+            $('dataCoverage').innerText = $('swingGexRead').innerText;
 
-            // Swing read panel
-            const gexRead = lv.netGex >= 0
-                ? `Net dealer gamma is ${fmtMoney(lv.netGex)} (long gamma). Dealer hedging buys dips and sells rips — expect magnet / bracket price action.`
-                : `Net dealer gamma is ${fmtMoney(lv.netGex)} (short gamma). Dealer hedging amplifies moves — expect trend acceleration and wider ranges.`;
-            $('swingGexRead').innerText = gexRead;
-            $('swingLevelsRead').innerText =
-                `Call wall $${fmtStrike(lv.callWall)} · Put wall $${fmtStrike(lv.putWall)} · Flip ${lv.flipFound ? '$' + lv.flip.toFixed(1) : 'none nearby'} · P/C ${lv.pcRatio.toFixed(2)}.`;
         }
 
         // ==================== RENDER: MAIN CHART ====================
@@ -796,9 +787,7 @@
             const numStrikes = parseInt($('globalStrikesSelect').value);
 
             const lv = computeLevels(currentData, spot, scopeExpirations(), useDex);
-            const inRange = lv.strikes
-                .filter(s => s >= spot * (1 - rangePct) && s <= spot * (1 + rangePct))
-                .slice(0, numStrikes);
+            const inRange = nearestStrikes(lv.strikes.filter(s => s >= spot * (1-rangePct) && s <= spot * (1+rangePct)), spot, numStrikes);
 
             const y = inRange.map(s => (invert ? -1 : 1) * lv.perStrike[s].v / 1e6);
             const colors = inRange.map((s, i) => {
@@ -807,22 +796,22 @@
                 return y[i] >= 0 ? '#10b981' : '#6366f1';
             });
 
-            const unit = useDex ? '$DEX ($M)' : '$GEX ($M)';
+            const unit = useDex ? '$DEX ($M)' : '$GEX / 1% move ($M)';
             const shapes = [];
             const annotations = [];
             if (showLevels) {
                 shapes.push(vlineShape(spot, '#ffffff'));
-                shapes.push(vlineShape(lv.callWall, '#eab308'));
-                shapes.push(vlineShape(lv.putWall, '#a855f7'));
-                if (lv.flipFound) shapes.push(vlineShape(lv.flip, '#ffd600', 'dash'));
+                if (lv.callWall !== null) shapes.push(vlineShape(lv.callWall, '#eab308'));
+                if (lv.putWall !== null) shapes.push(vlineShape(lv.putWall, '#a855f7'));
+                lv.roots.forEach(root => shapes.push(vlineShape(root, '#ffd600', 'dash')));
                 const ann = (x, text, color) => annotations.push({
                     x, y: 1, yref: 'paper', text, showarrow: false,
                     font: { color, size: 9 }, bgcolor: 'rgba(4,6,11,0.8)', xanchor: 'center', yanchor: 'bottom'
                 });
                 ann(spot, `SPOT ${spot.toFixed(2)}`, '#ffffff');
-                ann(lv.callWall, `CALL ${fmtStrike(lv.callWall)}`, '#eab308');
-                ann(lv.putWall, `PUT ${fmtStrike(lv.putWall)}`, '#a855f7');
-                if (lv.flipFound) ann(lv.flip, `FLIP ${lv.flip.toFixed(1)}`, '#ffd600');
+                if(lv.callWall !== null) ann(lv.callWall, `CALL ${fmtStrike(lv.callWall)}`, '#eab308');
+                if(lv.putWall !== null) ann(lv.putWall, `PUT ${fmtStrike(lv.putWall)}`, '#a855f7');
+                lv.roots.forEach(root => ann(root, `FLIP ${root.toFixed(1)}`, '#ffd600'));
             }
 
             Plotly.newPlot('mainDashboardPlot', [{
@@ -830,7 +819,7 @@
                 hovertemplate: 'Strike %{x}<br>' + unit + ': %{y:.1f}<extra></extra>'
             }], baseLayout({
                 title: {
-                    text: `${chainMeta.symbol} net dealer ${useDex ? 'delta' : 'gamma'} exposure — ${chartScope === 'front' ? 'front expiry (' + (expirationsList[0] || '') + ')' : 'all expiries'}`,
+                    text: `${chainMeta.symbol} net dealer ${useDex ? 'delta' : 'gamma'} exposure — ${chartScope === 'front' ? 'front expiry (' + escapeHtml(expirationsList[0] || '') + ')' : 'all expiries'}`,
                     font: { color: '#94a3b8', size: 11 }
                 },
                 yaxis: { title: { text: unit, font: { color: '#64748b', size: 10 } }, showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, zeroline: true, zerolinecolor: '#334155' },
@@ -844,9 +833,7 @@
             const spot = chainMeta.spot;
             const useDex = metricIsDex();
             const lv = computeLevels(currentData, spot, [expirationsList[0]], useDex);
-            const inRange = lv.strikes
-                .filter(s => s >= spot * 0.985 && s <= spot * 1.015)
-                .slice(0, 25);
+            const inRange = nearestStrikes(lv.strikes.filter(s => s >= spot*.985 && s <= spot*1.015), spot, 25);
             const x = inRange.map(s => lv.perStrike[s].v / 1e6);
             const colors = inRange.map(s => {
                 if (Math.abs(s - lv.callWall) < 1e-9) return '#eab308';
@@ -856,10 +843,10 @@
 
             Plotly.newPlot('zeroDteGexPlot', [{
                 x, y: inRange, type: 'bar', orientation: 'h', marker: { color: colors },
-                hovertemplate: 'Strike %{y}<br>$' + (useDex ? 'DEX' : 'GEX') + ' %{x:.1f}M<extra></extra>'
+                hovertemplate: 'Strike %{y}<br>$' + (useDex ? 'DEX' : 'GEX / 1% move') + ' %{x:.1f}M<extra></extra>'
             }], baseLayout({
                 margin: { l: 45, r: 10, b: 30, t: 10 },
-                title: { text: `Front expiry ${expirationsList[0]} ($M)`, font: { color: '#94a3b8', size: 10 } },
+                title: { text: `Front expiry ${escapeHtml(expirationsList[0])} ($M)`, font: { color: '#94a3b8', size: 10 } },
                 xaxis: { title: { text: '$M', font: { color: '#64748b', size: 10 } }, showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 }, zeroline: true, zerolinecolor: '#334155' }
             }), { responsive: true });
         }
@@ -869,18 +856,21 @@
             if (!currentData.length) return;
             const spot = chainMeta.spot;
             const useDex = metricIsDex();
-            const isAllExp = $('toggleAllExpBtn').classList.contains('active');
-            const activeExpirations = isAllExp ? expirationsList : [selectedDateFilter].filter(Boolean);
+            const activeExpirations = swingExpirations(expirationsList, swingScope);
+            const scoped = computeLevels(currentData, spot, activeExpirations, useDex);
+            $('swingGexRead').innerText = `Scoped GEX ${fmtMoney(scoped.netGex)} per 1% move; DEX ${fmtMoney(scoped.netDex)}. Gamma coverage ${(scoped.gammaCoverage*100).toFixed(1)}%; delta ${(scoped.deltaCoverage*100).toFixed(1)}%.`;
+            $('swingLevelsRead').innerText = `Call ${fmtStrike(scoped.callWall)} · Put ${fmtStrike(scoped.putWall)} · ${flipText(scoped)}`;
             const valOf = (r) => useDex ? (r.dollar_dex || 0) : (r.dollar_gex || 0);
-            const label = useDex ? 'DEX' : 'GEX';
+            const label = useDex ? 'DEX' : 'GEX / 1% move';
 
             let headerHtml = `<tr><th class="py-2.5 px-3">Strike</th>`;
-            activeExpirations.forEach(exp => { headerHtml += `<th class="py-2.5 px-3">${exp.slice(5)}</th>`; });
+            activeExpirations.forEach(exp => { headerHtml += `<th class="py-2.5 px-3">${escapeHtml(exp.slice(5))}</th>`; });
             headerHtml += `<th class="py-2.5 px-3">Net $${label}</th></tr>`;
             $('voltickGridHeader').innerHTML = headerHtml;
 
             const strikeMap = {};
             currentData.forEach(d => {
+                if (!activeExpirations.includes(d.expiration)) return;
                 if (!strikeMap[d.strike]) {
                     strikeMap[d.strike] = { total: 0 };
                     activeExpirations.forEach(exp => strikeMap[d.strike][exp] = 0);
@@ -909,22 +899,22 @@
                     const v = node[exp];
                     const a = Math.abs(v);
                     let cellClass = "cell-zero";
-                    let formattedVal = "$0";
+                    let formattedVal = fmtMoney(v);
                     if (a >= WARM) {
                         cellClass = v > 0
                             ? (a >= HOT ? "cell-sticky-bright" : "cell-sticky-green")
                             : (a >= HOT ? "cell-slippery-bright" : "cell-slippery-red");
-                        formattedVal = `${v > 0 ? '+' : '-'}$${(a / 1e6).toFixed(1)}M`;
+
                     }
                     bodyHtml += `<td class="py-2.5 px-3 border border-gray-800 font-bold ${cellClass}">${formattedVal}</td>`;
                 });
 
                 const tot = node.total;
                 const totClass = tot >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold";
-                bodyHtml += `<td class="py-2.5 px-3 ${totClass} border border-gray-800">${tot >= 0 ? '+' : '-'}${(Math.abs(tot) / 1e6).toFixed(1)}M</td></tr>`;
+                bodyHtml += `<td class="py-2.5 px-3 ${totClass} border border-gray-800">${fmtMoney(tot)}</td></tr>`;
             });
 
-            $('voltickGridBody').innerHTML = bodyHtml || `<tr><td class="py-6 text-gray-500 text-xs">No strikes in range.</td></tr>`;
+            $('voltickGridBody').innerHTML = bodyHtml || `<tr><td class="py-6 text-gray-500 text-xs">No expirations or strikes in selected scope.</td></tr>`;
         }
 
         // ==================== RENDER: TRINITY ====================
@@ -948,10 +938,11 @@
             return j;
         }
 
-        const fmtPx = v => v >= 1000 ? v.toFixed(1) : v.toFixed(2);
+        const fmtPx = v => !Number.isFinite(v) ? '--' : v >= 1000 ? v.toFixed(1) : v.toFixed(2);
         const fmtOi = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(Math.round(n));
 
         function fmtDist(level, spot) {
+            if (!Number.isFinite(level)) return '';
             const d = level - spot, pct = d / spot * 100, a = Math.abs(d);
             const pts = a >= 100 ? a.toFixed(0) : a.toFixed(1);
             return `${d < 0 ? '-' : '+'}${pts} pts (${d < 0 ? '-' : '+'}${Math.abs(pct).toFixed(2)}%)`;
@@ -963,11 +954,12 @@
         function expectedMove(records, spot) {
             const exps = [...new Set(records.map(r => r.expiration))].sort();
             const now = new Date();
-            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const todayStr = marketDate(now);
             const ptHour = Number(new Date(now.toLocaleString('en-US', {timeZone:'America/Los_Angeles'})).getHours());
             for (const exp of exps) {
-                if (exp < todayStr) continue;
-                if (exp === todayStr && ptHour >= 13) continue;
+                if (exp.slice(0,10) < todayStr) continue;
+                if (exp.length > 10 && Date.parse(exp) <= now.getTime()) continue;
+                if (exp.length === 10 && exp === todayStr && ptHour >= 13) continue;
                 let best = null, bestD = Infinity;
                 for (const r of records) {
                     if (r.expiration !== exp) continue;
@@ -975,8 +967,8 @@
                     if (d < bestD) { bestD = d; best = r; }
                 }
                 if (!best) continue;
-                const c = best.call_mid > 0 ? best.call_mid : 0;
-                const p = best.put_mid > 0 ? best.put_mid : 0;
+                const c = best.call_mid, p = best.put_mid;
+                if (!(Number.isFinite(c) && c >= 0 && Number.isFinite(p) && p >= 0)) return null;
                 const straddle = c + p;
                 if (straddle > 0 && straddle >= spot * 0.0005) {
                     return { em: straddle, exp, strike: best.strike };
@@ -1017,42 +1009,42 @@
 
         // Day-over-day positioning change vs a localStorage baseline snapshot.
         function trinityDOD(sym, lv) {
-            const key = 'gexmap_dod_' + sym;
-            const today = new Date().toISOString().slice(0, 10);
-            const snap = {};
-            lv.strikes.forEach(s => { snap[s] = Math.round(lv.perStrike[s].v); });
-            let base = null;
-            try { base = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { /* ignore */ }
-            const save = () => { try { localStorage.setItem(key, JSON.stringify({ date: today, snap })); } catch (e) { /* ignore */ } };
-            if (!base || !base.snap || base.date === today) {
-                if (!base || !base.snap) save();
-                return base && base.snap ? null : 'Collecting a positioning baseline — day-over-day change appears on your next visit.';
+            const key = 'gexmap_dod_v2_' + (DEMO_MODE ? 'demo_' : 'live_') + sym;
+            const today = marketDate(), snap = {};
+            lv.strikes.forEach(s => { snap[s] = lv.perStrike[s].g; });
+            let state;
+            try { state = JSON.parse(localStorage.getItem(key) || 'null'); } catch {}
+            if (!state) state = {current: {date:today,snap}, previous:null};
+            if (state.current.date !== today) state = {previous:state.current,current:{date:today,snap}};
+            else state.current = {date:today,snap};
+            const base=state.previous, changes=[];
+            if(base) for(const k of new Set([...Object.keys(base.snap),...Object.keys(snap)])) {
+                if(!(k in base.snap)) changes.push(`added ${fmtStrike(Number(k))}`);
+                else if(!(k in snap)) changes.push(`removed ${fmtStrike(Number(k))}`);
+                else if(base.snap[k]*snap[k]<0) changes.push(`sign reversed at ${fmtStrike(Number(k))}`);
+                else if(snap[k]!==base.snap[k]) changes.push(`${fmtStrike(Number(k))}: ${fmtMoney(snap[k]-base.snap[k])}`);
             }
-            const deltas = [];
-            Object.keys(snap).forEach(k => {
-                const oldA = Math.abs(base.snap[k] || 0), nowA = Math.abs(snap[k]);
-                if (oldA > 0) deltas.push({ s: Number(k), chg: (nowA - oldA) / oldA });
-            });
-            deltas.sort((a, b) => b.chg - a.chg);
-            const grew = deltas.filter(d => d.chg > 0.15).slice(0, 3).map(d => fmtStrike(d.s));
-            const faded = deltas.filter(d => d.chg < -0.15).slice(-3).reverse().map(d => fmtStrike(d.s));
-            save();
-            if (!grew.length && !faded.length) return 'Positioning roughly unchanged since your last check.';
-            let txt = 'Since your last check: positioning ';
-            if (grew.length) txt += `grew at ${grew.join(', ')}`;
-            if (grew.length && faded.length) txt += ' and ';
-            if (faded.length) txt += `faded at ${faded.join(', ')}`;
-            return txt + '.';
+            // Keep the prior day's snapshot throughout today, including after reload.
+            // Save only after the caller has inserted the comparison in the DOM.
+            pendingBaselines.set(key,state);
+            return (base ? `Since ${escapeHtml(base.date)}: ${changes.join('; ') || 'unchanged'}.` : 'Collecting baseline for the next market day.') + ' Changes reflect spot/greeks movement, not just positioning.';
+        }
+        const pendingBaselines = new Map();
+        function commitBaselines() {
+            for(const [key,state] of pendingBaselines) { try {localStorage.setItem(key,JSON.stringify(state));} catch {} }
+            pendingBaselines.clear();
         }
 
         async function renderTrinityMode() {
+            const token = ++trinitySequence;
             for (const p of TRINITY_PANELS) {
                 const el = $(p.board);
                 try {
                     const [payload, mkt] = await Promise.all([
                         fetchChain(p.sym), // 5-minute cache
-                        fetchMarket(p.sym).catch(() => null)
+                        DEMO_MODE ? Promise.resolve(null) : fetchMarket(p.sym).catch(() => null)
                     ]);
+                    if (token !== trinitySequence) return;
                     const spot = payload.spot;
                     const lv = computeLevels(payload.records, spot, allExpirations(payload.records), false);
                     const positive = lv.netGex >= 0;
@@ -1063,43 +1055,44 @@
                         `<span class="text-[10px] text-gray-500">${p.label}</span><br>` +
                         `<span class="text-xs text-gray-300">$${fmtPx(spot)}${dayTxt} · ` +
                         (positive
-                            ? `<b class="text-emerald-400">positive gamma</b> <span class="text-gray-500">(moves grind, levels hold)</span>`
-                            : `<b class="text-purple-400">negative gamma</b> <span class="text-gray-500">(moves extend, choppier)</span>`) +
+                            ? `<b class="text-emerald-400">positive gamma</b> <span class="text-gray-500">(model assumption)</span>`
+                            : `<b class="text-purple-400">negative gamma</b> <span class="text-gray-500">(model assumption)</span>`) +
                         `</span>`;
 
                     const em = expectedMove(payload.records, spot);
-                    const putWarn = lv.putWall > spot ? '⚠ sits above price — slippery, not a floor from here' : '';
+                    const putWarn = lv.putWall !== null && lv.putWall > spot ? 'Above spot; not guaranteed support' : '';
 
                     let levelsHtml = '';
                     levelsHtml += trinityLevelRow('★', 'Volt — heaviest strike', 'most positioning stacked on one strike', lv.voltStrike, spot, confluence(lv.voltStrike, lv, spot));
-                    levelsHtml += trinityLevelRow('‖', 'Call wall', 'ceiling — heaviest call gamma above price; sticky resistance', lv.callWall, spot, confluence(lv.callWall, lv, spot));
-                    levelsHtml += trinityLevelRow('‖', 'Put wall', 'floor — heaviest put gamma below price; key support', lv.putWall, spot, confluence(lv.putWall, lv, spot), putWarn);
+                    levelsHtml += trinityLevelRow('‖', 'Call wall', 'largest positive call gamma exposure', lv.callWall, spot, confluence(lv.callWall, lv, spot));
+                    levelsHtml += trinityLevelRow('‖', 'Put wall', 'largest negative put gamma exposure', lv.putWall, spot, confluence(lv.putWall, lv, spot), putWarn);
                     if (lv.flipFound) {
-                        levelsHtml += trinityLevelRow('⚡', 'Gamma flip', 'dealer hedging changes sign here — above it moves dampen, below they amplify', lv.flip, spot, confluence(lv.flip, lv, spot, 'flip'));
+                        lv.roots.forEach(root => { levelsHtml += trinityLevelRow('⚡', 'Gamma flip', 'Scenario net gamma crosses zero', root, spot, ''); });
                     } else {
-                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="No strike within ±20% of spot where cumulative dealer gamma changes sign — positioning is one-sided here">
+                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="No gamma flip within 20% of spot">
                             <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">⚡</span>
                             <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Gamma flip</div>
-                            <div class="text-[10px] text-gray-500 leading-tight">no sign-change within ±20% of spot</div></div></div>
+                            <div class="text-[10px] text-gray-500 leading-tight">${escapeHtml(flipText(lv))}</div></div></div>
                             <div class="text-right shrink-0"><div class="text-xs font-extrabold text-gray-500">—</div></div></div>`;
                     }
                     if (em) {
-                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${em.exp} expiry — what the options market has priced in as the expected move">
+                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${escapeHtml(em.exp)} expiry — what the options market has priced in as the expected move">
                             <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🎯</span>
                             <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Expected move <span class="text-amber-300 font-extrabold">+</span></div>
-                            <div class="text-[10px] text-gray-500 leading-tight">priced in to ${em.exp} (ATM call + put fair value)</div></div></div>
+                            <div class="text-[10px] text-gray-500 leading-tight">priced in to ${escapeHtml(em.exp)} (ATM call + put fair value)</div></div></div>
                             <div class="text-right shrink-0"><div class="text-xs font-extrabold text-white">±$${fmtPx(em.em)}</div>
                             <div class="text-[10px] text-gray-500">±${(em.em / spot * 100).toFixed(2)}%</div></div></div>`;
                     }
+                    if (!em) levelsHtml += '<div class="text-xs py-2">Expected move: n/a</div>';
                     levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="Open-interest-weighted implied volatility near the money, front two expirations">
                         <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🌊</span>
                         <div class="min-w-0"><div class="text-xs font-bold text-white">ATM IV</div>
                         <div class="text-[10px] text-gray-500 leading-tight">market's expected annualized wiggle</div></div></div>
-                        <div class="text-xs font-extrabold text-white">${(lv.atmIv * 100).toFixed(1)}%</div></div>`;
-                    levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5" title="Net dollar delta exposure — the directional share-equivalent dealers must hold right now">
+                        <div class="text-xs font-extrabold text-white">${lv.atmIv === null ? 'n/a' : (lv.atmIv * 100).toFixed(1) + '%'}</div></div>`;
+                    levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5" title="Signed delta exposure from open interest, not measured dealer inventory">
                         <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🧭</span>
                         <div class="min-w-0"><div class="text-xs font-bold text-white">Net DEX</div>
-                        <div class="text-[10px] text-gray-500 leading-tight">${lv.netDex >= 0 ? 'dealers long deltas — a tailwind for up moves' : 'dealers short deltas — a headwind for up moves'}</div></div></div>
+                        <div class="text-[10px] text-gray-500 leading-tight">Signed delta exposure from open interest, not measured dealer inventory</div></div></div>
                         <div class="text-xs font-extrabold ${lv.netDex >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${fmtMoney(lv.netDex)}</div></div>`;
 
                     // Per-strike colored rows, high -> low.
@@ -1128,14 +1121,14 @@
 
                     el.innerHTML = `
                         <div class="mb-2">${regimeLine}</div>
-                        <div class="text-[10px] text-gray-500 mb-2">Net $GEX <b class="${positive ? 'text-emerald-400' : 'text-purple-400'}">${fmtMoney(lv.netGex)}</b> · P/C ${lv.pcRatio.toFixed(2)}${payload.demo ? ' · <b class="text-amber-400">SIMULATED</b>' : ''}</div>
+                        <div class="text-[10px] text-gray-500 mb-2">Net $GEX / 1% move <b class="${positive ? 'text-emerald-400' : 'text-purple-400'}">${fmtMoney(lv.netGex)}</b> · P/C ${ratioText(lv.pcRatio)}${payload.demo ? ' · <b class="text-amber-400">SIMULATED</b>' : ''} · <span data-asof="${escapeHtml(payload.fetchedAt)}">as of ${escapeHtml(new Date(payload.fetchedAt).toLocaleTimeString())}${Date.now()-Date.parse(payload.fetchedAt)>CHAIN_TTL_MS?' · STALE':''}</span> · gamma ${(lv.gammaCoverage*100).toFixed(1)}% / delta ${(lv.deltaCoverage*100).toFixed(1)}% coverage · scenario IV/expiry ${(lv.scenarioCoverage*100).toFixed(1)}%</div>
                         <div class="mb-3">${levelsHtml}</div>
                         ${dod ? `<div class="text-[11px] text-sky-300/90 bg-sky-950/40 border border-sky-900/60 rounded-lg px-2.5 py-1.5 mb-3">📊 ${dod}</div>` : ''}
                         <div class="overflow-y-auto max-h-[420px] rounded-lg border border-gray-800">
                             <table class="w-full text-xs">
                                 <thead class="sticky top-0 bg-[#0b1120] z-10"><tr class="text-gray-400">
                                     <th class="text-right py-2 pl-2 pr-1 font-semibold" title="Option strike price">Strike</th>
-                                    <th class="text-right py-2 px-1 font-semibold" title="Net dealer dollar-gamma at this strike. Green: dealers buy dips (support). Purple: dealers sell dips (fuel).">Net $GEX</th>
+                                    <th class="text-right py-2 px-1 font-semibold" title="Dollar GEX per 1% move; assumed calls positive and puts negative.">GEX / 1% move</th>
                                     <th class="text-right py-2 px-1 font-semibold" title="Call open interest at this strike">Call OI</th>
                                     <th class="text-right py-2 px-1 font-semibold" title="Put open interest at this strike">Put OI</th>
                                     <th class="text-right py-2 pr-2 font-semibold" title="Implied volatility, OI-weighted">IV</th>
@@ -1143,14 +1136,16 @@
                                 <tbody>${rowsHtml || `<tr><td colspan="5" class="py-6 text-center text-gray-500">No strikes in range.</td></tr>`}</tbody>
                             </table>
                         </div>`;
+                    commitBaselines();
                 } catch (e) {
+                    if(token !== trinitySequence) return;
                     console.warn(`Trinity panel ${p.sym} failed:`, e);
                     const message = e.budgetExhausted
                         ? e.message.replace('ConvexValue hourly', 'Hourly')
                         : `Chain unavailable: ${e.message}`;
                     el.innerHTML = `<div class="py-10 text-center">
                         <div class="font-black text-sm text-white mb-1">${p.short} <span class="text-gray-500 font-semibold text-[10px]">${p.label}</span></div>
-                        <div class="text-xs text-gray-500">${String(message).replace(/</g, '&lt;')}</div>
+                        <div class="text-xs text-gray-500">${escapeHtml(message)}</div>
                         ${e.budgetExhausted ? '' : '<button onclick="renderTrinityMode()" class="mt-3 text-xs underline text-sky-400">Retry</button>'}</div>`;
                 }
             }
@@ -1158,11 +1153,14 @@
 
         // ==================== RENDER: HIRO (REAL INTRADAY) ====================
         async function renderHiro() {
+            const token = ++hiroSequence;
+            if (DEMO_MODE) { $('hiroChartPlot').textContent = 'SIMULATED mode: live intraday context disabled.'; return; }
             const plotEl = $('hiroChartPlot');
             const symbol = $('globalSymbolInput').value;
             const interval = $('hiroInterval').value;
             const range = $('hiroRange').value;
             const cacheKey = `${symbol}|${interval}|${range}`;
+            plotEl.textContent = 'Loading intraday data…';
 
             try {
                 let entry = intradayCache[cacheKey];
@@ -1175,6 +1173,7 @@
                     entry = { ts: Date.now(), j };
                     intradayCache[cacheKey] = entry;
                 }
+                if(token !== hiroSequence) return;
                 const j = entry.j;
                 const dates = j.t.map(t => new Date(t));
                 Plotly.newPlot(plotEl, [
@@ -1196,14 +1195,17 @@
                     yaxis2: { domain: [0, 0.18], showticklabels: false, showgrid: false }
                 }), { responsive: true, scrollZoom: true });
             } catch (e) {
+                if(token !== hiroSequence) return;
                 console.warn('renderHiro failed:', e);
-                plotEl.innerHTML = `<div class="flex items-center justify-center h-[400px] text-gray-500 text-xs">Intraday data unavailable: ${e.message}</div>`;
+                plotEl.innerHTML = `<div class="flex items-center justify-center h-[400px] text-gray-500 text-xs">Intraday data unavailable: ${escapeHtml(e.message)}</div>`;
             }
         }
 
         // ==================== RENDER: COMPASS ====================
         async function renderCompass() {
+            const token = ++compassSequence;
             const plotEl = $('compassGridPlot');
+            plotEl.textContent = DEMO_MODE ? 'SIMULATED · loading…' : 'Loading positioning…';
             const syms = ['SPY', 'QQQ', 'I:SPX'];
             const pts = [];
             for (const s of syms) {
@@ -1219,6 +1221,7 @@
                     console.warn(`Compass fetch ${s} failed:`, e);
                 }
             }
+            if (token !== compassSequence) return;
             if (!pts.length) {
                 plotEl.innerHTML = `<div class="flex items-center justify-center h-[450px] text-gray-500 text-xs">Positioning data unavailable.</div>`;
                 return;
@@ -1231,10 +1234,10 @@
                     color: pts.map(p => p.y >= 0 ? '#10b981' : '#a855f7'),
                     line: { color: '#ffffff', width: 1 }
                 },
-                hovertemplate: '%{text}<br>Net $GEX %{x:.2f}B<br>Spot vs flip %{y:.2f}%<extra></extra>'
+                hovertemplate: '%{text}<br>GEX / 1% move %{x:.2f}B<br>Spot vs flip %{y:.2f}%<extra></extra>'
             }], baseLayout({
-                title: { text: 'Index positioning — net $GEX vs distance from flip', font: { color: '#94a3b8', size: 11 } },
-                xaxis: { title: { text: 'Net dealer $GEX ($B)', font: { color: '#64748b', size: 10 } }, zeroline: true, zerolinecolor: '#334155', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
+                title: { text: (DEMO_MODE ? 'SIMULATED · ' : '') + 'Index positioning — GEX per 1% move vs nearest flip', font: { color: '#94a3b8', size: 11 } },
+                xaxis: { title: { text: 'GEX / 1% move ($B)', font: { color: '#64748b', size: 10 } }, zeroline: true, zerolinecolor: '#334155', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } },
                 yaxis: { title: { text: 'Spot vs gamma-flip (%)', font: { color: '#64748b', size: 10 } }, zeroline: true, zerolinecolor: '#334155', showgrid: true, gridcolor: '#161f30', tickfont: { color: '#94a3b8', size: 9 } }
             }), { responsive: true });
         }
@@ -1265,37 +1268,49 @@
             chartScope = 'front';
             $('scopeFrontBtn').classList.add('active');
             $('scopeAllBtn').classList.remove('active');
-            renderMainChart();
+            renderKPIs(); renderMainChart();
         });
         $('scopeAllBtn').addEventListener('click', () => {
             chartScope = 'all';
             $('scopeAllBtn').classList.add('active');
             $('scopeFrontBtn').classList.remove('active');
-            renderMainChart();
+            renderKPIs(); renderMainChart();
         });
 
         $('toggle0DteBtn').addEventListener('click', () => {
+            swingScope = 'today';
+            $('toggleWeekBtn').classList.remove('active');
             $('toggle0DteBtn').classList.add('active');
             $('toggleAllExpBtn').classList.remove('active');
             renderSwingMode();
         });
         $('toggleAllExpBtn').addEventListener('click', () => {
+            swingScope = 'all';
+            $('toggleWeekBtn').classList.remove('active');
             $('toggleAllExpBtn').classList.add('active');
             $('toggle0DteBtn').classList.remove('active');
             renderSwingMode();
         });
 
+        $('toggleWeekBtn').addEventListener('click', () => { swingScope='week'; $('toggleWeekBtn').classList.add('active'); $('toggle0DteBtn').classList.remove('active'); $('toggleAllExpBtn').classList.remove('active'); renderSwingMode(); });
         ['hiroInterval', 'hiroRange'].forEach(id => {
             $(id).addEventListener('change', () => renderHiro());
         });
 
+        let drawerPreviousFocus;
         function showHelpDrawer() {
+            drawerPreviousFocus = document.activeElement;
             $('helpDrawer').style.display = 'flex';
+            $('helpDrawer').querySelector('button').focus();
         }
         function closeHelpDrawer() {
             $('helpDrawer').style.display = 'none';
+            drawerPreviousFocus?.focus();
         }
 
+        document.addEventListener('keydown', e => { if ($('helpDrawer').style.display === 'flex') { if(e.key==='Escape') closeHelpDrawer(); if(e.key==='Tab') {e.preventDefault();$('helpDrawer').querySelector('button').focus();} } });
+        setInterval(() => { if(!chainLoading && chainMeta.symbol === $('globalSymbolInput').value) updateDataBadge(); }, 30000);
+        if(DEMO_MODE) $('dataModeBadge').innerText='SIMULATED';
         // ==================== INITIAL LOAD ====================
         loadOptionsData();
     </script>
