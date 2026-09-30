@@ -14,6 +14,11 @@
         body { background-color: #04060b; color: #f3f4f6; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
         .glow-border { border: 1px solid #1a233a; box-shadow: 0 0 15px rgba(234, 179, 8, 0.03); }
         .glass-panel { background: rgba(11, 15, 26, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(30, 41, 59, 0.5); }
+        /* Trinity panels: 1 column on mobile, 3 columns on desktop (deterministic; does not depend on Tailwind CDN responsive variants) */
+        .trinity-grid { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+        @media (min-width: 1024px) {
+            .trinity-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
         .control-dropdown { background-color: #0a0d16; border: 1px solid #1e293b; color: #cbd5e1; font-size: 11px; padding: 6px 12px; border-radius: 8px; outline: none; transition: all 0.2s; }
         .control-dropdown:hover { border-color: #ffd600; }
         .control-dropdown:focus { border-color: #ffd600; box-shadow: 0 0 8px rgba(253, 224, 71, 0.15); }
@@ -375,7 +380,7 @@
             </p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="trinity-grid">
             <!-- Panel 1: SPX -->
             <div class="glass-panel p-4 rounded-xl glow-border">
                 <div class="flex justify-between items-center mb-3">

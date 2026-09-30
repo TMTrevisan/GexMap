@@ -109,5 +109,13 @@ await test('Trinity loading and out-of-order responses only render newest reques
  release(response(200,{records,spot:100,demo:false}));await Promise.all([first,second]);assert.equal(plots.length,3);
 });
 
+await test('Trinity grid uses deterministic 1-col/3-col CSS, not Tailwind lg: variant',()=>{
+ assert.match(html,/<div class="trinity-grid">/);
+ assert.doesNotMatch(html,/<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">/);
+ const style=html.match(/<style[^>]*>([\s\S]*?)<\/style>/)[1];
+ assert.match(style,/\.trinity-grid\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*1fr/);
+ assert.match(style,/@media\s*\(min-width:\s*1024px\)[\s\S]*?\.trinity-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+});
+
 console.log(`${count} tests passed`);
 })().catch(e=>{console.error(e);process.exitCode=1;});
