@@ -367,15 +367,22 @@
     <div id="trinityView" class="hidden">
         <div class="glass-panel p-5 rounded-xl glow-border mb-5">
             <h2 class="text-lg font-black text-white flex items-center gap-2">
-                <span class="text-yellow-400">📈</span> Trinity — SPX · SPY · QQQ heatmap strike ladders
+                <span class="text-yellow-400">📈</span> Trinity — SPX · SPY · QQQ OI model boards
             </h2>
-            <p class="text-xs text-gray-400 mt-2 leading-relaxed">All-expiration net dollar GEX, with the 31 strikes nearest spot shown high to low. Each panel uses its own exposure scale. Calls-positive / puts-negative model; not measured dealer inventory.</p>
+            <p class="text-xs text-gray-400 mt-2 leading-relaxed">
+                <b class="text-gray-200">How to read this:</b> each column is one index. Rows are strike prices near the current price —
+                <span class="text-emerald-400 font-bold">green rows</span> represent positive gamma under the calls-positive assumption,
+                <span class="text-purple-400 font-bold">purple rows</span> represent negative gamma under the puts-negative assumption.
+                Brighter rows indicate larger absolute exposure. <span class="text-gray-500">$GEX = signed gamma × open interest × 100 × spot² × 0.01 (per 1% move).</span>
+            </p>
+            <p class="text-[11px] text-gray-500 mt-1">Overlap markers (not predictive confidence): <b class="text-white">+++</b> strongest confluence (wall + heaviest strike agree) ·
+                <b class="text-white">++</b> wall or flip very near price · <b class="text-white">+</b> listed level. Levels are friction, not floors — they don't have to hold.</p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <div class="glass-panel min-w-0 p-4 rounded-xl glow-border" id="trinityBoardSpx"></div>
-            <div class="glass-panel min-w-0 p-4 rounded-xl glow-border" id="trinityBoardSpy"></div>
-            <div class="glass-panel min-w-0 p-4 rounded-xl glow-border" id="trinityBoardQqq"></div>
+            <div class="glass-panel p-4 rounded-xl glow-border" id="trinityBoardSpx"></div>
+            <div class="glass-panel p-4 rounded-xl glow-border" id="trinityBoardSpy"></div>
+            <div class="glass-panel p-4 rounded-xl glow-border" id="trinityBoardQqq"></div>
         </div>
     </div>
 
@@ -931,7 +938,8 @@
         }
 
         // ==================== RENDER: TRINITY ====================
-        // All-expiration net GEX heatmaps, independently normalized per panel.
+        // Voltick-style OI model boards: three columns (SPX/SPY/QQQ), each with a
+        // regime line, key levels with distances, and per-strike colored rows.
         const TRINITY_PANELS = [
             { sym: 'I:SPX', short: 'SPX', label: 'S&P 500 Index', board: 'trinityBoardSpx' },
             { sym: 'SPY', short: 'SPY', label: 'S&P 500 ETF', board: 'trinityBoardSpy' },
@@ -1020,8 +1028,8 @@
         }
 
         // Day-over-day positioning change vs a localStorage baseline snapshot.
-        function trinityDOD(sym, lv, demo = DEMO_MODE) {
-            const key = 'gexmap_dod_v2_' + (demo ? 'demo_' : 'live_') + sym;
+        function trinityDOD(sym, lv) {
+            const key = 'gexmap_dod_v2_' + (DEMO_MODE ? 'demo_' : 'live_') + sym;
             const today = marketDate(), snap = {};
             lv.strikes.forEach(s => { snap[s] = lv.perStrike[s].g; });
             let state;
@@ -1047,56 +1055,6 @@
             pendingBaselines.clear();
         }
 
-        // Pure helpers are also callable by the offline VM regression harness.
-        function heatColor(value, maxAbs) {
-            const t = Number.isFinite(value) && Number.isFinite(maxAbs) && maxAbs > 0
-                ? Math.max(-1, Math.min(1, value / maxAbs)) : 0;
-            const teal = [47,111,106], end = t < 0 ? [59,7,100] : [250,204,21];
-            return '#' + teal.map((c,i) => Math.round(c + (end[i]-c)*Math.abs(t)).toString(16).padStart(2,'0')).join('');
-        }
-        function heatMoney(value) {
-            if (!Number.isFinite(value)) return 'n/a';
-            const n = Math.abs(value), unit = n >= 1e9 ? 'B' : n >= 1e6 ? 'M' : 'K';
-            const divisor = unit === 'B' ? 1e9 : unit === 'M' ? 1e6 : 1e3;
-            return (value < 0 ? '-$' : '$') + (n/divisor).toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1}) + unit;
-        }
-        function heatKing(lv, spot) {
-            const strikes = lv.strikes.filter(s => Number.isFinite(lv.perStrike[s].g));
-            if (!strikes.length) return null;
-            const strike = strikes.reduce((best,s) => Math.abs(lv.perStrike[s].g) > Math.abs(lv.perStrike[best].g) ? s : best);
-            return {strike, distance: Number.isFinite(spot) && spot > 0 ? (strike-spot)/spot : null};
-        }
-        function heatChange(value, strike, base) {
-            if (!base || !base.snap || !Object.prototype.hasOwnProperty.call(base.snap,strike) || !Number.isFinite(base.snap[strike])) return '';
-            const prior = base.snap[strike];
-            const pct = prior === 0 ? null : (value-prior)/Math.abs(prior)*100;
-            const label = pct === null ? 'n/a' : (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
-            return `<span data-gex-change class="text-[10px] rounded bg-black/60 text-white px-1.5 py-0.5" title="${escapeHtml('Net GEX change vs ' + base.date + '; divided by absolute baseline. Zero baseline: n/a.')}">${escapeHtml(label)}</span>`;
-        }
-        function trinityPanel(p, payload, mkt, lv, base) {
-            const spot = payload.spot, king = heatKing(lv,spot);
-            const near = nearestStrikes(lv.strikes,spot,31).sort((a,b)=>b-a);
-            const spotStrike = nearestStrikes(lv.strikes,spot,1)[0];
-            const maxAbs = lv.strikes.reduce((max,s)=>Math.max(max,Math.abs(lv.perStrike[s].g)),0);
-            const distance = !king || king.distance === null ? 'n/a' : king.distance === 0 ? 'at spot' : `${Math.abs(king.distance*100).toFixed(1)}% ${king.distance < 0 ? 'below' : 'above'}`;
-            const change = !payload.demo && mkt && Number.isFinite(mkt.changePct) ? mkt.changePct : null;
-            const rows = near.map(s => {
-                const value = lv.perStrike[s].g, marked = s === spotStrike;
-                const ink = maxAbs > 0 && value/maxAbs > .45 ? '#111827' : '#ffffff';
-                return `<tr data-strike="${escapeHtml(s)}" style="background:${escapeHtml(heatColor(value,maxAbs))};color:${escapeHtml(ink)};${marked ? 'box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)' : ''}">
-                    <th scope="row" class="py-2 px-2 text-left font-bold whitespace-nowrap">${marked ? '<span class="text-white" aria-label="Nearest strike to spot">❯</span> ' : ''}${escapeHtml(fmtStrike(s))}</th>
-                    <td class="py-2 px-2 text-right font-bold whitespace-nowrap">${heatChange(value,s,base)} ${escapeHtml(heatMoney(value))}</td></tr>`;
-            }).join('');
-            return `<div class="flex items-center justify-between gap-2 mb-2"><h3 class="font-black text-lg">${escapeHtml(p.short)}</h3><div class="text-right font-bold">$${escapeHtml(fmtPx(spot))}
-                ${change === null ? '<span class="text-xs text-gray-500">day change n/a</span>' : `<span class="text-xs rounded px-1.5 py-1 ${change >= 0 ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'}">${escapeHtml((change >= 0 ? '+' : '') + change.toFixed(2) + '%')}</span>`}</div></div>
-                <div class="text-[10px] text-gray-400 mb-2">${payload.demo ? '<b class="text-amber-400">SIMULATED</b>' : '<b>LIVE</b>'} · all expirations · as of ${escapeHtml(payload.fetchedAt || 'unknown')}${Date.now()-Date.parse(payload.fetchedAt)>CHAIN_TTL_MS ? ' · STALE' : ''} · gamma coverage ${escapeHtml((lv.gammaCoverage*100).toFixed(1))}%</div>
-                <div class="text-sm mb-3">★ King <b>${escapeHtml(king ? fmtStrike(king.strike) : 'n/a')}</b> <span class="text-gray-400">${escapeHtml(distance)}</span></div>
-                <div class="max-h-[520px] overflow-y-auto rounded-lg border border-gray-800" tabindex="0" role="region" aria-label="${escapeHtml(p.short)} strike ladder">
-                <table class="w-full text-xs"><thead class="sticky top-0 bg-[#0b1120] text-gray-400"><tr><th class="text-left p-2">Strike</th><th class="text-right p-2">Net GEX / 1% move</th></tr></thead><tbody>${rows || '<tr><td colspan="2" class="p-6 text-center text-gray-500">No strikes available.</td></tr>'}</tbody></table></div>
-                <details class="text-xs text-gray-400 my-3"><summary class="cursor-pointer">How to read this map</summary><p class="mt-2">Yellow/bright = large positive exposure (pinning/magnet zones); purple/dark = large negative exposure (acceleration zones); dull teal = negligible exposure. These are model descriptions, not predictions. OI as of last settlement; values are $ per 1% move; day-change badges compare vs your last saved baseline. Prior-day baseline is retained throughout today; no badge means no baseline for that strike. Percentage changes divide by the absolute baseline; zero baseline is n/a. Changes reflect spot/greeks movement, not just positioning. King is the largest absolute net GEX across all strikes, including those outside this window. White chevron marks the nearest strike to spot.</p></details>
-                <div aria-label="Exposure color scale" class="h-2 rounded" style="background:linear-gradient(to right,#3b0764,#2f6f6a,#facc15)"></div><div class="flex justify-between text-[10px] text-gray-400 mt-1"><span>${escapeHtml(heatMoney(-maxAbs))}</span><span>${escapeHtml(heatMoney(maxAbs))}</span></div>`;
-        }
-
         async function renderTrinityMode() {
             const token = ++trinitySequence;
             for (const p of TRINITY_PANELS) {
@@ -1109,10 +1067,95 @@
                     if (token !== trinitySequence) return;
                     const spot = payload.spot;
                     const lv = computeLevels(payload.records, spot, allExpirations(payload.records), false);
-                    trinityDOD(p.sym, lv, !!payload.demo);
-                    const key = 'gexmap_dod_v2_' + (payload.demo ? 'demo_' : 'live_') + p.sym;
-                    const base = pendingBaselines.get(key).previous;
-                    el.innerHTML = trinityPanel(p, payload, mkt, lv, base);
+                    const positive = lv.netGex >= 0;
+
+                    const dayTxt = mkt && Number.isFinite(mkt.changePct)
+                        ? ` · ${mkt.changePct >= 0 ? 'up' : 'down'} ${Math.abs(mkt.changePct).toFixed(2)}% today` : '';
+                    const regimeLine = `<span class="font-black text-sm text-white">${p.short}</span> ` +
+                        `<span class="text-[10px] text-gray-500">${p.label}</span><br>` +
+                        `<span class="text-xs text-gray-300">$${fmtPx(spot)}${dayTxt} · ` +
+                        (positive
+                            ? `<b class="text-emerald-400">positive gamma</b> <span class="text-gray-500">(model assumption)</span>`
+                            : `<b class="text-purple-400">negative gamma</b> <span class="text-gray-500">(model assumption)</span>`) +
+                        `</span>`;
+
+                    const em = expectedMove(payload.records, spot);
+                    const putWarn = lv.putWall !== null && lv.putWall > spot ? 'Above spot; not guaranteed support' : '';
+
+                    let levelsHtml = '';
+                    levelsHtml += trinityLevelRow('★', 'Volt — heaviest strike', 'largest absolute net GEX at one strike', lv.voltStrike, spot, confluence(lv.voltStrike, lv, spot));
+                    levelsHtml += trinityLevelRow('‖', 'Call wall', 'largest positive call gamma exposure', lv.callWall, spot, confluence(lv.callWall, lv, spot));
+                    levelsHtml += trinityLevelRow('‖', 'Put wall', 'largest negative put gamma exposure', lv.putWall, spot, confluence(lv.putWall, lv, spot), putWarn);
+                    if (lv.flipFound) {
+                        lv.roots.forEach(root => { levelsHtml += trinityLevelRow('⚡', 'Gamma flip', 'Scenario net gamma crosses zero', root, spot, ''); });
+                    } else {
+                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="No gamma flip within 20% of spot">
+                            <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">⚡</span>
+                            <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Gamma flip</div>
+                            <div class="text-[10px] text-gray-500 leading-tight">${escapeHtml(flipText(lv))}</div></div></div>
+                            <div class="text-right shrink-0"><div class="text-xs font-extrabold text-gray-500">—</div></div></div>`;
+                    }
+                    if (em) {
+                        levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="At-the-money straddle price on the ${escapeHtml(em.exp)} expiry — fair-value straddle proxy, not a probability interval">
+                            <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🎯</span>
+                            <div class="min-w-0"><div class="text-xs font-bold text-white truncate">Expected move <span class="text-amber-300 font-extrabold">+</span></div>
+                            <div class="text-[10px] text-gray-500 leading-tight">proxy to ${escapeHtml(em.exp)} (ATM call + put fair value)</div></div></div>
+                            <div class="text-right shrink-0"><div class="text-xs font-extrabold text-white">±$${fmtPx(em.em)}</div>
+                            <div class="text-[10px] text-gray-500">±${(em.em / spot * 100).toFixed(2)}%</div></div></div>`;
+                    }
+                    if (!em) levelsHtml += '<div class="text-xs py-2">Expected move: n/a</div>';
+                    levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-gray-800/60" title="Open-interest-weighted implied volatility near the money, front two expirations">
+                        <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🌊</span>
+                        <div class="min-w-0"><div class="text-xs font-bold text-white">ATM IV</div>
+                        <div class="text-[10px] text-gray-500 leading-tight">annualized IV from option values</div></div></div>
+                        <div class="text-xs font-extrabold text-white">${lv.atmIv === null ? 'n/a' : (lv.atmIv * 100).toFixed(1) + '%'}</div></div>`;
+                    levelsHtml += `<div class="flex items-center justify-between gap-2 py-1.5" title="Signed delta exposure from open interest, not measured dealer inventory">
+                        <div class="flex items-center gap-2 min-w-0"><span class="w-5 text-center shrink-0">🧭</span>
+                        <div class="min-w-0"><div class="text-xs font-bold text-white">Net DEX</div>
+                        <div class="text-[10px] text-gray-500 leading-tight">Signed delta exposure from open interest, not measured dealer inventory</div></div></div>
+                        <div class="text-xs font-extrabold ${lv.netDex >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${fmtMoney(lv.netDex)}</div></div>`;
+
+                    // Per-strike colored rows, high -> low.
+                    const near = lv.strikes.filter(s => s >= spot * 0.98 && s <= spot * 1.02)
+                        .sort((a, b) => Math.abs(a - spot) - Math.abs(b - spot)).slice(0, 25)
+                        .sort((a, b) => b - a);
+                    const maxAbs = Math.max(...near.map(s => Math.abs(lv.perStrike[s].v)), 1e-9);
+                    let spotStrike = near[0];
+                    near.forEach(s => { if (Math.abs(s - spot) < Math.abs(spotStrike - spot)) spotStrike = s; });
+                    const rowsHtml = near.map(s => {
+                        const ps = lv.perStrike[s], v = ps.v;
+                        const inten = (0.07 + 0.75 * Math.abs(v) / maxAbs).toFixed(2);
+                        const bg = v >= 0 ? `background:rgba(16,185,129,${inten})` : `background:rgba(168,85,247,${inten})`;
+                        const iv = ps.ivDen > 0 ? (ps.ivNum / ps.ivDen * 100).toFixed(1) + '%' : '—';
+                        const barW = Math.max(2, Math.abs(v) / maxAbs * 100).toFixed(0);
+                        const bar = `<span class="inline-block h-1.5 rounded-full align-middle mr-1.5" style="width:${barW}%;max-width:64px;${v >= 0 ? 'background:#10b981' : 'background:#a855f7'}"></span>`;
+                        return `<tr class="border-b border-gray-800/50" style="${bg}${s === spotStrike ? ';box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)' : ''}" title="${s === spotStrike ? 'Nearest strike to spot' : 'Strike ' + fmtStrike(s)} — model-implied $GEX ${fmtMoney(v)}">
+                            <td class="py-1.5 pl-2 pr-1 text-right font-bold text-white whitespace-nowrap">${fmtStrike(s)}${s === spotStrike ? ' <span class="text-[9px] text-white/90">●</span>' : ''}</td>
+                            <td class="py-1.5 px-1 text-right font-extrabold text-white whitespace-nowrap">${bar}${fmtMoney(v)}</td>
+                            <td class="py-1.5 px-1 text-right text-gray-100">${fmtOi(ps.callOi)}</td>
+                            <td class="py-1.5 pr-2 pl-1 text-right text-gray-100">${fmtOi(ps.putOi)}</td>
+                            <td class="py-1.5 pr-2 text-right text-gray-300">${iv}</td></tr>`;
+                    }).join('');
+
+                    const dod = trinityDOD(p.sym, lv);
+
+                    el.innerHTML = `
+                        <div class="mb-2">${regimeLine}</div>
+                        <div class="text-[10px] text-gray-500 mb-2">Net $GEX / 1% move <b class="${positive ? 'text-emerald-400' : 'text-purple-400'}">${fmtMoney(lv.netGex)}</b> · P/C ${ratioText(lv.pcRatio)}${payload.demo ? ' · <b class="text-amber-400">SIMULATED</b>' : ' · LIVE'} · <span data-asof="${escapeHtml(payload.fetchedAt)}">as of ${escapeHtml(new Date(payload.fetchedAt).toLocaleTimeString())}${Date.now()-Date.parse(payload.fetchedAt)>CHAIN_TTL_MS?' · STALE':''}</span> · gamma ${(lv.gammaCoverage*100).toFixed(1)}% / delta ${(lv.deltaCoverage*100).toFixed(1)}% coverage · scenario IV/expiry ${(lv.scenarioCoverage*100).toFixed(1)}%</div>
+                        <div class="mb-3">${levelsHtml}</div>${detailsHtml("Explain these statistics", statsFormula + " " + explanation(payload.records,payload,allExpirations(payload.records)))}
+                        ${dod ? `<div class="text-[11px] text-sky-300/90 bg-sky-950/40 border border-sky-900/60 rounded-lg px-2.5 py-1.5 mb-3">📊 ${dod}</div>` : ''}
+                        <div class="overflow-auto max-h-[420px] rounded-lg border border-gray-800">
+                            <table class="w-full text-xs">
+                                <thead class="sticky top-0 bg-[#0b1120] z-10"><tr class="text-gray-400">
+                                    <th class="text-right py-2 pl-2 pr-1 font-semibold" title="Option strike price">Strike</th>
+                                    <th class="text-right py-2 px-1 font-semibold" title="Dollar GEX per 1% move; assumed calls positive and puts negative.">GEX / 1% move</th>
+                                    <th class="text-right py-2 px-1 font-semibold" title="Call open interest at this strike">Call OI</th>
+                                    <th class="text-right py-2 px-1 font-semibold" title="Put open interest at this strike">Put OI</th>
+                                    <th class="text-right py-2 pr-2 font-semibold" title="Implied volatility, OI-weighted">IV</th>
+                                </tr></thead>
+                                <tbody>${rowsHtml || `<tr><td colspan="5" class="py-6 text-center text-gray-500">No strikes in range.</td></tr>`}</tbody>
+                            </table>
+                        </div>`;
                     commitBaselines();
                 } catch (e) {
                     if(token !== trinitySequence) return;
@@ -1121,7 +1164,7 @@
                         ? e.message.replace('ConvexValue hourly', 'Hourly')
                         : `Chain unavailable: ${e.message}`;
                     el.innerHTML = `<div class="py-10 text-center">
-                        <div class="font-black text-sm text-white mb-1">${escapeHtml(p.short)} <span class="text-gray-500 font-semibold text-[10px]">${escapeHtml(p.label)}</span></div>
+                        <div class="font-black text-sm text-white mb-1">${p.short} <span class="text-gray-500 font-semibold text-[10px]">${p.label}</span></div>
                         <div class="text-xs text-gray-500">${escapeHtml(message)}</div>
                         ${e.budgetExhausted ? '' : '<button onclick="renderTrinityMode()" class="mt-3 text-xs underline text-sky-400">Retry</button>'}</div>`;
                 }
