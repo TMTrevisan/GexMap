@@ -57,6 +57,11 @@ git diff --check
 ```
 
 Responsive source audit: new chart containers are fluid, grid children can shrink,
-IV and price/history panels stack below `lg`, and expiry/Trinity tables scroll.
+IV and price/history panels stack below `lg`, and expiry tables scroll; Trinity uses the original fluid three-panel chart grid.
 No browser executable is installed in this environment, so rendered desktop/mobile
 layout and real Plotly interactions still need a browser check. No network was used.
+
+Trinity restoration adds 6 cases (39 total), retaining all prior 33 tests: original
+bar colors, inclusive ±1.5% strike window and 15-strike cap, fixture dollar GEX
+including null Greeks, computed regime and LIVE/SIMULATED provenance, cached-only
+rendering and Plotly layout, missing coverage/errors, loading and response races.

@@ -54,5 +54,60 @@ await test('modeled greeks omit near expiry and missing IV instead of invented z
 await test('explainers disclose scope, missingness, assumptions and mode',()=>{const text=sandbox.explanation(records,{demo:true,fetchedAt:new Date(F.NOW).toISOString()},[F.EXP]);for(const term of ['SIMULATED','as of','age 0 min',F.EXP,'gamma 1/2','4.3%','dividends 0','OI as of last settlement'])assert.ok(text.includes(term),term);});
 await test('dashboard empty filter and plotting are offline-safe',()=>{run('currentData=records;chainMeta={spot:100};expirationsList=records.map(r=>r.expiration)');node('expiryScope').value='today';sandbox.renderExpirationDashboard();assert.match(node('expiryTable').innerHTML,/No expirations/);node('expiryScope').value='all';sandbox.renderExpirationDashboard();sandbox.renderSplit();assert.match(node('modeledGreeks').innerHTML,/MODELED ESTIMATES/);assert.match(node('expiryExplanation').innerHTML,/Gross gamma/);});
 
+await test('Trinity maps positive, zero and negative net bars to original colors',()=>{
+ const bars=sandbox.trinityBars([-2,0,3].map((g,i)=>({expiration:F.EXP,strike:99+i,dollar_gex:g})),100);
+ assert.deepEqual(Array.from(bars.colors),['#a855f7','#10b981','#10b981']);
+});
+await test('Trinity windows unique strikes inclusively at 1.5% and caps at 15',()=>{
+ const row=strike=>({expiration:F.EXP,strike,dollar_gex:1});
+ assert.deepEqual(Array.from(sandbox.trinityBars([98.49,98.5,100,100,101.5,101.51].map(row),100).strikes),[98.5,100,101.5]);
+ const bars=sandbox.trinityBars(Array.from({length:31},(_,i)=>row(98.5+i/10)),100);
+ assert.equal(bars.strikes.length,15);assert.equal(new Set(bars.strikes).size,15);
+ assert.ok(bars.strikes.every(s=>s>=98.5&&s<=101.5));
+});
+await test('Trinity per-strike dollars match engine spot-squared math with null Greeks',()=>{
+ const input=F.chain();
+ const rs=srv.processChainData(input);
+ const bars=sandbox.trinityBars(rs,100);
+ assert.equal(bars.values[0],.02*100*100*100**2*.01);
+ assert.equal(bars.values[0],sandbox.computeLevels(rs,100,[F.EXP]).perStrike[100].g);
+ assert.equal(bars.levels.gammaCoverage,.5);
+ const negative=F.chain();negative.chain[0].strikes[0][2][5]=.03;
+ const signed=sandbox.trinityBars(srv.processChainData(negative),100);
+ assert.equal(signed.values[0],(.02*100-.03*300)*100*100**2*.01);
+});
+await test('Trinity renderer uses cached engine regime, original Plotly layout and provenance',async()=>{
+ const plots=[];sandbox.Plotly.newPlot=(...args)=>plots.push(args);
+ sandbox.fetch=async()=>{throw Error('Trinity must reuse fresh chains');};
+ sandbox.trinityFixture=records;
+ run(`for(const p of TRINITY_PANELS) chainCache[p.sym]={ts:Date.now(),payload:{records:trinityFixture,spot:100,demo:p.sym==='QQQ',fetchedAt:new Date().toISOString()}};`);
+ await sandbox.renderTrinityMode();
+ assert.equal(plots.length,3);
+ for(const plot of plots){assert.equal(plot[1][0].orientation,'h');assert.equal(plot[1][0].type,'bar');assert.equal(plot[1][0].x[0],20000);assert.equal(plot[1][0].marker.color[0],'#10b981');assert.equal(plot[2].margin.l,45);assert.equal(plot[2].margin.r,15);assert.equal(plot[2].margin.b,35);assert.equal(plot[2].margin.t,10);assert.equal(plot[2].xaxis.title.text,'$ GEX / 1% move');assert.equal(plot[3].responsive,true);}
+ assert.equal(node('trinitySpxRegime').innerText,'Positive Gamma');
+ assert.match(node('trinityProvenance').innerText,/SPX: LIVE/);assert.match(node('trinityProvenance').innerText,/QQQ: SIMULATED/);
+ const input=F.chain();input.chain[0].strikes[0][2][5]=.03;sandbox.trinityFixture=srv.processChainData(input);
+ run('for(const p of TRINITY_PANELS) chainCache[p.sym].payload.records=trinityFixture');
+ await sandbox.renderTrinityMode();assert.equal(node('trinitySpxRegime').innerText,'Negative Gamma');assert.match(node('trinitySpxRegime').className,/purple/);
+ assert.doesNotMatch(sandbox.renderTrinityMode.toString()+sandbox.trinityBars.toString(),/random|seedRandom|fetchMarket|fetch\(/i);
+});
+await test('Trinity missing gamma and chain failures clear charts without invented regimes',async()=>{
+ const plots=[];sandbox.Plotly.newPlot=(...args)=>plots.push(args);
+ sandbox.trinityFixture=records.map(r=>({...r,contracts:r.contracts.map(c=>({...c,gamma:null})),dollar_gex:0}));
+ run('for(const p of TRINITY_PANELS) chainCache[p.sym].payload.records=trinityFixture');
+ await sandbox.renderTrinityMode();assert.equal(plots.length,0);assert.equal(node('trinitySpxRegime').innerText,'Gamma unavailable');
+ run('for(const p of TRINITY_PANELS) delete chainCache[p.sym]');
+ sandbox.fetch=async()=>response(503,{error:'<unavailable>'});
+ await sandbox.renderTrinityMode();assert.match(node('trinityPlotSpx').innerHTML,/Chain unavailable: &lt;unavailable&gt;/);assert.equal(node('trinitySpxRegime').innerText,'Unavailable');assert.doesNotMatch(node('trinityProvenance').innerText,/LIVE|SIMULATED/);
+});
+await test('Trinity loading and out-of-order responses only render newest request',async()=>{
+ let release;const plots=[];sandbox.Plotly.newPlot=(...args)=>plots.push(args);
+ sandbox.fetch=()=>new Promise(resolve=>release=resolve);
+ const first=sandbox.renderTrinityMode();assert.match(node('trinityPlotSpx').innerHTML,/Loading chain/);assert.equal(node('trinitySpxRegime').innerText,'Loading…');
+ const second=sandbox.renderTrinityMode();
+ run(`for(const sym of ['SPY','QQQ']) chainCache[sym]={ts:Date.now(),payload:{records,spot:100,demo:false}}`);
+ release(response(200,{records,spot:100,demo:false}));await Promise.all([first,second]);assert.equal(plots.length,3);
+});
+
 console.log(`${count} tests passed`);
 })().catch(e=>{console.error(e);process.exitCode=1;});
